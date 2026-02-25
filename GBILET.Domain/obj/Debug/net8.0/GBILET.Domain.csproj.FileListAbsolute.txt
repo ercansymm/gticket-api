@@ -1,0 +1,11 @@
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\bin\Debug\net8.0\GBILET.Domain.deps.json
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\bin\Debug\net8.0\GBILET.Domain.dll
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\bin\Debug\net8.0\GBILET.Domain.pdb
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\obj\Debug\net8.0\GBILET.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\obj\Debug\net8.0\GBILET.Domain.AssemblyInfoInputs.cache
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\obj\Debug\net8.0\GBILET.Domain.AssemblyInfo.cs
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\obj\Debug\net8.0\GBILET.Domain.csproj.CoreCompileInputs.cache
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\obj\Debug\net8.0\GBILET.Domain.dll
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\obj\Debug\net8.0\refint\GBILET.Domain.dll
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\obj\Debug\net8.0\GBILET.Domain.pdb
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Domain\obj\Debug\net8.0\ref\GBILET.Domain.dll

@@ -1,0 +1,6 @@
+@GBILET.App_HostAddress = http://localhost:5184
+
+GET {{GBILET.App_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

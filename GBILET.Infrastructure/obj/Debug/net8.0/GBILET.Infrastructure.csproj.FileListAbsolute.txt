@@ -1,0 +1,17 @@
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\bin\Debug\net8.0\GBILET.Infrastructure.deps.json
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\bin\Debug\net8.0\GBILET.Infrastructure.dll
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\bin\Debug\net8.0\GBILET.Infrastructure.pdb
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\bin\Debug\net8.0\GBILET.Application.dll
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\bin\Debug\net8.0\GBILET.Domain.dll
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\bin\Debug\net8.0\GBILET.Application.pdb
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\bin\Debug\net8.0\GBILET.Domain.pdb
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\GBILET.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\GBILET.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\GBILET.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\GBILET.Infrastructure.AssemblyInfo.cs
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\GBILET.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\GBILET.I.5066F223.Up2Date
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\GBILET.Infrastructure.dll
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\refint\GBILET.Infrastructure.dll
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\GBILET.Infrastructure.pdb
+C:\Users\ercan\Desktop\GTRAVEL\GBILET\GBILET.Infrastructure\obj\Debug\net8.0\ref\GBILET.Infrastructure.dll
