@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GBILET.Application\GBILET.Application.csproj" />
-    <ProjectReference Include="..\GBILET.Domain\GBILET.Domain.csproj" />
+    <Folder Include="Context\" />
+    <Folder Include="Entity\" />
   </ItemGroup>
 
 </Project>
