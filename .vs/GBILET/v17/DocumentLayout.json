@@ -1,7 +1,28 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\gbilet.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\gbilet.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0606E290-489E-4639-A8EA-3986E4060577}|GBILET.App\\GBILET.App.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.app\\aciklama.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{0606E290-489E-4639-A8EA-3986E4060577}|GBILET.App\\GBILET.App.csproj|solutionrelative:gbilet.app\\aciklama.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.core\\aciklama.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|solutionrelative:gbilet.core\\aciklama.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.infrastructure\\aciklama.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|solutionrelative:gbilet.infrastructure\\aciklama.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -9,11 +30,76 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\Program.cs",
+              "RelativeDocumentMoniker": "GBILET.Api\\Program.cs",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\Program.cs",
+              "RelativeToolTip": "GBILET.Api\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-25T21:35:44.932Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "GBILET.Api",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\GBILET.Api.csproj",
+              "RelativeDocumentMoniker": "GBILET.Api\\GBILET.Api.csproj",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\GBILET.Api.csproj",
+              "RelativeToolTip": "GBILET.Api\\GBILET.Api.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAABTAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-02-25T21:35:35.502Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Aciklama.txt",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.App\\Aciklama.txt",
+              "RelativeDocumentMoniker": "GBILET.App\\Aciklama.txt",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.App\\Aciklama.txt",
+              "RelativeToolTip": "GBILET.App\\Aciklama.txt",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
+              "WhenOpened": "2026-02-25T20:43:46.884Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Aciklama.txt",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\Aciklama.txt",
+              "RelativeDocumentMoniker": "GBILET.Infrastructure\\Aciklama.txt",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\Aciklama.txt",
+              "RelativeToolTip": "GBILET.Infrastructure\\Aciklama.txt",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
+              "WhenOpened": "2026-02-25T20:36:04.621Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Aciklama.txt",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\Aciklama.txt",
+              "RelativeDocumentMoniker": "GBILET.Core\\Aciklama.txt",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\Aciklama.txt",
+              "RelativeToolTip": "GBILET.Core\\Aciklama.txt",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
+              "WhenOpened": "2026-02-25T20:28:32.274Z",
+              "EditorCaption": ""
             }
           ]
         }
