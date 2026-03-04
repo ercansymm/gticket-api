@@ -7,5 +7,10 @@ namespace GBILET.Api.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
+        [HttpGet("test")]
+        public IActionResult Test()
+        {
+            return Ok("API çalışıyor");
+        }
     }
 }
