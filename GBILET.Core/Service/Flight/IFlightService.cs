@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using GBILET.Core.Models.Flight;
 
+using GBILET.Core.Models.Flight;
 
 namespace GBILET.Core.Service.Flight;
 
 public interface IFlightService
 {
-    Task<string> SearchFlight(string from, string to);
+    Task<AirSearchResponse> SearchFlightAsync(SearchRequest request);
 }
