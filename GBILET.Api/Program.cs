@@ -11,8 +11,7 @@ builder.Services.AddSwaggerGen();
 
 // HttpClient - SOCKS5 proxy ile SSH sunucusu üzerinden
 builder.Services
-    .AddHttpClient<IFlightService, BiletBankFlightService>()
-    .ConfigurePrimaryHttpMessageHandler(() =>
+    .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
     {
         return new SocketsHttpHandler
         {
