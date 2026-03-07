@@ -13,6 +13,7 @@ public class FlightController : ControllerBase
     {
         _flightService = flightService;
     }
+
     [HttpGet("search")]
     public async Task<IActionResult> Search(string from, string to)
     {

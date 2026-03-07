@@ -3,28 +3,48 @@
   "WorkspaceRootPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.infrastructure\\services\\biletbankflightservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|solutionrelative:gbilet.infrastructure\\services\\biletbankflightservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\gbilet.api.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}",
+      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\gbilet.api.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\controllers\\flightcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\controllers\\flightcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.infrastructure\\extensions\\xmlextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|solutionrelative:gbilet.infrastructure\\extensions\\xmlextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.infrastructure\\gbilet.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|solutionrelative:gbilet.infrastructure\\gbilet.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.core\\models\\flight.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|solutionrelative:gbilet.core\\models\\flight.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.core\\service\\flight\\iflightservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|solutionrelative:gbilet.core\\service\\flight\\iflightservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.api\\gbilet.api.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}",
-      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\gbilet.api.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}"
+      "AbsoluteMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.core\\service\\flight\\searchrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|solutionrelative:gbilet.core\\service\\flight\\searchrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.core\\gbilet.core.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|solutionrelative:gbilet.core\\gbilet.core.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{9D338A2E-7EF4-4EBD-AC61-52872EB9F711}|GBILET.Report\\GBILET.Report.csproj|c:\\users\\ercan\\desktop\\gtravel\\gbilet\\gbilet.report\\gbilet.report.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
@@ -38,7 +58,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 8,
           "Children": [
             {
               "$type": "Bookmark",
@@ -46,26 +66,52 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\appsettings.json",
-              "RelativeDocumentMoniker": "GBILET.Api\\appsettings.json",
-              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\appsettings.json",
-              "RelativeToolTip": "GBILET.Api\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-03-04T18:32:16.374Z",
+              "DocumentIndex": 7,
+              "Title": "Flight.cs",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\Models\\Flight.cs",
+              "RelativeDocumentMoniker": "GBILET.Core\\Models\\Flight.cs",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\Models\\Flight.cs",
+              "RelativeToolTip": "GBILET.Core\\Models\\Flight.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-07T11:14:35.552Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 9,
+              "Title": "SearchRequest.cs",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\Service\\Flight\\SearchRequest.cs",
+              "RelativeDocumentMoniker": "GBILET.Core\\Service\\Flight\\SearchRequest.cs",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\Service\\Flight\\SearchRequest.cs",
+              "RelativeToolTip": "GBILET.Core\\Service\\Flight\\SearchRequest.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAxwBIAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-07T11:10:49.018Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "GBILET.Core",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\GBILET.Core.csproj",
+              "RelativeDocumentMoniker": "GBILET.Core\\GBILET.Core.csproj",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\GBILET.Core.csproj",
+              "RelativeToolTip": "GBILET.Core\\GBILET.Core.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAABSAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-03-07T11:08:42.559Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\Program.cs",
               "RelativeDocumentMoniker": "GBILET.Api\\Program.cs",
               "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\Program.cs",
               "RelativeToolTip": "GBILET.Api\\Program.cs",
-              "ViewState": "AgIAABEAAAAAAAAAAAAcwCAAAAACAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-04T18:19:59.7Z",
               "EditorCaption": ""
@@ -78,7 +124,7 @@
               "RelativeDocumentMoniker": "GBILET.Infrastructure\\Services\\BiletBankFlightService.cs",
               "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\Services\\BiletBankFlightService.cs",
               "RelativeToolTip": "GBILET.Infrastructure\\Services\\BiletBankFlightService.cs",
-              "ViewState": "AgIAACEAAAAAAAAAAAAcwDsAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAACcAAAAAAAAAAAAYwEYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-04T17:55:44.308Z",
               "EditorCaption": ""
@@ -91,13 +137,14 @@
               "RelativeDocumentMoniker": "GBILET.Api\\Controllers\\FlightController.cs",
               "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\Controllers\\FlightController.cs",
               "RelativeToolTip": "GBILET.Api\\Controllers\\FlightController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "ViewState": "AgIAAAYAAAAAAAAAAADwvxwAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-04T15:05:19.265Z"
+              "WhenOpened": "2026-03-04T15:05:19.265Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 2,
               "Title": "GBILET.Api.http",
               "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\GBILET.Api.http",
               "RelativeDocumentMoniker": "GBILET.Api\\GBILET.Api.http",
@@ -105,23 +152,64 @@
               "RelativeToolTip": "GBILET.Api\\GBILET.Api.http",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003502|",
-              "WhenOpened": "2026-03-04T15:04:32.674Z"
+              "WhenOpened": "2026-03-04T15:04:32.674Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\appsettings.json",
+              "RelativeDocumentMoniker": "GBILET.Api\\appsettings.json",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Api\\appsettings.json",
+              "RelativeToolTip": "GBILET.Api\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-03-04T18:32:16.374Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "GBILET.Infrastructure",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj",
+              "RelativeDocumentMoniker": "GBILET.Infrastructure\\GBILET.Infrastructure.csproj",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj",
+              "RelativeToolTip": "GBILET.Infrastructure\\GBILET.Infrastructure.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-03-07T11:15:17.996Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "XmlExtensions.cs",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\Extensions\\XmlExtensions.cs",
+              "RelativeDocumentMoniker": "GBILET.Infrastructure\\Extensions\\XmlExtensions.cs",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\Extensions\\XmlExtensions.cs",
+              "RelativeToolTip": "GBILET.Infrastructure\\Extensions\\XmlExtensions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-07T11:15:46.682Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
               "Title": "IFlightService.cs",
               "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\Service\\Flight\\IFlightService.cs",
               "RelativeDocumentMoniker": "GBILET.Core\\Service\\Flight\\IFlightService.cs",
               "ToolTip": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Core\\Service\\Flight\\IFlightService.cs",
               "RelativeToolTip": "GBILET.Core\\Service\\Flight\\IFlightService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-04T15:04:00.386Z"
+              "WhenOpened": "2026-03-04T15:04:00.386Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 11,
               "Title": "GBILET.Report.csproj",
               "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Report\\GBILET.Report.csproj",
               "RelativeDocumentMoniker": "GBILET.Report\\GBILET.Report.csproj",
@@ -129,7 +217,8 @@
               "RelativeToolTip": "GBILET.Report\\GBILET.Report.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2026-03-04T15:03:47.458Z"
+              "WhenOpened": "2026-03-04T15:03:47.458Z",
+              "EditorCaption": ""
             }
           ]
         }

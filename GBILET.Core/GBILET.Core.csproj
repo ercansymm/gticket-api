@@ -9,7 +9,6 @@
   <ItemGroup>
     <Folder Include="Extension\" />
     <Folder Include="Helper\" />
-    <Folder Include="Models\" />
   </ItemGroup>
 
   <ItemGroup>
