@@ -9,8 +9,15 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // HttpClient ekle
-builder.Services.AddHttpClient<IFlightService, BiletBankFlightService>();
-
+builder.Services
+.AddHttpClient<IFlightService, BiletBankFlightService>()
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    return new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+    };
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
