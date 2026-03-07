@@ -9,19 +9,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// HttpClient - SOCKS5 proxy ile SSH sunucusu üzerinden
+// HttpClient - SSH tüneli üzerinden localhost:8000'e yönlendirme
 builder.Services
     .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
     {
-        return new SocketsHttpHandler
-        {
-            Proxy = new WebProxy("socks5://localhost:8000"),
-            UseProxy = true,
-            SslOptions = new System.Net.Security.SslClientAuthenticationOptions
-            {
-                RemoteCertificateValidationCallback = (sender, cert, chain, errors) => true
-            }
-        };
+        client.DefaultRequestHeaders.Host = "apitest.biletbank.com";
     });
 
 var app = builder.Build();

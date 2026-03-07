@@ -20,6 +20,7 @@ public class BiletBankFlightService : IFlightService
         IConfiguration configuration)
     {
         _httpClient = httpClient;
+        _httpClient.DefaultRequestHeaders.Host = "apitest.biletbank.com";
 
         _clientName = configuration["BiletBank:ClientName"]!;
         _password = configuration["BiletBank:Password"]!;
