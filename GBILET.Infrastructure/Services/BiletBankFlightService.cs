@@ -45,6 +45,23 @@ public class BiletBankFlightService : IFlightService
         return response;
     }
 
+    public async Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request)
+    {
+        var loginResult = await LoginAsync();
+
+        if (loginResult.HasError)
+        {
+            return new AllocateResponse
+            {
+                HasError = true,
+                ErrorMessage = $"Login hatası: {loginResult.ErrorMessage}"
+            };
+        }
+
+        var response = await AirAllocateStatelessAsync(loginResult.SessionId!, loginResult.SessionToken!, request);
+        return response;
+    }
+
     private async Task<LoginResponse> LoginAsync()
     {
         var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
@@ -188,42 +205,42 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
 
         var segments = new StringBuilder();
         segments.Append($@"
-               <trev2:T_AirSearch_SegmentItem>
-                  <trev2:DepartureDay>{request.DepartureDate:yyyy-MM-dd}T00:00:00</trev2:DepartureDay>
-                  <trev2:Origin>
-                     <trev2:Code>{request.Origin}</trev2:Code>
-                     <trev2:CountryCode>{request.OriginCountryCode}</trev2:CountryCode>
-                     <trev2:IsCity>{request.OriginIsCity.ToString().ToLower()}</trev2:IsCity>
-                     <trev2:Name/>
-                  </trev2:Origin>
-                  <trev2:Destination>
-                     <trev2:Code>{request.Destination}</trev2:Code>
-                     <trev2:CountryCode>{request.DestinationCountryCode}</trev2:CountryCode>
-                     <trev2:IsCity>{request.DestinationIsCity.ToString().ToLower()}</trev2:IsCity>
-                     <trev2:Name/>
-                  </trev2:Destination>
-                  <trev2:SequenceNo>1</trev2:SequenceNo>
-               </trev2:T_AirSearch_SegmentItem>");
+                <trev2:T_AirSearch_SegmentItem>
+                   <trev2:DepartureDay>{request.DepartureDate:yyyy-MM-dd}T00:00:00.000+00:00</trev2:DepartureDay>
+                   <trev2:Destination>
+                      <trev2:Code>{request.Destination}</trev2:Code>
+                      <trev2:CountryCode>{request.DestinationCountryCode}</trev2:CountryCode>
+                      <trev2:IsCity>{request.DestinationIsCity.ToString().ToLower()}</trev2:IsCity>
+                      <trev2:Name/>
+                   </trev2:Destination>
+                   <trev2:Origin>
+                      <trev2:Code>{request.Origin}</trev2:Code>
+                      <trev2:CountryCode>{request.OriginCountryCode}</trev2:CountryCode>
+                      <trev2:IsCity>{request.OriginIsCity.ToString().ToLower()}</trev2:IsCity>
+                      <trev2:Name/>
+                   </trev2:Origin>
+                   <trev2:SequenceNo>1</trev2:SequenceNo>
+                </trev2:T_AirSearch_SegmentItem>");
 
         if (request.FlightType == "RT" && request.ReturnDate.HasValue)
         {
             segments.Append($@"
-               <trev2:T_AirSearch_SegmentItem>
-                  <trev2:DepartureDay>{request.ReturnDate.Value:yyyy-MM-dd}T00:00:00</trev2:DepartureDay>
-                  <trev2:Origin>
-                     <trev2:Code>{request.Destination}</trev2:Code>
-                     <trev2:CountryCode>{request.DestinationCountryCode}</trev2:CountryCode>
-                     <trev2:IsCity>{request.DestinationIsCity.ToString().ToLower()}</trev2:IsCity>
-                     <trev2:Name/>
-                  </trev2:Origin>
-                  <trev2:Destination>
-                     <trev2:Code>{request.Origin}</trev2:Code>
-                     <trev2:CountryCode>{request.OriginCountryCode}</trev2:CountryCode>
-                     <trev2:IsCity>{request.OriginIsCity.ToString().ToLower()}</trev2:IsCity>
-                     <trev2:Name/>
-                  </trev2:Destination>
-                  <trev2:SequenceNo>2</trev2:SequenceNo>
-               </trev2:T_AirSearch_SegmentItem>");
+                <trev2:T_AirSearch_SegmentItem>
+                   <trev2:DepartureDay>{request.ReturnDate.Value:yyyy-MM-dd}T00:00:00.000+00:00</trev2:DepartureDay>
+                   <trev2:Destination>
+                      <trev2:Code>{request.Origin}</trev2:Code>
+                      <trev2:CountryCode>{request.OriginCountryCode}</trev2:CountryCode>
+                      <trev2:IsCity>{request.OriginIsCity.ToString().ToLower()}</trev2:IsCity>
+                      <trev2:Name/>
+                   </trev2:Destination>
+                   <trev2:Origin>
+                      <trev2:Code>{request.Destination}</trev2:Code>
+                      <trev2:CountryCode>{request.DestinationCountryCode}</trev2:CountryCode>
+                      <trev2:IsCity>{request.DestinationIsCity.ToString().ToLower()}</trev2:IsCity>
+                      <trev2:Name/>
+                   </trev2:Origin>
+                   <trev2:SequenceNo>2</trev2:SequenceNo>
+                </trev2:T_AirSearch_SegmentItem>");
         }
 
         var preferredAirlines = string.Empty;
@@ -242,7 +259,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Shopping"">
+xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 <soap:Body>
    <tem:AirSearch>
       <tem:request>
@@ -604,4 +621,291 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Shoppin
 
         return rf;
     }
+
+    #region AirAllocateStateless
+
+    private async Task<AllocateResponse> AirAllocateStatelessAsync(
+        string sessionId,
+        string sessionToken,
+        AllocateRequest request)
+    {
+        var soapRequest = BuildAirAllocateStatelessSoapRequest(sessionId, sessionToken, request);
+
+        try
+        {
+            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/ITrevooWS/AirAllocateStateless");
+
+            var response = await _httpClient.PostAsync(_proxyUrl, content);
+            var responseText = await response.Content.ReadAsStringAsync();
+
+            var doc = XDocument.Parse(responseText);
+
+            var hasError = doc.GetValue("HasError");
+            if (hasError == "true")
+            {
+                return new AllocateResponse
+                {
+                    HasError = true,
+                    ErrorMessage = doc.GetValue("ErrorMessage") ?? doc.GetValue("Message") ?? doc.GetValue("DebugMessage")
+                };
+            }
+
+            return ParseAllocateResponse(doc);
+        }
+        catch (Exception ex)
+        {
+            return new AllocateResponse
+            {
+                HasError = true,
+                ErrorMessage = $"AirAllocateStateless hatası: {ex.Message}"
+            };
+        }
+    }
+
+    private string BuildAirAllocateStatelessSoapRequest(
+        string sessionId,
+        string sessionToken,
+        AllocateRequest request)
+    {
+        var searchRequest = request.SearchRequest;
+
+        // PaxItems XML
+        var paxItems = new StringBuilder();
+        if (searchRequest.AdultCount > 0)
+        {
+            paxItems.Append($@"
+                <trev3:T_AirSearch_PaxItem>
+                   <trev3:PaxCode>ADT</trev3:PaxCode>
+                   <trev3:PaxCount>{searchRequest.AdultCount}</trev3:PaxCount>
+                </trev3:T_AirSearch_PaxItem>");
+        }
+        if (searchRequest.ChildCount > 0)
+        {
+            paxItems.Append($@"
+                <trev3:T_AirSearch_PaxItem>
+                   <trev3:PaxCode>CHD</trev3:PaxCode>
+                   <trev3:PaxCount>{searchRequest.ChildCount}</trev3:PaxCount>
+                </trev3:T_AirSearch_PaxItem>");
+        }
+        if (searchRequest.InfantCount > 0)
+        {
+            paxItems.Append($@"
+                <trev3:T_AirSearch_PaxItem>
+                   <trev3:PaxCode>INF</trev3:PaxCode>
+                   <trev3:PaxCount>{searchRequest.InfantCount}</trev3:PaxCount>
+                </trev3:T_AirSearch_PaxItem>");
+        }
+
+        // Segments XML
+        var segments = new StringBuilder();
+        segments.Append($@"
+                <trev3:T_AirSearch_SegmentItem>
+                   <trev3:DepartureDay>{searchRequest.DepartureDate:yyyy-MM-dd}T00:00:00.000+00:00</trev3:DepartureDay>
+                   <trev3:Destination>
+                      <trev3:Code>{searchRequest.Destination}</trev3:Code>
+                      <trev3:CountryCode>{searchRequest.DestinationCountryCode}</trev3:CountryCode>
+                      <trev3:IsCity>{searchRequest.DestinationIsCity.ToString().ToLower()}</trev3:IsCity>
+                      <trev3:Name/>
+                   </trev3:Destination>
+                   <trev3:Origin>
+                      <trev3:Code>{searchRequest.Origin}</trev3:Code>
+                      <trev3:CountryCode>{searchRequest.OriginCountryCode}</trev3:CountryCode>
+                      <trev3:IsCity>{searchRequest.OriginIsCity.ToString().ToLower()}</trev3:IsCity>
+                      <trev3:Name/>
+                   </trev3:Origin>
+                   <trev3:SequenceNo>1</trev3:SequenceNo>
+                </trev3:T_AirSearch_SegmentItem>");
+
+        if (searchRequest.FlightType == "RT" && searchRequest.ReturnDate.HasValue)
+        {
+            segments.Append($@"
+                <trev3:T_AirSearch_SegmentItem>
+                   <trev3:DepartureDay>{searchRequest.ReturnDate.Value:yyyy-MM-dd}T00:00:00.000+00:00</trev3:DepartureDay>
+                   <trev3:Destination>
+                      <trev3:Code>{searchRequest.Origin}</trev3:Code>
+                      <trev3:CountryCode>{searchRequest.OriginCountryCode}</trev3:CountryCode>
+                      <trev3:IsCity>{searchRequest.OriginIsCity.ToString().ToLower()}</trev3:IsCity>
+                      <trev3:Name/>
+                   </trev3:Destination>
+                   <trev3:Origin>
+                      <trev3:Code>{searchRequest.Destination}</trev3:Code>
+                      <trev3:CountryCode>{searchRequest.DestinationCountryCode}</trev3:CountryCode>
+                      <trev3:IsCity>{searchRequest.DestinationIsCity.ToString().ToLower()}</trev3:IsCity>
+                      <trev3:Name/>
+                   </trev3:Origin>
+                   <trev3:SequenceNo>2</trev3:SequenceNo>
+                </trev3:T_AirSearch_SegmentItem>");
+        }
+
+        // DepartureFlight XML
+        var departureFlightXml = BuildSelectedFlightXml(request.DepartureFlight);
+
+        // ReturnFlight XML (opsiyonel)
+        var returnFlightXml = request.ReturnFlight != null
+            ? $"<trev2:ReturnFlight>{BuildSelectedFlightXml(request.ReturnFlight)}</trev2:ReturnFlight>"
+            : "";
+
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
+xmlns:tem=""http://tempuri.org/""
+xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:trev3=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air""
+xmlns:trevauth=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authentication.IO""
+xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
+<soap:Body>
+   <tem:AirAllocateStateless>
+      <tem:request>
+         <trev:AuthenticationHeader>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
+         </trev:AuthenticationHeader>
+         <trev1:AllocateForm>
+            <trev2:SelectedFlightOptions>
+               <trev2:DepartureFlight>
+                  {departureFlightXml}
+               </trev2:DepartureFlight>
+               {returnFlightXml}
+               <trev2:SelectedServiceFee>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev2:SelectedServiceFee>
+            </trev2:SelectedFlightOptions>
+         </trev1:AllocateForm>
+         <trev1:LoginForm>
+            <trevauth:ChannelCode>2</trevauth:ChannelCode>
+            <trevauth:ClientIP></trevauth:ClientIP>
+            <trevauth:ClientName>{_clientName}</trevauth:ClientName>
+            <trevauth:Password>{_password}</trevauth:Password>
+            <trevauth:Username>{_username}</trevauth:Username>
+         </trev1:LoginForm>
+         <trev1:SearchForm>
+            <trev3:FlightType>{searchRequest.FlightType}</trev3:FlightType>
+            <trev3:Options>
+               <trev3:FlightClass>{searchRequest.FlightClass}</trev3:FlightClass>
+               <trev3:IfDirectFlightsOnly>{searchRequest.DirectFlightsOnly.ToString().ToLower()}</trev3:IfDirectFlightsOnly>
+               <trev3:IfRefundablesOnly>{searchRequest.RefundablesOnly.ToString().ToLower()}</trev3:IfRefundablesOnly>
+               <trev3:SearchTimeoutMilliseconds>{searchRequest.SearchTimeoutMilliseconds}</trev3:SearchTimeoutMilliseconds>
+            </trev3:Options>
+            <trev3:PaxItems>{paxItems}
+            </trev3:PaxItems>
+            <trev3:Segments>{segments}
+            </trev3:Segments>
+         </trev1:SearchForm>
+      </tem:request>
+   </tem:AirAllocateStateless>
+</soap:Body>
+</soap:Envelope>";
+    }
+
+    private static string BuildSelectedFlightXml(SelectedFlight flight)
+    {
+        var flightNumbers = new StringBuilder();
+        foreach (var fn in flight.FlightNumbers)
+        {
+            flightNumbers.Append($"<arr:string>{fn}</arr:string>");
+        }
+
+        var operatingAirlines = new StringBuilder();
+        foreach (var oa in flight.OperatingAirlines)
+        {
+            operatingAirlines.Append($"<arr:string>{oa}</arr:string>");
+        }
+
+        return $@"<trev2:FlightNumbers>{flightNumbers}</trev2:FlightNumbers>
+                  <trev2:OperatingAirlines>{operatingAirlines}</trev2:OperatingAirlines>
+                  <trev2:ProviderId>{flight.ProviderId}</trev2:ProviderId>";
+    }
+
+    private static AllocateResponse ParseAllocateResponse(XDocument doc)
+    {
+        var response = new AllocateResponse
+        {
+            HasError = false,
+            SessionId = doc.GetValue("SessionId"),
+            SessionToken = doc.GetValue("SessionToken")
+        };
+
+        // ShoppingFile bilgileri
+        var shoppingFiles = doc.GetDescendants("ShoppingFile");
+        var shoppingFile = shoppingFiles.FirstOrDefault();
+        if (shoppingFile != null)
+        {
+            response.ShoppingFileId = shoppingFile.GetValue("Id");
+            response.IsPriceChanged = shoppingFile.GetBoolValue("IsPriceChanged");
+            response.IsFlightInfoChanged = string.IsNullOrEmpty(shoppingFile.GetValue("IsFlightInfoChanged"))
+                ? null
+                : shoppingFile.GetBoolValue("IsFlightInfoChanged");
+            response.Currency = shoppingFile.GetValue("Currency");
+
+            // AirBookings
+            foreach (var ab in shoppingFile.GetDescendants("AirBooking"))
+            {
+                response.AirBookings.Add(ParseAllocateAirBooking(ab));
+            }
+
+            // PriceSummary
+            var priceSummary = shoppingFile.GetElement("PriceSummary");
+            if (priceSummary != null)
+            {
+                response.PriceSummary = new AllocatePriceSummary
+                {
+                    GrandTotal = priceSummary.GetDecimalValue("GrandTotal"),
+                    TotalBaseFare = priceSummary.GetDecimalValue("TotalBaseFare"),
+                    TotalTaxes = priceSummary.GetDecimalValue("TotalTaxes"),
+                    TotalServiceFee = priceSummary.GetDecimalValue("TotalServiceFee"),
+                    Currency = priceSummary.GetValue("Currency")
+                };
+            }
+        }
+
+        // LastAllocatedProductIds
+        var productIds = doc.GetDescendants("LastAllocatedProductIds").FirstOrDefault();
+        if (productIds != null)
+        {
+            foreach (var guid in productIds.Elements())
+            {
+                if (!string.IsNullOrEmpty(guid.Value))
+                    response.LastAllocatedProductIds.Add(guid.Value);
+            }
+        }
+
+        return response;
+    }
+
+    private static AllocateAirBooking ParseAllocateAirBooking(XElement ab)
+    {
+        var booking = new AllocateAirBooking
+        {
+            ProductId = ab.GetValue("ProductId"),
+            PNR = ab.GetValue("PNR"),
+            BookingProvider = ab.GetValue("BookingProvider"),
+            Status = ab.GetValue("Status"),
+            Currency = ab.GetValue("Currency"),
+            TotalFare = ab.GetDecimalValue("TotalFare"),
+            BaseFare = ab.GetDecimalValue("BaseFare"),
+            Taxes = ab.GetDecimalValue("Taxes"),
+            ServiceFee = ab.GetDecimalValue("ServiceFee")
+        };
+
+        foreach (var seg in ab.GetDescendants("Segment"))
+        {
+            booking.Segments.Add(new AllocateSegment
+            {
+                OriginCode = seg.GetValue("OriginCode"),
+                DestinationCode = seg.GetValue("DestinationCode"),
+                DepartureDay = seg.GetValue("DepartureDay"),
+                DepartureTime = seg.GetValue("DepartureTime"),
+                ArrivalDay = seg.GetValue("ArrivalDay"),
+                ArrivalTime = seg.GetValue("ArrivalTime"),
+                MarketingAirline = seg.GetValue("MarketingAirline"),
+                OperatingAirline = seg.GetValue("OperatingAirline"),
+                FlightNumber = seg.GetValue("FlightNumber"),
+                BookingClass = seg.GetValue("BookingClass")
+            });
+        }
+
+        return booking;
+    }
+
+    #endregion
 }

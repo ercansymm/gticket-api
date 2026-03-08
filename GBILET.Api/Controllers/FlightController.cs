@@ -47,4 +47,37 @@ public class FlightController : ControllerBase
             });
         }
     }
+
+    [HttpPost("allocate")]
+    public async Task<IActionResult> Allocate([FromBody] AllocateRequest request)
+    {
+        try
+        {
+            if (request.SearchRequest == null)
+                return BadRequest(new { error = "SearchRequest alanı zorunludur." });
+
+            if (request.DepartureFlight == null)
+                return BadRequest(new { error = "DepartureFlight alanı zorunludur." });
+
+            if (request.DepartureFlight.FlightNumbers.Count == 0)
+                return BadRequest(new { error = "DepartureFlight.FlightNumbers en az bir uçuş numarası içermelidir." });
+
+            if (request.DepartureFlight.OperatingAirlines.Count == 0)
+                return BadRequest(new { error = "DepartureFlight.OperatingAirlines en az bir havayolu içermelidir." });
+
+            if (request.SearchRequest.FlightType == "RT" && request.ReturnFlight == null)
+                return BadRequest(new { error = "Gidiş-dönüş uçuşlarda ReturnFlight zorunludur." });
+
+            var result = await _flightService.AllocateFlightAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
 }
