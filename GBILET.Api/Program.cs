@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+//commit için gerekli
 // HttpClient - SSH tüneli üzerinden localhost:8000'e yönlendirme
 builder.Services
     .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
