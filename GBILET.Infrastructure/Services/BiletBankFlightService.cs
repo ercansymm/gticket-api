@@ -265,8 +265,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Shoppin
             <trev2:FlightType>{request.FlightType}</trev2:FlightType>
             <trev2:Options>
                <trev2:FlightClass>{request.FlightClass}</trev2:FlightClass>
-               <trev2:FlightWithBaggage>{request.FlightWithBaggage.ToString().ToLower()}</trev2:FlightWithBaggage>
-               <trev2:IfDirectFlightsOnly>{request.DirectFlightsOnly.ToString().ToLower()}</trev2:IfDirectFlightsOnly>
+                <trev2:IfDirectFlightsOnly>{request.DirectFlightsOnly.ToString().ToLower()}</trev2:IfDirectFlightsOnly>
                <trev2:IfRefundablesOnly>{request.RefundablesOnly.ToString().ToLower()}</trev2:IfRefundablesOnly>
                <trev2:SearchTimeoutMilliseconds>{request.SearchTimeoutMilliseconds}</trev2:SearchTimeoutMilliseconds>{preferredAirlines}
             </trev2:Options>

@@ -1,5 +1,4 @@
-﻿using GBILET.Core.Service.Flight;
-using GBILET.Core.Models.Flight;
+﻿using GBILET.Core.Models.Flight;
 using GBILET.Core.Service.Flight;
 using Microsoft.AspNetCore.Mvc;
 

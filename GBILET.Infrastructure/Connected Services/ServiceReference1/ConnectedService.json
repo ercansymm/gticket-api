@@ -1,0 +1,19 @@
+{
+  "ExtendedData": {
+    "inputs": [
+      "../../../../BiletBank.wsdl"
+    ],
+    "collectionTypes": [
+      "System.Array",
+      "System.Collections.Generic.Dictionary`2"
+    ],
+    "namespaceMappings": [
+      "*, ServiceReference1"
+    ],
+    "references": [
+      "C:\\Users\\ercan\\Desktop\\GBILET\\GBILET.Infrastructure\\bin\\Debug\\net8.0\\GBILET.Core.dll"
+    ],
+    "targetFramework": "net8.0",
+    "typeReuseMode": "Specified"
+  }
+}

@@ -18,7 +18,6 @@ public class SearchRequest
     public int InfantCount { get; set; } = 0;
     public bool DirectFlightsOnly { get; set; } = false;
     public bool RefundablesOnly { get; set; } = false;
-    public bool FlightWithBaggage { get; set; } = true;
     public int SearchTimeoutMilliseconds { get; set; } = 30000;
     public List<string>? PreferredAirlines { get; set; }
     public string SearchReason { get; set; } = "SearchAndBook"; // SearchOnly, SearchAndBook
