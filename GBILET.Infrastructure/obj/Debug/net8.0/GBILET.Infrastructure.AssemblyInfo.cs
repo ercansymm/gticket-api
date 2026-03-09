@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GBILET.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8f007837c2a7254deb560bcfb7aac0be5d249a85")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c647074d5805eae98ac8a46c99d92bdd15f09b98")]
 [assembly: System.Reflection.AssemblyProductAttribute("GBILET.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GBILET.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

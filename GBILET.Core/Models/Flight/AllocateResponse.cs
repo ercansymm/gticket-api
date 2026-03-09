@@ -45,6 +45,11 @@ public class AllocateResponse
     /// </summary>
     public string? SessionId { get; set; }
     public string? SessionToken { get; set; }
+
+    /// <summary>
+    /// Debug: Ham SOAP yanýtý (geçici - production'da kaldýrýlacak)
+    /// </summary>
+    public string? RawSoapResponse { get; set; }
 }
 
 public class AllocateAirBooking

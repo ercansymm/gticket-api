@@ -49,10 +49,13 @@ public class FlightController : ControllerBase
     }
 
     [HttpPost("allocate")]
-    public async Task<IActionResult> Allocate([FromBody] AllocateRequest request)
+    public async Task<IActionResult> Allocate([FromBody] AllocateRequest? request)
     {
         try
         {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatını kontrol edin." });
+
             if (request.SearchRequest == null)
                 return BadRequest(new { error = "SearchRequest alanı zorunludur." });
 

@@ -7,6 +7,14 @@
       "RelativeMoniker": "D:0:0:{37EFC6A6-B830-489C-8013-86D2BCFE2509}|GBILET.Infrastructure\\GBILET.Infrastructure.csproj|solutionrelative:gbilet.infrastructure\\services\\biletbankflightservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|c:\\users\\ercan\\desktop\\gbilet\\gbilet.core\\models\\flight\\allocateresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FCE1B59E-E2E9-4BD0-AB9E-7B9BB1A0E2FB}|GBILET.Core\\GBILET.Core.csproj|solutionrelative:gbilet.core\\models\\flight\\allocateresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gbilet\\gbilet.api\\controllers\\flightcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\controllers\\flightcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|c:\\users\\ercan\\desktop\\gbilet\\gbilet.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{428E00D9-2923-49C3-B6E6-74C8EE1C21DB}|GBILET.Api\\GBILET.Api.csproj|solutionrelative:gbilet.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
@@ -26,7 +34,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 4,
+          "SelectedChildIndex": 8,
           "Children": [
             {
               "$type": "Bookmark",
@@ -37,8 +45,42 @@
               "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
             },
             {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "AllocateResponse.cs",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GBILET\\GBILET.Core\\Models\\Flight\\AllocateResponse.cs",
+              "RelativeDocumentMoniker": "GBILET.Core\\Models\\Flight\\AllocateResponse.cs",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GBILET\\GBILET.Core\\Models\\Flight\\AllocateResponse.cs",
+              "RelativeToolTip": "GBILET.Core\\Models\\Flight\\AllocateResponse.cs",
+              "ViewState": "AgIAACUAAAAAAAAAAAASwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-09T14:02:02.441Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "FlightController.cs",
+              "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GBILET\\GBILET.Api\\Controllers\\FlightController.cs",
+              "RelativeDocumentMoniker": "GBILET.Api\\Controllers\\FlightController.cs",
+              "ToolTip": "C:\\Users\\ercan\\Desktop\\GBILET\\GBILET.Api\\Controllers\\FlightController.cs",
+              "RelativeToolTip": "GBILET.Api\\Controllers\\FlightController.cs",
+              "ViewState": "AgIAACUAAAAAAAAAAADgvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-09T13:59:53.679Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GBILET\\GBILET.Api\\appsettings.json",
               "RelativeDocumentMoniker": "GBILET.Api\\appsettings.json",
@@ -50,7 +92,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "test-login.ps1",
               "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GBILET\\test-login.ps1",
               "RelativeDocumentMoniker": "test-login.ps1",
@@ -68,14 +110,14 @@
               "RelativeDocumentMoniker": "GBILET.Infrastructure\\Services\\BiletBankFlightService.cs",
               "ToolTip": "C:\\Users\\ercan\\Desktop\\GBILET\\GBILET.Infrastructure\\Services\\BiletBankFlightService.cs",
               "RelativeToolTip": "GBILET.Infrastructure\\Services\\BiletBankFlightService.cs",
-              "ViewState": "AgIAAEIBAAAAAAAAAAAMwK0DAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAKkCAAAAAAAAAAD4v5ECAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-09T10:25:59.38Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "SearchRequest.cs",
               "DocumentMoniker": "C:\\Users\\ercan\\Desktop\\GBILET\\GBILET.Core\\Service\\Flight\\SearchRequest.cs",
               "RelativeDocumentMoniker": "GBILET.Core\\Service\\Flight\\SearchRequest.cs",

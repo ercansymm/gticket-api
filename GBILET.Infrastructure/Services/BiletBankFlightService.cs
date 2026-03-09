@@ -3,7 +3,7 @@ using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Text;
+using System.Text; 
 using System.Xml.Linq;
 
 
@@ -665,11 +665,25 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 
         try
         {
+            _logger.LogInformation("[AirAllocateStateless] SOAP Request:\n{SoapRequest}", soapRequest);
+
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
             content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/AirAllocateStateless");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[AirAllocateStateless] HTTP Status: {StatusCode}", (int)response.StatusCode);
+            _logger.LogInformation("[AirAllocateStateless] SOAP Response:\n{SoapResponse}", responseText);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new AllocateResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"AirAllocateStateless HTTP {(int)response.StatusCode}: {responseText}"
+                };
+            }
 
             var doc = XDocument.Parse(responseText);
 
@@ -679,14 +693,18 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                 return new AllocateResponse
                 {
                     HasError = true,
-                    ErrorMessage = doc.GetValue("ErrorMessage") ?? doc.GetValue("Message") ?? doc.GetValue("DebugMessage")
+                    ErrorMessage = doc.GetValue("ErrorMessage") ?? doc.GetValue("Message") ?? doc.GetValue("DebugMessage"),
+                    RawSoapResponse = responseText
                 };
             }
 
-            return ParseAllocateResponse(doc);
+            var result = ParseAllocateResponse(doc);
+            result.RawSoapResponse = responseText;
+            return result;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[AirAllocateStateless] Exception");
             return new AllocateResponse
             {
                 HasError = true,
