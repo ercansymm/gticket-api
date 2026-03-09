@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Xml.Linq;
 
+
 namespace GBILET.Infrastructure.Services;
 
 public class BiletBankFlightService : IFlightService
