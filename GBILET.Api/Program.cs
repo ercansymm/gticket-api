@@ -1,6 +1,6 @@
 using GBILET.Core.Service.Flight;
+using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Services;
-using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,22 +8,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-//commit için gerekli
-// HttpClient - SSH tüneli üzerinden localhost:8000'e yönlendirme
+
 builder.Services
     .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
     {
-        client.DefaultRequestHeaders.Host = "apitest.biletbank.com";
+        client.BaseAddress = new Uri("https://apitest.biletbank.com");
     });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger her ortamda açýk (test aþamasý)
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseAuthorization();

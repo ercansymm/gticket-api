@@ -2,6 +2,7 @@
 using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Extensions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Xml.Linq;
 
@@ -10,6 +11,7 @@ namespace GBILET.Infrastructure.Services;
 public class BiletBankFlightService : IFlightService
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<BiletBankFlightService> _logger;
     private readonly string _clientName;
     private readonly string _password;
     private readonly string _username;
@@ -17,10 +19,11 @@ public class BiletBankFlightService : IFlightService
 
     public BiletBankFlightService(
         HttpClient httpClient,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<BiletBankFlightService> logger)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.Host = "apitest.biletbank.com";
+        _logger = logger;
 
         _clientName = configuration["BiletBank:ClientName"]!;
         _password = configuration["BiletBank:Password"]!;
@@ -67,7 +70,7 @@ public class BiletBankFlightService : IFlightService
         var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
-xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authentication.IO"">
 <soap:Body>
 <tem:Login>
 <tem:request>
@@ -85,11 +88,25 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
 
         try
         {
+            _logger.LogInformation("[Login] SOAP Request:\n{SoapRequest}", soapRequest);
+
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/ITrevooWS/Login");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Authentication/Login");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[Login] HTTP Status: {StatusCode}", (int)response.StatusCode);
+            _logger.LogInformation("[Login] SOAP Response:\n{SoapResponse}", responseText);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new LoginResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"Login HTTP {(int)response.StatusCode}: {responseText}"
+                };
+            }
 
             var doc = XDocument.Parse(responseText);
 
@@ -99,10 +116,19 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
             {
                 SessionId = doc.GetValue("SessionId"),
                 SessionToken = doc.GetValue("SessionToken"),
-                HasError = hasError == "true",
+                HasError = hasError == "true" || string.IsNullOrEmpty(doc.GetValue("SessionId")),
                 ErrorMessage = hasError == "true" ? doc.GetValue("Message") : null,
                 ServiceError = doc.GetValue("ServiceError")
             };
+
+            if (string.IsNullOrEmpty(loginResponse.SessionId))
+            {
+                loginResponse.HasError = true;
+                loginResponse.ErrorMessage ??= "Login yanıtında SessionId bulunamadı.";
+            }
+
+            _logger.LogInformation("[Login] SessionId: {SessionId}, HasError: {HasError}",
+                loginResponse.SessionId, loginResponse.HasError);
 
             var userInfoElement = doc.GetDescendants("UserInfo").FirstOrDefault();
             if (userInfoElement != null)
@@ -142,11 +168,15 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
 
         try
         {
+            _logger.LogInformation("[AirSearch] SOAP Request:\n{SoapRequest}", soapRequest);
+
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/ITrevooWS/AirSearch");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/AirSearch");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[AirSearch] SOAP Response:\n{SoapResponse}", responseText);
 
             var doc = XDocument.Parse(responseText);
 
@@ -164,6 +194,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[AirSearch] Exception");
             return new AirSearchResponse
             {
                 HasError = true,
@@ -634,7 +665,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         try
         {
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/ITrevooWS/AirAllocateStateless");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/AirAllocateStateless");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
