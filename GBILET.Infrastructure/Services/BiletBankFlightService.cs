@@ -810,13 +810,13 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             response.Currency = shoppingFile.GetValue("Currency");
 
             // AirBookings
-            foreach (var ab in shoppingFile.GetDescendants("AirBooking"))
+            foreach (var ab in shoppingFile.GetDescendants("T_AirBookingItem"))
             {
                 response.AirBookings.Add(ParseAllocateAirBooking(ab));
             }
 
             // PriceSummary
-            var priceSummary = shoppingFile.GetElement("PriceSummary");
+            var priceSummary = shoppingFile.GetDescendants("PriceSummary").FirstOrDefault();
             if (priceSummary != null)
             {
                 response.PriceSummary = new AllocatePriceSummary
@@ -827,6 +827,19 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     TotalServiceFee = priceSummary.GetDecimalValue("TotalServiceFee"),
                     Currency = priceSummary.GetValue("Currency")
                 };
+
+                // GrandTotal dogrudan PriceSummary icinde degilse T_PriceItem icinden topla
+                if (response.PriceSummary.GrandTotal == 0)
+                {
+                    var priceItems = priceSummary.GetDescendants("T_PriceItem");
+                    decimal grandTotal = 0;
+                    foreach (var pi in priceItems)
+                    {
+                        grandTotal += pi.GetDecimalValue("TotalFare");
+                    }
+                    if (grandTotal > 0)
+                        response.PriceSummary.GrandTotal = grandTotal;
+                }
             }
         }
 
