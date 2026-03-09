@@ -59,17 +59,8 @@ public class FlightController : ControllerBase
             if (request.SearchRequest == null)
                 return BadRequest(new { error = "SearchRequest alanı zorunludur." });
 
-            if (request.DepartureFlight == null)
-                return BadRequest(new { error = "DepartureFlight alanı zorunludur." });
-
-            if (request.DepartureFlight.FlightNumbers.Count == 0)
-                return BadRequest(new { error = "DepartureFlight.FlightNumbers en az bir uçuş numarası içermelidir." });
-
-            if (request.DepartureFlight.OperatingAirlines.Count == 0)
-                return BadRequest(new { error = "DepartureFlight.OperatingAirlines en az bir havayolu içermelidir." });
-
-            if (request.SearchRequest.FlightType == "RT" && request.ReturnFlight == null)
-                return BadRequest(new { error = "Gidiş-dönüş uçuşlarda ReturnFlight zorunludur." });
+            if (string.IsNullOrWhiteSpace(request.ProductId))
+                return BadRequest(new { error = "ProductId alanı zorunludur. Search sonucundan bir FlightOption.ProductId seçin." });
 
             var result = await _flightService.AllocateFlightAsync(request);
             return Ok(result);

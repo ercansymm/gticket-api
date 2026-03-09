@@ -73,7 +73,7 @@ public class BiletBankFlightService : IFlightService
             };
         }
 
-        var response = await AirAllocateAsync(loginResult.SessionId!, loginResult.SessionToken!, request);
+        var response = await AllocateAsync(loginResult.SessionId!, loginResult.SessionToken!, request);
         return response;
     }
 
@@ -665,34 +665,34 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         return rf;
     }
 
-    #region AirAllocate
+    #region Allocate
 
-    private async Task<AllocateResponse> AirAllocateAsync(
+    private async Task<AllocateResponse> AllocateAsync(
         string sessionId,
         string sessionToken,
         AllocateRequest request)
     {
-        var soapRequest = BuildAirAllocateSoapRequest(sessionId, sessionToken, request);
+        var soapRequest = BuildAllocateSoapRequest(sessionId, sessionToken, request);
 
         try
         {
-            _logger.LogInformation("[AirAllocate] SOAP Request:\n{SoapRequest}", soapRequest);
+            _logger.LogInformation("[Allocate] SOAP Request:\n{SoapRequest}", soapRequest);
 
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/AirAllocate");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/Allocate");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
 
-            _logger.LogInformation("[AirAllocate] HTTP Status: {StatusCode}", (int)response.StatusCode);
-            _logger.LogInformation("[AirAllocate] SOAP Response:\n{SoapResponse}", responseText);
+            _logger.LogInformation("[Allocate] HTTP Status: {StatusCode}", (int)response.StatusCode);
+            _logger.LogInformation("[Allocate] SOAP Response:\n{SoapResponse}", responseText);
 
             if (!response.IsSuccessStatusCode)
             {
                 return new AllocateResponse
                 {
                     HasError = true,
-                    ErrorMessage = $"AirAllocate HTTP {(int)response.StatusCode}: {responseText}",
+                    ErrorMessage = $"Allocate HTTP {(int)response.StatusCode}: {responseText}",
                     RawSoapResponse = responseText
                 };
             }
@@ -705,7 +705,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                 return new AllocateResponse
                 {
                     HasError = true,
-                    ErrorMessage = doc.GetValue("ErrorMessage") ?? doc.GetValue("Message") ?? doc.GetValue("DebugMessage"),
+                    ErrorMessage = doc.GetValue("ErrorMessage") ?? doc.GetValue("Message") ?? doc.GetValue("ServiceError"),
                     RawSoapResponse = responseText
                 };
             }
@@ -716,75 +716,48 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[AirAllocate] Exception");
+            _logger.LogError(ex, "[Allocate] Exception");
             return new AllocateResponse
             {
                 HasError = true,
-                ErrorMessage = $"AirAllocate hatası: {ex.Message}"
+                ErrorMessage = $"Allocate hatasi: {ex.Message}"
             };
         }
     }
 
-    private static string BuildAirAllocateSoapRequest(
+    private static string BuildAllocateSoapRequest(
         string sessionId,
         string sessionToken,
         AllocateRequest request)
     {
-        var departureFlightXml = BuildSelectedFlightXml(request.DepartureFlight);
-
-        var returnFlightXml = request.ReturnFlight != null
-            ? $@"<trev2:ReturnFlight>
-                  {BuildSelectedFlightXml(request.ReturnFlight)}
-               </trev2:ReturnFlight>"
-            : "";
-
         return $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
+<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air""
 xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
-<soap:Body>
-   <tem:AirAllocate>
+<soapenv:Header/>
+<soapenv:Body xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
+   <tem:Allocate>
       <tem:request>
          <trev:AuthenticationHeader>
             <trev:SessionId>{sessionId}</trev:SessionId>
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev1:Form>
-            <trev2:SelectedFlightOptions>
-               <trev2:DepartureFlight>
-                  {departureFlightXml}
-               </trev2:DepartureFlight>
-               {returnFlightXml}
-               <trev2:SelectedServiceFee>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev2:SelectedServiceFee>
-            </trev2:SelectedFlightOptions>
+            <trev1:SelectedItems>
+               <trev1:IO_AllocationItem>
+                  <trev1:ProductId>{request.ProductId}</trev1:ProductId>
+                  <trev1:SelectedServiceFee>
+                     <trev1:Amount>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
+                  </trev1:SelectedServiceFee>
+               </trev1:IO_AllocationItem>
+            </trev1:SelectedItems>
          </trev1:Form>
       </tem:request>
-   </tem:AirAllocate>
-</soap:Body>
-</soap:Envelope>";
-    }
-    
-
-    private static string BuildSelectedFlightXml(SelectedFlight flight)
-    {
-        var flightNumbers = new StringBuilder();
-        foreach (var fn in flight.FlightNumbers)
-        {
-            flightNumbers.Append($"<arr:string>{fn}</arr:string>");
-        }
-
-        var operatingAirlines = new StringBuilder();
-        foreach (var oa in flight.OperatingAirlines)
-        {
-            operatingAirlines.Append($"<arr:string>{oa}</arr:string>");
-        }
-
-        return $@"<trev2:FlightNumbers>{flightNumbers}</trev2:FlightNumbers>
-                  <trev2:OperatingAirlines>{operatingAirlines}</trev2:OperatingAirlines>
-                  <trev2:ProviderId>{flight.ProviderId}</trev2:ProviderId>";
+   </tem:Allocate>
+</soapenv:Body>
+</soapenv:Envelope>";
     }
 
     private static AllocateResponse ParseAllocateResponse(XDocument doc)
@@ -801,8 +774,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         response.DebugInfo = $"Elements found: {string.Join(", ", allElements)}";
 
         // ShoppingFile bilgileri
-        var shoppingFiles = doc.GetDescendants("ShoppingFile");
-        var shoppingFile = shoppingFiles.FirstOrDefault();
+        var shoppingFile = doc.GetDescendants("ShoppingFile").FirstOrDefault();
         if (shoppingFile != null)
         {
             response.ShoppingFileId = shoppingFile.GetValue("Id");
@@ -852,7 +824,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         var booking = new AllocateAirBooking
         {
             ProductId = ab.GetValue("ProductId"),
-            PNR = ab.GetValue("PNR"),
+            PNR = ab.GetValue("BookingCode"),
             BookingProvider = ab.GetValue("BookingProvider"),
             Status = ab.GetValue("Status"),
             Currency = ab.GetValue("Currency"),
