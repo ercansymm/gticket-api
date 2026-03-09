@@ -62,7 +62,18 @@ public class BiletBankFlightService : IFlightService
             };
         }
 
-        var response = await AirAllocateStatelessAsync(loginResult.SessionId!, loginResult.SessionToken!, request);
+        // AirAllocate (stateful) requires a search session first
+        var searchResponse = await AirSearchAsync(loginResult.SessionId!, loginResult.SessionToken!, request.SearchRequest);
+        if (searchResponse.HasError)
+        {
+            return new AllocateResponse
+            {
+                HasError = true,
+                ErrorMessage = $"Search hatası (allocate öncesi): {searchResponse.ErrorMessage}"
+            };
+        }
+
+        var response = await AirAllocateAsync(loginResult.SessionId!, loginResult.SessionToken!, request);
         return response;
     }
 
@@ -654,37 +665,37 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         return rf;
     }
 
-    #region AirAllocateStateless
+    #region AirAllocate
 
-    private async Task<AllocateResponse> AirAllocateStatelessAsync(
+    private async Task<AllocateResponse> AirAllocateAsync(
         string sessionId,
         string sessionToken,
         AllocateRequest request)
     {
-        var soapRequest = BuildAirAllocateStatelessSoapRequest(sessionId, sessionToken, request);
+        var soapRequest = BuildAirAllocateSoapRequest(sessionId, sessionToken, request);
 
         try
         {
-            _logger.LogInformation("[AirAllocateStateless] SOAP Request:\n{SoapRequest}", soapRequest);
+            _logger.LogInformation("[AirAllocate] SOAP Request:\n{SoapRequest}", soapRequest);
 
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/AirAllocateStateless");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/AirAllocate");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
 
-            _logger.LogInformation("[AirAllocateStateless] HTTP Status: {StatusCode}", (int)response.StatusCode);
-            _logger.LogInformation("[AirAllocateStateless] SOAP Response:\n{SoapResponse}", responseText);
+            _logger.LogInformation("[AirAllocate] HTTP Status: {StatusCode}", (int)response.StatusCode);
+            _logger.LogInformation("[AirAllocate] SOAP Response:\n{SoapResponse}", responseText);
 
             if (!response.IsSuccessStatusCode)
             {
                 return new AllocateResponse
                 {
                     HasError = true,
-                    ErrorMessage = $"AirAllocateStateless HTTP {(int)response.StatusCode}: {responseText}"
+                    ErrorMessage = $"AirAllocate HTTP {(int)response.StatusCode}: {responseText}",
+                    RawSoapResponse = responseText
                 };
             }
-             
 
             var doc = XDocument.Parse(responseText);
 
@@ -705,147 +716,57 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[AirAllocateStateless] Exception");
+            _logger.LogError(ex, "[AirAllocate] Exception");
             return new AllocateResponse
             {
                 HasError = true,
-                ErrorMessage = $"AirAllocateStateless hatası: {ex.Message}"
+                ErrorMessage = $"AirAllocate hatası: {ex.Message}"
             };
         }
     }
 
-    private string BuildAirAllocateStatelessSoapRequest(
+    private static string BuildAirAllocateSoapRequest(
         string sessionId,
         string sessionToken,
         AllocateRequest request)
     {
-        var searchRequest = request.SearchRequest;
-
-        // PaxItems XML
-        var paxItems = new StringBuilder();
-        if (searchRequest.AdultCount > 0)
-        {
-            paxItems.Append($@"
-                <air:T_AirSearch_PaxItem>
-                   <air:PaxCode>ADT</air:PaxCode>
-                   <air:PaxCount>{searchRequest.AdultCount}</air:PaxCount>
-                </air:T_AirSearch_PaxItem>");
-        }
-        if (searchRequest.ChildCount > 0)
-        {
-            paxItems.Append($@"
-                <air:T_AirSearch_PaxItem>
-                   <air:PaxCode>CHD</air:PaxCode>
-                   <air:PaxCount>{searchRequest.ChildCount}</air:PaxCount>
-                </air:T_AirSearch_PaxItem>");
-        }
-        if (searchRequest.InfantCount > 0)
-        {
-            paxItems.Append($@"
-                <air:T_AirSearch_PaxItem>
-                   <air:PaxCode>INF</air:PaxCode>
-                   <air:PaxCount>{searchRequest.InfantCount}</air:PaxCount>
-                </air:T_AirSearch_PaxItem>");
-        }
-
-        // Segments XML
-        var segments = new StringBuilder();
-        segments.Append($@"
-                <air:T_AirSearch_SegmentItem>
-                   <air:DepartureDay>{searchRequest.DepartureDate:yyyy-MM-dd}T00:00:00.000+00:00</air:DepartureDay>
-                   <air:Destination>
-                      <air:Code>{searchRequest.Destination}</air:Code>
-                      <air:CountryCode>{searchRequest.DestinationCountryCode}</air:CountryCode>
-                      <air:IsCity>{searchRequest.DestinationIsCity.ToString().ToLower()}</air:IsCity>
-                      <air:Name/>
-                   </air:Destination>
-                   <air:Origin>
-                      <air:Code>{searchRequest.Origin}</air:Code>
-                      <air:CountryCode>{searchRequest.OriginCountryCode}</air:CountryCode>
-                      <air:IsCity>{searchRequest.OriginIsCity.ToString().ToLower()}</air:IsCity>
-                      <air:Name/>
-                   </air:Origin>
-                   <air:SequenceNo>1</air:SequenceNo>
-                </air:T_AirSearch_SegmentItem>");
-
-        if (searchRequest.FlightType == "RT" && searchRequest.ReturnDate.HasValue)
-        {
-            segments.Append($@"
-                <air:T_AirSearch_SegmentItem>
-                   <air:DepartureDay>{searchRequest.ReturnDate.Value:yyyy-MM-dd}T00:00:00.000+00:00</air:DepartureDay>
-                   <air:Destination>
-                      <air:Code>{searchRequest.Origin}</air:Code>
-                      <air:CountryCode>{searchRequest.OriginCountryCode}</air:CountryCode>
-                      <air:IsCity>{searchRequest.OriginIsCity.ToString().ToLower()}</air:IsCity>
-                      <air:Name/>
-                   </air:Destination>
-                   <air:Origin>
-                      <air:Code>{searchRequest.Destination}</air:Code>
-                      <air:CountryCode>{searchRequest.DestinationCountryCode}</air:CountryCode>
-                      <air:IsCity>{searchRequest.DestinationIsCity.ToString().ToLower()}</air:IsCity>
-                      <air:Name/>
-                   </air:Origin>
-                   <air:SequenceNo>2</air:SequenceNo>
-                </air:T_AirSearch_SegmentItem>");
-        }
-
-        // DepartureFlight XML
         var departureFlightXml = BuildSelectedFlightXml(request.DepartureFlight);
 
-        // ReturnFlight XML (opsiyonel)
         var returnFlightXml = request.ReturnFlight != null
-            ? $"<shop:ReturnFlight>{BuildSelectedFlightXml(request.ReturnFlight)}</shop:ReturnFlight>"
+            ? $@"<trev2:ReturnFlight>
+                  {BuildSelectedFlightXml(request.ReturnFlight)}
+               </trev2:ReturnFlight>"
             : "";
 
         return $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
-xmlns:shop=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-xmlns:air=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air""
-xmlns:auth=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authentication.IO""
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air""
 xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 <soap:Body>
-   <tem:AirAllocateStateless>
+   <tem:AirAllocate>
       <tem:request>
          <trev:AuthenticationHeader>
             <trev:SessionId>{sessionId}</trev:SessionId>
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
-         <shop:AllocateForm>
-            <shop:SelectedFlightOptions>
-               <shop:DepartureFlight>
+         <trev1:Form>
+            <trev2:SelectedFlightOptions>
+               <trev2:DepartureFlight>
                   {departureFlightXml}
-               </shop:DepartureFlight>
+               </trev2:DepartureFlight>
                {returnFlightXml}
-               <shop:SelectedServiceFee>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</shop:SelectedServiceFee>
-            </shop:SelectedFlightOptions>
-         </shop:AllocateForm>
-         <shop:LoginForm>
-            <auth:ChannelCode>2</auth:ChannelCode>
-            <auth:ClientIP></auth:ClientIP>
-            <auth:ClientName>{_clientName}</auth:ClientName>
-            <auth:Password>{_password}</auth:Password>
-            <auth:Username>{_username}</auth:Username>
-         </shop:LoginForm>
-         <shop:SearchForm>
-            <air:FlightType>{searchRequest.FlightType}</air:FlightType>
-            <air:Options>
-               <air:FlightClass>{searchRequest.FlightClass}</air:FlightClass>
-               <air:IfDirectFlightsOnly>{searchRequest.DirectFlightsOnly.ToString().ToLower()}</air:IfDirectFlightsOnly>
-               <air:IfRefundablesOnly>{searchRequest.RefundablesOnly.ToString().ToLower()}</air:IfRefundablesOnly>
-               <air:SearchTimeoutMilliseconds>{searchRequest.SearchTimeoutMilliseconds}</air:SearchTimeoutMilliseconds>
-            </air:Options>
-            <air:PaxItems>{paxItems}
-            </air:PaxItems>
-            <air:Segments>{segments}
-            </air:Segments>
-         </shop:SearchForm>
+               <trev2:SelectedServiceFee>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev2:SelectedServiceFee>
+            </trev2:SelectedFlightOptions>
+         </trev1:Form>
       </tem:request>
-   </tem:AirAllocateStateless>
+   </tem:AirAllocate>
 </soap:Body>
 </soap:Envelope>";
     }
+    
 
     private static string BuildSelectedFlightXml(SelectedFlight flight)
     {
@@ -861,9 +782,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             operatingAirlines.Append($"<arr:string>{oa}</arr:string>");
         }
 
-        return $@"<shop:FlightNumbers>{flightNumbers}</shop:FlightNumbers>
-                  <shop:OperatingAirlines>{operatingAirlines}</shop:OperatingAirlines>
-                  <shop:ProviderId>{flight.ProviderId}</shop:ProviderId>";
+        return $@"<trev2:FlightNumbers>{flightNumbers}</trev2:FlightNumbers>
+                  <trev2:OperatingAirlines>{operatingAirlines}</trev2:OperatingAirlines>
+                  <trev2:ProviderId>{flight.ProviderId}</trev2:ProviderId>";
     }
 
     private static AllocateResponse ParseAllocateResponse(XDocument doc)
