@@ -684,6 +684,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                     ErrorMessage = $"AirAllocateStateless HTTP {(int)response.StatusCode}: {responseText}"
                 };
             }
+             
 
             var doc = XDocument.Parse(responseText);
 
