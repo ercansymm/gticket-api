@@ -46,34 +46,59 @@ public class BiletBankFlightService : IFlightService
         }
 
         var response = await AirSearchAsync(loginResult.SessionId!, loginResult.SessionToken!, request);
+        response.SessionId = loginResult.SessionId;
+        response.SessionToken = loginResult.SessionToken;
         return response;
     }
 
     public async Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request)
     {
-        var loginResult = await LoginAsync();
+        string sessionId;
+        string sessionToken;
 
-        if (loginResult.HasError)
+        // Kullanici search'ten alinan session bilgisini gonderdiyse dogrudan kullan
+        if (!string.IsNullOrEmpty(request.SessionId) && !string.IsNullOrEmpty(request.SessionToken))
         {
-            return new AllocateResponse
+            sessionId = request.SessionId;
+            sessionToken = request.SessionToken;
+        }
+        else
+        {
+            // Session yoksa login + search yap
+            if (request.SearchRequest == null)
             {
-                HasError = true,
-                ErrorMessage = $"Login hatası: {loginResult.ErrorMessage}"
-            };
+                return new AllocateResponse
+                {
+                    HasError = true,
+                    ErrorMessage = "SessionId/SessionToken verilmediyse SearchRequest zorunludur."
+                };
+            }
+
+            var loginResult = await LoginAsync();
+            if (loginResult.HasError)
+            {
+                return new AllocateResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"Login hatasi: {loginResult.ErrorMessage}"
+                };
+            }
+
+            var searchResponse = await AirSearchAsync(loginResult.SessionId!, loginResult.SessionToken!, request.SearchRequest);
+            if (searchResponse.HasError)
+            {
+                return new AllocateResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"Search hatasi (allocate oncesi): {searchResponse.ErrorMessage}"
+                };
+            }
+
+            sessionId = loginResult.SessionId!;
+            sessionToken = loginResult.SessionToken!;
         }
 
-        // AirAllocate (stateful) requires a search session first
-        var searchResponse = await AirSearchAsync(loginResult.SessionId!, loginResult.SessionToken!, request.SearchRequest);
-        if (searchResponse.HasError)
-        {
-            return new AllocateResponse
-            {
-                HasError = true,
-                ErrorMessage = $"Search hatası (allocate öncesi): {searchResponse.ErrorMessage}"
-            };
-        }
-
-        var response = await AllocateAsync(loginResult.SessionId!, loginResult.SessionToken!, request);
+        var response = await AllocateAsync(sessionId, sessionToken, request);
         return response;
     }
 

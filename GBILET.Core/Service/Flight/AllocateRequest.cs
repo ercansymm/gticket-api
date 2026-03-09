@@ -3,9 +3,21 @@ namespace GBILET.Core.Models.Flight;
 public class AllocateRequest
 {
     /// <summary>
-    /// Orijinal arama parametreleri (Allocate oncesi session'da arama olusturmak icin gerekli)
+    /// Search response'tan alinan SessionId.
+    /// Bu deger verilirse tekrar login+search yapilmaz, dogrudan allocate yapilir.
     /// </summary>
-    public SearchRequest SearchRequest { get; set; } = null!;
+    public string? SessionId { get; set; }
+
+    /// <summary>
+    /// Search response'tan alinan SessionToken.
+    /// </summary>
+    public string? SessionToken { get; set; }
+
+    /// <summary>
+    /// Orijinal arama parametreleri.
+    /// SessionId/SessionToken verilmemisse login+search yapilir.
+    /// </summary>
+    public SearchRequest? SearchRequest { get; set; }
 
     /// <summary>
     /// Search sonucundan secilen urun ID'si (FlightOption.ProductId)

@@ -56,11 +56,13 @@ public class FlightController : ControllerBase
             if (request == null)
                 return BadRequest(new { error = "Request body parse edilemedi. JSON formatını kontrol edin." });
 
-            if (request.SearchRequest == null)
-                return BadRequest(new { error = "SearchRequest alanı zorunludur." });
-
             if (string.IsNullOrWhiteSpace(request.ProductId))
                 return BadRequest(new { error = "ProductId alanı zorunludur. Search sonucundan bir FlightOption.ProductId seçin." });
+
+            // Session yoksa SearchRequest zorunlu
+            var hasSession = !string.IsNullOrEmpty(request.SessionId) && !string.IsNullOrEmpty(request.SessionToken);
+            if (!hasSession && request.SearchRequest == null)
+                return BadRequest(new { error = "SessionId/SessionToken verilmediyse SearchRequest zorunludur." });
 
             var result = await _flightService.AllocateFlightAsync(request);
             return Ok(result);

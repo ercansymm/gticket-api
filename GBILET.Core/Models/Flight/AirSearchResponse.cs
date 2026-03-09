@@ -6,6 +6,13 @@ public class AirSearchResponse
     public string? ErrorMessage { get; set; }
     public string? SearchId { get; set; }
     public string? ShoppingFileId { get; set; }
+
+    /// <summary>
+    /// Oturum bilgisi - Allocate icin bu degeri kullanin
+    /// </summary>
+    public string? SessionId { get; set; }
+    public string? SessionToken { get; set; }
+
     public List<FlightOption> FlightOptions { get; set; } = [];
     public List<RecommendationBox> RecommendationBoxes { get; set; } = [];
 }
