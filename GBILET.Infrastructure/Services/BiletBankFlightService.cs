@@ -876,6 +876,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             SessionToken = doc.GetValue("SessionToken")
         };
 
+        // Debug: root element isimlerini topla
+        var allElements = doc.Descendants().Select(x => x.Name.LocalName).Distinct().ToList();
+        response.DebugInfo = $"Elements found: {string.Join(", ", allElements)}";
+
         // ShoppingFile bilgileri
         var shoppingFiles = doc.GetDescendants("ShoppingFile");
         var shoppingFile = shoppingFiles.FirstOrDefault();

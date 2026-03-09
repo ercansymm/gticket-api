@@ -50,6 +50,11 @@ public class AllocateResponse
     /// Debug: Ham SOAP yanýtý (geçici - production'da kaldýrýlacak)
     /// </summary>
     public string? RawSoapResponse { get; set; }
+
+    /// <summary>
+    /// Debug: Parse aþamasý bilgisi (geçici)
+    /// </summary>
+    public string? DebugInfo { get; set; }
 }
 
 public class AllocateAirBooking
