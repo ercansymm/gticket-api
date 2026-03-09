@@ -337,13 +337,13 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             ShoppingFileId = doc.GetValue("ShoppingFileId")
         };
 
-        var flightOptions = doc.GetDescendants("FlightOption");
+        var flightOptions = doc.GetDescendants("T_FlightOption");
         foreach (var fo in flightOptions)
         {
             response.FlightOptions.Add(ParseFlightOption(fo));
         }
 
-        var recommendationBoxes = doc.GetDescendants("RecommendationBox");
+        var recommendationBoxes = doc.GetDescendants("T_RecommendationBox");
         foreach (var rb in recommendationBoxes)
         {
             response.RecommendationBoxes.Add(ParseRecommendationBox(rb));
@@ -379,12 +379,12 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             Duration = fo.GetIntValue("Duration")
         };
 
-        foreach (var seg in fo.GetDescendants("Segment"))
+        foreach (var seg in fo.GetDescendants("T_Segment"))
         {
             option.Segments.Add(ParseSegment(seg));
         }
 
-        foreach (var sa in fo.GetDescendants("SegmentAvailability"))
+        foreach (var sa in fo.GetDescendants("T_SegmentAvailability"))
         {
             option.SegmentAvailabilities.Add(new SegmentAvailability
             {
@@ -395,7 +395,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             });
         }
 
-        foreach (var pfi in fo.GetDescendants("PassengerFareItem"))
+        foreach (var pfi in fo.GetDescendants("T_PaxFareItem"))
         {
             option.PassengerFareItems.Add(ParsePassengerFareItem(pfi));
         }
@@ -645,7 +645,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             Duration = flight.GetIntValue("Duration")
         };
 
-        foreach (var seg in flight.GetDescendants("Segment"))
+        foreach (var seg in flight.GetDescendants("T_Segment"))
         {
             rf.Segments.Add(ParseSegment(seg));
         }
@@ -918,7 +918,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             ServiceFee = ab.GetDecimalValue("ServiceFee")
         };
 
-        foreach (var seg in ab.GetDescendants("Segment"))
+        foreach (var seg in ab.GetDescendants("T_Segment"))
         {
             booking.Segments.Add(new AllocateSegment
             {
