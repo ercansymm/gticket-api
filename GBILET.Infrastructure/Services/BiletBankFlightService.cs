@@ -809,8 +809,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 : shoppingFile.GetBoolValue("IsFlightInfoChanged");
             response.Currency = shoppingFile.GetValue("Currency");
 
-            // AirBookings
-            foreach (var ab in shoppingFile.GetDescendants("T_AirBookingItem"))
+            // AirBookings - T_AirBooking ust seviye, icinde T_AirBookingItem ve T_Segment var
+            foreach (var ab in shoppingFile.GetDescendants("T_AirBooking"))
             {
                 response.AirBookings.Add(ParseAllocateAirBooking(ab));
             }
@@ -835,7 +835,11 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     decimal grandTotal = 0;
                     foreach (var pi in priceItems)
                     {
-                        grandTotal += pi.GetDecimalValue("TotalFare");
+                        // T_PriceItem icinde Total veya TotalFare olabilir
+                        var itemTotal = pi.GetDecimalValue("Total");
+                        if (itemTotal == 0)
+                            itemTotal = pi.GetDecimalValue("TotalFare");
+                        grandTotal += itemTotal;
                     }
                     if (grandTotal > 0)
                         response.PriceSummary.GrandTotal = grandTotal;
@@ -859,19 +863,32 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
     private static AllocateAirBooking ParseAllocateAirBooking(XElement ab)
     {
+        // T_AirBooking seviyesinde: ProductId, BookingCode, BookingProvider, Status
+        // T_AirBookingItem seviyesinde: Currency, BaseFare, Taxes, TotalFare, ServiceFee
+        var bookingItem = ab.GetDescendants("T_AirBookingItem").FirstOrDefault();
+
         var booking = new AllocateAirBooking
         {
             ProductId = ab.GetValue("ProductId"),
             PNR = ab.GetValue("BookingCode"),
             BookingProvider = ab.GetValue("BookingProvider"),
-            Status = ab.GetValue("Status"),
-            Currency = ab.GetValue("Currency"),
-            TotalFare = ab.GetDecimalValue("TotalFare"),
-            BaseFare = ab.GetDecimalValue("BaseFare"),
-            Taxes = ab.GetDecimalValue("Taxes"),
-            ServiceFee = ab.GetDecimalValue("ServiceFee")
+            Status = ab.GetValue("Status") ?? ab.GetValue("SelectedAllocated"),
+            Currency = bookingItem?.GetValue("Currency") ?? ab.GetValue("Currency"),
+            TotalFare = bookingItem?.GetDecimalValue("TotalFare") ?? ab.GetDecimalValue("TotalFare"),
+            BaseFare = bookingItem?.GetDecimalValue("BaseFare") ?? ab.GetDecimalValue("BaseFare"),
+            Taxes = bookingItem?.GetDecimalValue("Taxes") ?? ab.GetDecimalValue("Taxes"),
+            ServiceFee = bookingItem?.GetDecimalValue("ServiceFee") ?? ab.GetDecimalValue("ServiceFee")
         };
 
+        // Status alani XML'de "SelectedAllocated" gibi bir deger olarak gelebilir
+        // Eger Status hala null ise Descendants icinde ara
+        if (string.IsNullOrEmpty(booking.Status))
+        {
+            booking.Status = ab.Descendants()
+                .FirstOrDefault(x => x.Name.LocalName == "Status")?.Value;
+        }
+
+        // T_Segment'ler T_AirBooking veya T_AirBookingItem icinde olabilir
         foreach (var seg in ab.GetDescendants("T_Segment"))
         {
             booking.Segments.Add(new AllocateSegment
