@@ -29,7 +29,15 @@ builder.Services
         client.BaseAddress = new Uri("https://apitest.biletbank.com");
     });
 
+
 var app = builder.Build();
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<GTicketDbContext>();
+    db.Database.EnsureCreated();
+}
 
 app.UseSwagger();
 app.UseSwaggerUI();
