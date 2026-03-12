@@ -789,12 +789,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
     {
         var response = new AllocateResponse
         {
-            HasError = false,
-            SessionId = doc.GetValue("SessionId"),
-            SessionToken = doc.GetValue("SessionToken")
+            HasError = false
         };
 
-        // Debug: root element isimlerini topla
+        // Debug: tum element isimlerini topla
         var allElements = doc.Descendants().Select(x => x.Name.LocalName).Distinct().ToList();
         response.DebugInfo = $"Elements found: {string.Join(", ", allElements)}";
 
@@ -808,8 +806,26 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 ? null
                 : shoppingFile.GetBoolValue("IsFlightInfoChanged");
             response.Currency = shoppingFile.GetValue("Currency");
+            response.CanBeReserved = shoppingFile.GetBoolValue("CanBeReserved");
+            response.IsCreditCardPaymentEnabled = shoppingFile.GetBoolValue("Is_CC_Payment_Enabled");
+            response.IsRunningAccountPaymentEnabled = shoppingFile.GetBoolValue("Is_RA_Payment_Enabled");
+            response.MaxServiceCommission = shoppingFile.GetDecimalValue("MaxSc");
+            response.MinServiceCommission = shoppingFile.GetDecimalValue("MinSc");
 
-            // AirBookings - T_AirBooking ust seviye, icinde T_AirBookingItem ve T_Segment var
+            // CustomerInfo
+            var customerInfo = shoppingFile.GetDescendants("CustomerInfo").FirstOrDefault();
+            if (customerInfo != null)
+            {
+                response.CustomerInfo = new AllocateCustomerInfo
+                {
+                    BusinessId = customerInfo.GetValue("BusinessId"),
+                    BusinessName = customerInfo.GetValue("BusinessName"),
+                    Email = customerInfo.GetValue("Email"),
+                    Username = customerInfo.GetValue("Username")
+                };
+            }
+
+            // AirBookings
             foreach (var ab in shoppingFile.GetDescendants("T_AirBooking"))
             {
                 response.AirBookings.Add(ParseAllocateAirBooking(ab));
@@ -825,24 +841,25 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     TotalBaseFare = priceSummary.GetDecimalValue("TotalBaseFare"),
                     TotalTaxes = priceSummary.GetDecimalValue("TotalTaxes"),
                     TotalServiceFee = priceSummary.GetDecimalValue("TotalServiceFee"),
-                    Currency = priceSummary.GetValue("Currency")
+                    Currency = response.Currency // PriceSummary icinde Currency yok, parent'tan al
                 };
 
-                // GrandTotal dogrudan PriceSummary icinde degilse T_PriceItem icinden topla
-                if (response.PriceSummary.GrandTotal == 0)
+                // T_PriceItem'lari parse et
+                foreach (var pi in priceSummary.GetDescendants("T_PriceItem"))
                 {
-                    var priceItems = priceSummary.GetDescendants("T_PriceItem");
-                    decimal grandTotal = 0;
-                    foreach (var pi in priceItems)
+                    var priceItem = new AllocatePriceItem
                     {
-                        // T_PriceItem icinde Total veya TotalFare olabilir
-                        var itemTotal = pi.GetDecimalValue("Total");
-                        if (itemTotal == 0)
-                            itemTotal = pi.GetDecimalValue("TotalFare");
-                        grandTotal += itemTotal;
-                    }
-                    if (grandTotal > 0)
-                        response.PriceSummary.GrandTotal = grandTotal;
+                        ProductId = pi.GetValue("ProductId"),
+                        ProductType = pi.GetValue("ProductType"),
+                        Total = pi.GetDecimalValue("Total")
+                    };
+                    response.PriceSummary.PriceItems.Add(priceItem);
+                }
+
+                // GrandTotal 0 ise T_PriceItem toplamini kullan
+                if (response.PriceSummary.GrandTotal == 0 && response.PriceSummary.PriceItems.Count > 0)
+                {
+                    response.PriceSummary.GrandTotal = response.PriceSummary.PriceItems.Sum(x => x.Total);
                 }
             }
         }
@@ -863,36 +880,65 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
     private static AllocateAirBooking ParseAllocateAirBooking(XElement ab)
     {
-        // T_AirBooking seviyesinde: ProductId, BookingCode, BookingProvider, Status
-        // T_AirBookingItem seviyesinde: Currency, BaseFare, Taxes, TotalFare, ServiceFee
-        var bookingItem = ab.GetDescendants("T_AirBookingItem").FirstOrDefault();
-
         var booking = new AllocateAirBooking
         {
             ProductId = ab.GetValue("ProductId"),
             PNR = ab.GetValue("BookingCode"),
-            BookingProvider = ab.GetValue("BookingProvider"),
-            Status = ab.GetValue("Status") ?? ab.GetValue("SelectedAllocated"),
-            Currency = bookingItem?.GetValue("Currency") ?? ab.GetValue("Currency"),
-            TotalFare = bookingItem?.GetDecimalValue("TotalFare") ?? ab.GetDecimalValue("TotalFare"),
-            BaseFare = bookingItem?.GetDecimalValue("BaseFare") ?? ab.GetDecimalValue("BaseFare"),
-            Taxes = bookingItem?.GetDecimalValue("Taxes") ?? ab.GetDecimalValue("Taxes"),
-            ServiceFee = bookingItem?.GetDecimalValue("ServiceFee") ?? ab.GetDecimalValue("ServiceFee")
+            ProviderId = ab.GetValue("ProviderId"),
+            Status = ab.GetValue("Status"),
+            Currency = ab.GetValue("Currency"),
+            TotalFare = ab.GetDecimalValue("TotalFare"),
+            BaseFare = ab.GetDecimalValue("BaseFare"),
+            Taxes = ab.GetDecimalValue("Taxes"),
+            NetFare = ab.GetDecimalValue("NetFare"),
+            ServiceFee = ab.GetDecimalValue("ServiceFee"),
+            LastSellerCommission = ab.GetDecimalValue("LastSellerCommission"),
+            IsRefundable = ab.GetBoolValue("IsRefundable"),
+            ValidatingCarrier = ab.GetValue("ValidatingCarrier"),
+            FlightType = ab.GetValue("FlightType")
         };
 
-        // Status alani XML'de "SelectedAllocated" gibi bir deger olarak gelebilir
-        // Eger Status hala null ise Descendants icinde ara
-        if (string.IsNullOrEmpty(booking.Status))
+        // CanBeReserved - FlightRuleAttribute icinde
+        var ruleAttr = ab.GetDescendants("FlightRuleAttribute").FirstOrDefault();
+        if (ruleAttr != null)
         {
-            booking.Status = ab.Descendants()
-                .FirstOrDefault(x => x.Name.LocalName == "Status")?.Value;
+            booking.CanBeReserved = ruleAttr.GetBoolValue("IsReservable");
         }
 
-        // T_Segment'ler T_AirBooking veya T_AirBookingItem icinde olabilir
+        // BookingItems (T_AirBookingItem) - yolcu bazli fiyat detayi
+        foreach (var bi in ab.GetDescendants("T_AirBookingItem"))
+        {
+            var bookingItem = new AllocateBookingItem
+            {
+                ProductItemId = bi.GetValue("ProductItemId"),
+                Currency = bi.GetValue("Currency"),
+                BaseFare = bi.GetDecimalValue("BaseFare"),
+                Taxes = bi.GetDecimalValue("Taxes"),
+                TotalFare = bi.GetDecimalValue("TotalFare"),
+                NetFare = bi.GetDecimalValue("NetFare"),
+                ServiceFee = bi.GetDecimalValue("ServiceFee"),
+                SystemServiceFee = bi.GetDecimalValue("SystemServiceFee"),
+                Baggage = bi.GetValue("Baggage")
+            };
+
+            // PaxReference
+            var paxRef = bi.GetDescendants("PaxReference").FirstOrDefault();
+            if (paxRef != null)
+            {
+                bookingItem.PaxType = paxRef.GetValue("LocalPaxType");
+                bookingItem.PaxSequenceNo = paxRef.GetIntValue("LocalSequenceNo");
+                bookingItem.PaxReferenceId = paxRef.GetValue("PaxReferenceId");
+            }
+
+            booking.BookingItems.Add(bookingItem);
+        }
+
+        // Segments
         foreach (var seg in ab.GetDescendants("T_Segment"))
         {
             booking.Segments.Add(new AllocateSegment
             {
+                SegmentId = seg.GetValue("Id"),
                 OriginCode = seg.GetValue("OriginCode"),
                 DestinationCode = seg.GetValue("DestinationCode"),
                 DepartureDay = seg.GetValue("DepartureDay"),
@@ -902,8 +948,107 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 MarketingAirline = seg.GetValue("MarketingAirline"),
                 OperatingAirline = seg.GetValue("OperatingAirline"),
                 FlightNumber = seg.GetValue("FlightNumber"),
-                BookingClass = seg.GetValue("BookingClass")
+                BookingClass = seg.GetValue("BookingClass"),
+                FareBasis = seg.GetValue("FareBasis"),
+                Duration = seg.GetValue("Duration"),
+                SelectedBrandedFareItemId = seg.GetValue("SelectedBrandedFareItemId"),
+                SequenceNo = seg.GetIntValue("SequenceNo")
             });
+        }
+
+        // BrandedFares
+        var brandedFares = ab.GetDescendants("BrandedFares").FirstOrDefault();
+        if (brandedFares != null)
+        {
+            // BrandedFareItem'lar (fiyat paketleri)
+            foreach (var bfi in brandedFares.GetDescendants("BrandedFareItem"))
+            {
+                var fareItem = new AllocateBrandedFareItem
+                {
+                    BrandedFareItemId = bfi.GetValue("BrandedFareItemId"),
+                    Currency = bfi.GetValue("Currency")
+                };
+
+                var totalInfo = bfi.GetDescendants("TotalFareInfo").FirstOrDefault();
+                if (totalInfo != null)
+                {
+                    fareItem.TotalFare = totalInfo.GetDecimalValue("TotalFare");
+                    fareItem.TotalTaxes = totalInfo.GetDecimalValue("TotalTaxes");
+                }
+
+                foreach (var bfp in bfi.GetDescendants("BrandedFarePassenger"))
+                {
+                    var passenger = new AllocateBrandedFarePassenger
+                    {
+                        PassengerType = bfp.GetValue("PassengerType"),
+                        PassengerCount = bfp.GetIntValue("PassengerCount")
+                    };
+
+                    var fareInfo = bfp.GetDescendants("PassengerFareInfo").FirstOrDefault();
+                    if (fareInfo != null)
+                    {
+                        passenger.BaseFare = fareInfo.GetDecimalValue("BaseFare");
+                        passenger.Taxes = fareInfo.GetDecimalValue("Taxes");
+                        passenger.TotalFare = fareInfo.GetDecimalValue("TotalFare");
+                        passenger.Currency = fareInfo.GetValue("Currency");
+                    }
+
+                    var fc = bfp.GetDescendants("FareComponent").FirstOrDefault();
+                    if (fc != null)
+                    {
+                        passenger.BookingClass = fc.GetValue("BookingClass");
+                        passenger.CabinClass = fc.GetValue("CabinClass");
+                        passenger.FareBasisCode = fc.GetValue("FareBasisCode");
+                        passenger.BrandId = fc.GetValue("BrandId");
+                        passenger.SeatsAvailable = fc.GetIntValue("SeatsAvailable");
+                    }
+
+                    fareItem.Passengers.Add(passenger);
+                }
+
+                booking.BrandedFareItems.Add(fareItem);
+            }
+
+            // BrandedItem'lar (paket aciklamalari: ECO, FLEX, PREMIUM)
+            foreach (var bi in brandedFares.GetDescendants("BrandedItem"))
+            {
+                var brandedItem = new AllocateBrandedItem
+                {
+                    BrandId = bi.GetValue("BrandId"),
+                    BrandCode = bi.GetValue("BrandCode"),
+                    BrandName = bi.GetValue("BrandName")
+                };
+
+                foreach (var rule in bi.GetDescendants("BrandedRule"))
+                {
+                    brandedItem.Rules.Add(new AllocateBrandedRule
+                    {
+                        Application = rule.GetValue("Application"),
+                        DisplayType = rule.GetValue("DisplayType"),
+                        RuleDescription = rule.GetValue("RuleDescription"),
+                        ServiceGroup = rule.GetValue("ServiceGroup")
+                    });
+                }
+
+                booking.BrandedItems.Add(brandedItem);
+            }
+
+            // FreeBaggageAllowances
+            foreach (var fba in brandedFares.GetDescendants("FreeBaggageAllowance"))
+            {
+                var paxBaggage = fba.GetDescendants("PaxFBA").FirstOrDefault();
+                var paxType = fba.GetDescendants("PaxBaggageAllowance").FirstOrDefault();
+
+                booking.BaggageAllowances.Add(new AllocateBaggageAllowance
+                {
+                    Id = fba.GetValue("Id"),
+                    Allowance = paxBaggage?.GetValue("Allowance"),
+                    Category = paxBaggage?.GetValue("Category"),
+                    Type = paxBaggage?.GetValue("Type"),
+                    Unit = paxBaggage?.GetValue("Unit"),
+                    PaxType = paxType?.GetValue("PaxType")
+                });
+            }
         }
 
         return booking;
