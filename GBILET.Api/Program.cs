@@ -9,10 +9,19 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// DbContext
-builder.Services.AddDbContext<GTicketDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+var dbProvider = builder.Configuration.GetValue<string>("DbProvider");
+if (dbProvider == "PostgreSQL")
+{
+    builder.Services.AddDbContext<GTicketDbContext>(options =>
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+    );
+}
+else
+{
+    builder.Services.AddDbContext<GTicketDbContext>(options =>
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    );
+}
 
 builder.Services
     .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
