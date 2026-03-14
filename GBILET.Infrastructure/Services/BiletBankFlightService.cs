@@ -1081,7 +1081,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 {
                     HasError = true,
                     ErrorMessage = $"UpdatePassengers hatasi: {updateResult.ErrorMessage}",
-                    RawSoapResponse = updateResult.RawSoapResponse
+                    RawSoapResponse = updateResult.RawSoapResponse,
+                    RawSoapRequest = updateResult.RawSoapRequest
                 };
             }
 
@@ -1110,17 +1111,85 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         }
     }
 
+
     private async Task<BookingResponse> UpdatePassengersAsync(
         string sessionId,
         string sessionToken,
         BookingRequest request)
     {
-        string soapRequest = string.Empty;
+        string debugXml = string.Empty;
         string responseText = string.Empty;
 
         try
         {
-            soapRequest = BuildUpdatePassengersSoapRequest(sessionId, sessionToken, request);
+            // WCF generated client kullanarak dogru XML serialize ediyoruz
+            var wcfRequest = new ServiceReference1.IO_UpdatePassengersRequest
+            {
+                AuthenticationHeader = new ServiceReference1.T_AuthenticationHeader
+                {
+                    SessionId = long.Parse(sessionId),
+                    SessionToken = sessionToken
+                },
+                Form = new ServiceReference1.IO_UpdatePassengersForm
+                {
+                    KvkkConfirmation = false,
+                    ModifiedPassengers = null,
+                    NewPassengers = request.Passengers.Select((pax, i) =>
+                    {
+                        var birthDate = pax.BirthDate.Contains('T')
+                            ? pax.BirthDate.Split('T')[0]
+                            : pax.BirthDate;
+                        var isContact = i == 0;
+
+                        return new ServiceReference1.T_Passenger
+                        {
+                            BirthDate = birthDate,
+                            CitizenNo = pax.CitizenNo ?? "00000000000",
+                            Email = isContact ? request.Contact.Email : "",
+                            FirstName = pax.FirstName,
+                            Gender = pax.Gender,
+                            Id = Guid.Empty,
+                            IfContact = isContact,
+                            LastName = pax.LastName,
+                            Nationality = pax.Nationality,
+                            PassportCountry = pax.PassportCountry ?? pax.Nationality,
+                            PassportNo = pax.PassportNo ?? "",
+                            Phone = isContact ? request.Contact.Phone : "",
+                            SequenceNo = i,
+                            TempTag = Guid.NewGuid().ToString(),
+                            Type = pax.PaxType,
+                            WheelChairServiceType = 0,
+                            PaxReferences = new[]
+                            {
+                                new ServiceReference1.T_ForwardPaxReference
+                                {
+                                    ProductId = Guid.Parse(request.ProductId),
+                                    ProductItemId = Guid.Parse(request.ProductItemId)
+                                }
+                            }
+                        };
+                    }).ToArray(),
+                    ProductIds = new[] { Guid.Parse(request.ProductId) }
+                }
+            };
+
+            // DataContractSerializer ile serialize ederek debug XML olustur
+            var serializer = new System.Runtime.Serialization.DataContractSerializer(typeof(ServiceReference1.IO_UpdatePassengersRequest));
+            using var ms = new System.IO.MemoryStream();
+            serializer.WriteObject(ms, wcfRequest);
+            var requestBodyXml = Encoding.UTF8.GetString(ms.ToArray());
+
+            // SOAP envelope'a sar
+            var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"">
+<soap:Body>
+   <UpdatePassengers xmlns=""http://tempuri.org/"">
+      <request>{requestBodyXml}</request>
+   </UpdatePassengers>
+</soap:Body>
+</soap:Envelope>";
+
+            debugXml = soapRequest;
 
             _logger.LogInformation("[UpdatePassengers] SOAP Request:\n{SoapRequest}", soapRequest);
 
@@ -1140,7 +1209,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     HasError = true,
                     ErrorMessage = $"UpdatePassengers HTTP {(int)response.StatusCode}: {responseText}",
                     RawSoapResponse = responseText,
-                    RawSoapRequest = soapRequest
+                    RawSoapRequest = debugXml
                 };
             }
 
@@ -1157,11 +1226,11 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     HasError = true,
                     ErrorMessage = errorMsg,
                     RawSoapResponse = responseText,
-                    RawSoapRequest = soapRequest
+                    RawSoapRequest = debugXml
                 };
             }
 
-            return new BookingResponse { HasError = false, RawSoapResponse = responseText, RawSoapRequest = soapRequest };
+            return new BookingResponse { HasError = false, RawSoapResponse = responseText, RawSoapRequest = debugXml };
         }
         catch (Exception ex)
         {
@@ -1171,7 +1240,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 HasError = true,
                 ErrorMessage = $"UpdatePassengers exception: {ex.Message} | StackTrace: {ex.StackTrace}",
                 RawSoapResponse = responseText,
-                RawSoapRequest = soapRequest
+                RawSoapRequest = debugXml
             };
         }
     }
