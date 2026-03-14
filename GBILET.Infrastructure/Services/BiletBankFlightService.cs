@@ -1187,15 +1187,27 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
             _logger.LogInformation("[UpdatePassengers] WCF Client ile cagiriliyor. Debug: {Debug}", debugInfo);
 
-            // WCF Client ile dogrudan cagir — SOAP XML'i WCF kendisi olusturur
+            // WCF Client ile dogrudan cagir
             var result = await client.UpdatePassengersAsync(wcfRequest);
-      
+
+            // Sonucu kontrol et
+            if (result == null)
+            {
+                return new BookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = "UpdatePassengers result null dondu",
+                    RawSoapRequest = debugInfo
+                };
+            }
+
+            _logger.LogInformation("[UpdatePassengers] HasError: {HasError}", result.HasError);
 
             if (result.HasError)
             {
-                var errorMsg = result.ServiceError?.ErrorMessage
-                    ?? result.ServiceError?.DebugMessage
-                    ?? "Bilinmeyen hata";
+                var errorMsg = result.ServiceError != null
+                    ? (result.ServiceError.ErrorMessage ?? result.ServiceError.DebugMessage ?? "Bilinmeyen hata")
+                    : "ServiceError null";
 
                 _logger.LogWarning("[UpdatePassengers] Hata: {Error}", errorMsg);
                 return new BookingResponse
