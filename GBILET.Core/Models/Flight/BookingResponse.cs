@@ -49,6 +49,11 @@ public class BookingResponse
     /// Debug: Ham SOAP yaniti (gecici - production'da kaldirilacak)
     /// </summary>
     public string? RawSoapResponse { get; set; }
+
+    /// <summary>
+    /// Debug: Gonderilen SOAP request (gecici - production'da kaldirilacak)
+    /// </summary>
+    public string? RawSoapRequest { get; set; }
 }
 
 /// <summary>

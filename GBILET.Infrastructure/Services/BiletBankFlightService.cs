@@ -1115,46 +1115,65 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         string sessionToken,
         BookingRequest request)
     {
-        var soapRequest = BuildUpdatePassengersSoapRequest(sessionId, sessionToken, request);
+        string soapRequest = string.Empty;
+        string responseText = string.Empty;
 
-        _logger.LogInformation("[UpdatePassengers] SOAP Request:\n{SoapRequest}", soapRequest);
-
-        var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-        content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/UpdatePassengers");
-
-        var response = await _httpClient.PostAsync(_proxyUrl, content);
-        var responseText = await response.Content.ReadAsStringAsync();
-
-        _logger.LogInformation("[UpdatePassengers] HTTP Status: {StatusCode}", (int)response.StatusCode);
-        _logger.LogInformation("[UpdatePassengers] SOAP Response:\n{SoapResponse}", responseText);
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
+            soapRequest = BuildUpdatePassengersSoapRequest(sessionId, sessionToken, request);
+
+            _logger.LogInformation("[UpdatePassengers] SOAP Request:\n{SoapRequest}", soapRequest);
+
+            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/UpdatePassengers");
+
+            var response = await _httpClient.PostAsync(_proxyUrl, content);
+            responseText = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[UpdatePassengers] HTTP Status: {StatusCode}", (int)response.StatusCode);
+            _logger.LogInformation("[UpdatePassengers] SOAP Response:\n{SoapResponse}", responseText);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new BookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"UpdatePassengers HTTP {(int)response.StatusCode}: {responseText}",
+                    RawSoapResponse = responseText,
+                    RawSoapRequest = soapRequest
+                };
+            }
+
+            var doc = XDocument.Parse(responseText);
+            var hasError = doc.GetValue("HasError");
+            if (hasError == "true")
+            {
+                var errorMsg = doc.GetValue("ErrorMessage")
+                    ?? doc.GetValue("DebugMessage")
+                    ?? doc.GetValue("Message")
+                    ?? doc.GetValue("ServiceError");
+                return new BookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = errorMsg,
+                    RawSoapResponse = responseText,
+                    RawSoapRequest = soapRequest
+                };
+            }
+
+            return new BookingResponse { HasError = false, RawSoapResponse = responseText, RawSoapRequest = soapRequest };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[UpdatePassengers] Exception");
             return new BookingResponse
             {
                 HasError = true,
-                ErrorMessage = $"UpdatePassengers HTTP {(int)response.StatusCode}: {responseText}",
-                RawSoapResponse = responseText
+                ErrorMessage = $"UpdatePassengers exception: {ex.Message} | StackTrace: {ex.StackTrace}",
+                RawSoapResponse = responseText,
+                RawSoapRequest = soapRequest
             };
         }
-
-        var doc = XDocument.Parse(responseText);
-        var hasError = doc.GetValue("HasError");
-        if (hasError == "true")
-        {
-            var errorMsg = doc.GetValue("ErrorMessage")
-                ?? doc.GetValue("DebugMessage")
-                ?? doc.GetValue("Message")
-                ?? doc.GetValue("ServiceError");
-            return new BookingResponse
-            {
-                HasError = true,
-                ErrorMessage = errorMsg,
-                RawSoapResponse = responseText
-            };
-        }
-
-        return new BookingResponse { HasError = false, RawSoapResponse = responseText };
     }
 
     private async Task<BookingResponse> MakePrebookingAsync(
@@ -1262,9 +1281,6 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             <trev1:ModifiedPassengers i:nil=""true""/>
             <trev1:NewPassengers>{passengersXml}
             </trev1:NewPassengers>
-            <trev1:ProductItemIds>
-               <arr:guid>{request.ProductItemId}</arr:guid>
-            </trev1:ProductItemIds>
             <trev1:ProductIds>
                <arr:guid>{request.ProductId}</arr:guid>
             </trev1:ProductIds>
