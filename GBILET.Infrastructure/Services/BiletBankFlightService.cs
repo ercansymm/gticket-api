@@ -330,7 +330,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
                </trev2:PreferedAirlines>";
         }
 
-        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
@@ -763,7 +763,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         string sessionToken,
         AllocateRequest request)
     {
-        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?
 <soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
@@ -1232,9 +1232,11 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
     {
         var passengersXml = new StringBuilder();
 
-        foreach (var pax in request.Passengers)
+        for (int i = 0; i < request.Passengers.Count; i++)
         {
-            var isContact = pax.SequenceNo == 1;
+            var pax = request.Passengers[i];
+            var zeroBasedSequence = i; // API 0-tabanli SequenceNo bekliyor
+            var isContact = i == 0;    // Ilk yolcu contact olarak isaretlenir
 
             // Dokumana gore BirthDate YYYY-MM-DD formatinda olmali (T00:00:00 eklenmemeli)
             var birthDate = pax.BirthDate.Contains('T')
@@ -1255,7 +1257,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                    <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
                    <trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>
                    <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
-                   <trev2:SequenceNo>{pax.SequenceNo}</trev2:SequenceNo>
+                   <trev2:SequenceNo>{zeroBasedSequence}</trev2:SequenceNo>
                    <trev2:TempTag>{Guid.NewGuid()}</trev2:TempTag>
                    <trev2:Type>{pax.PaxType}</trev2:Type>
                    <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
@@ -1284,7 +1286,6 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             <trev1:ProductIds>
                <arr:guid>{request.ProductId}</arr:guid>
             </trev1:ProductIds>
-            <trev1:ShoppingFileId>{request.ShoppingFileId}</trev1:ShoppingFileId>
          </trev1:Form>
       </tem:request>
    </tem:UpdatePassengers>
@@ -1297,7 +1298,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         string sessionToken,
         BookingRequest request)
     {
-        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
