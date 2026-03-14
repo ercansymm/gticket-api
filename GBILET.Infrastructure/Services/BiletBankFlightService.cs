@@ -1,4 +1,5 @@
 ﻿using GBILET.Core.Models.Flight;
+using GBILET.Core.Models.Flight;
 using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Extensions;
 using Microsoft.Extensions.Configuration;
@@ -99,6 +100,12 @@ public class BiletBankFlightService : IFlightService
         }
 
         var response = await AllocateAsync(sessionId, sessionToken, request);
+        return response;
+    }
+
+    public async Task<BookingResponse> BookFlightAsync(BookingRequest request)
+    {
+        var response = await BookAsync(request.SessionId, request.SessionToken, request);
         return response;
     }
 
@@ -1052,6 +1059,330 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         }
 
         return booking;
+    }
+
+    #endregion
+
+    #region Booking
+
+    private async Task<BookingResponse> BookAsync(
+        string sessionId,
+        string sessionToken,
+        BookingRequest request)
+    {
+        try
+        {
+            // Adim 1: UpdatePassengers — yolcu bilgilerini kaydet
+            var updateResult = await UpdatePassengersAsync(sessionId, sessionToken, request);
+            if (updateResult.HasError)
+            {
+                return new BookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"UpdatePassengers hatasi: {updateResult.ErrorMessage}",
+                    RawSoapResponse = updateResult.RawSoapResponse
+                };
+            }
+
+            // Adim 2: MakePrebooking — on rezervasyon yap (PNR olusur)
+            var prebookingResult = await MakePrebookingAsync(sessionId, sessionToken, request);
+            if (prebookingResult.HasError)
+            {
+                return new BookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"MakePrebooking hatasi: {prebookingResult.ErrorMessage}",
+                    RawSoapResponse = prebookingResult.RawSoapResponse
+                };
+            }
+
+            return prebookingResult;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Book] Exception");
+            return new BookingResponse
+            {
+                HasError = true,
+                ErrorMessage = $"Booking hatasi: {ex.Message}"
+            };
+        }
+    }
+
+    private async Task<BookingResponse> UpdatePassengersAsync(
+        string sessionId,
+        string sessionToken,
+        BookingRequest request)
+    {
+        var soapRequest = BuildUpdatePassengersSoapRequest(sessionId, sessionToken, request);
+
+        _logger.LogInformation("[UpdatePassengers] SOAP Request:\n{SoapRequest}", soapRequest);
+
+        var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
+        content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/UpdatePassengers");
+
+        var response = await _httpClient.PostAsync(_proxyUrl, content);
+        var responseText = await response.Content.ReadAsStringAsync();
+
+        _logger.LogInformation("[UpdatePassengers] HTTP Status: {StatusCode}", (int)response.StatusCode);
+        _logger.LogInformation("[UpdatePassengers] SOAP Response:\n{SoapResponse}", responseText);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new BookingResponse
+            {
+                HasError = true,
+                ErrorMessage = $"UpdatePassengers HTTP {(int)response.StatusCode}: {responseText}",
+                RawSoapResponse = responseText
+            };
+        }
+
+        var doc = XDocument.Parse(responseText);
+        var hasError = doc.GetValue("HasError");
+        if (hasError == "true")
+        {
+            var errorMsg = doc.GetValue("ErrorMessage")
+                ?? doc.GetValue("DebugMessage")
+                ?? doc.GetValue("Message")
+                ?? doc.GetValue("ServiceError");
+            return new BookingResponse
+            {
+                HasError = true,
+                ErrorMessage = errorMsg,
+                RawSoapResponse = responseText
+            };
+        }
+
+        return new BookingResponse { HasError = false, RawSoapResponse = responseText };
+    }
+
+    private async Task<BookingResponse> MakePrebookingAsync(
+        string sessionId,
+        string sessionToken,
+        BookingRequest request)
+    {
+        var soapRequest = BuildMakePrebookingSoapRequest(sessionId, sessionToken, request);
+
+        _logger.LogInformation("[MakePrebooking] SOAP Request:\n{SoapRequest}", soapRequest);
+
+        var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
+        content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePrebooking");
+
+        var response = await _httpClient.PostAsync(_proxyUrl, content);
+        var responseText = await response.Content.ReadAsStringAsync();
+
+        _logger.LogInformation("[MakePrebooking] HTTP Status: {StatusCode}", (int)response.StatusCode);
+        _logger.LogInformation("[MakePrebooking] SOAP Response:\n{SoapResponse}", responseText);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new BookingResponse
+            {
+                HasError = true,
+                ErrorMessage = $"MakePrebooking HTTP {(int)response.StatusCode}: {responseText}",
+                RawSoapResponse = responseText
+            };
+        }
+
+        var doc = XDocument.Parse(responseText);
+        var hasError = doc.GetValue("HasError");
+        if (hasError == "true")
+        {
+            var errorMsg = doc.GetValue("ErrorMessage")
+                ?? doc.GetValue("DebugMessage")
+                ?? doc.GetValue("Message")
+                ?? doc.GetValue("ServiceError");
+            return new BookingResponse
+            {
+                HasError = true,
+                ErrorMessage = errorMsg,
+                RawSoapResponse = responseText
+            };
+        }
+
+        var result = ParseBookingResponse(doc);
+        result.RawSoapResponse = responseText;
+        return result;
+    }
+
+    private static string BuildUpdatePassengersSoapRequest(
+        string sessionId,
+        string sessionToken,
+        BookingRequest request)
+    {
+        var passengersXml = new StringBuilder();
+
+        foreach (var pax in request.Passengers)
+        {
+            var isContact = pax.SequenceNo == 1;
+            var birthDateFormatted = pax.BirthDate.Contains('T')
+                ? pax.BirthDate
+                : $"{pax.BirthDate}T00:00:00";
+
+            passengersXml.Append($@"
+               <trev3:T_Passenger>
+                  <trev3:BirthDate>{birthDateFormatted}</trev3:BirthDate>
+                  <trev3:CitizenNo>{pax.CitizenNo}</trev3:CitizenNo>
+                  <trev3:DestinationAddress/>
+                  <trev3:Email>{(isContact ? request.Contact.Email : "")}</trev3:Email>
+                  <trev3:FirstName>{pax.FirstName}</trev3:FirstName>
+                  <trev3:FrequentFlayerNo/>
+                  <trev3:Gender>{pax.Gender}</trev3:Gender>
+                  <trev3:HesCode/>
+                  <trev3:Id>00000000-0000-0000-0000-000000000000</trev3:Id>
+                  <trev3:IfContact>{isContact.ToString().ToLower()}</trev3:IfContact>
+                  <trev3:LastName>{pax.LastName}</trev3:LastName>
+                  <trev3:Nationality>{pax.Nationality}</trev3:Nationality>
+                  <trev3:PassportCountry>{pax.PassportCountry}</trev3:PassportCountry>
+                  <trev3:PassportNo>{pax.PassportNo}</trev3:PassportNo>
+                  <trev3:PassportValidDate>{pax.PassportExpiry}</trev3:PassportValidDate>
+                  <trev3:PaxReferences>
+                     <trev3:T_ForwardPaxReference>
+                        <trev3:ProductId>{request.ProductId}</trev3:ProductId>
+                        <trev3:ProductItemId>00000000-0000-0000-0000-000000000000</trev3:ProductItemId>
+                     </trev3:T_ForwardPaxReference>
+                  </trev3:PaxReferences>
+                  <trev3:Phone>{(isContact ? request.Contact.Phone : "")}</trev3:Phone>
+                  <trev3:SecondaryPhoneNumber/>
+                  <trev3:SequenceNo>{pax.SequenceNo}</trev3:SequenceNo>
+                  <trev3:TempTag/>
+                  <trev3:Type>{pax.PaxType}</trev3:Type>
+                  <trev3:WheelChairServiceType>0</trev3:WheelChairServiceType>
+               </trev3:T_Passenger>");
+        }
+
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
+xmlns:tem=""http://tempuri.org/""
+xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:trev3=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Shopping"">
+<soap:Body>
+   <tem:UpdatePassengers>
+      <tem:request>
+         <trev:AuthenticationHeader>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
+         </trev:AuthenticationHeader>
+         <trev1:Form>
+            <trev1:IsContactRefused>false</trev1:IsContactRefused>
+            <trev1:KvkkConfirmation>true</trev1:KvkkConfirmation>
+            <trev1:ModifiedPassengers/>
+            <trev1:NewPassengers>{passengersXml}
+            </trev1:NewPassengers>
+            <trev1:ProductIds xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
+               <arr:guid>{request.ProductId}</arr:guid>
+            </trev1:ProductIds>
+         </trev1:Form>
+      </tem:request>
+   </tem:UpdatePassengers>
+</soap:Body>
+</soap:Envelope>";
+    }
+
+    private static string BuildMakePrebookingSoapRequest(
+        string sessionId,
+        string sessionToken,
+        BookingRequest request)
+    {
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
+xmlns:tem=""http://tempuri.org/""
+xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
+<soap:Body>
+   <tem:MakePrebooking>
+      <tem:request>
+         <trev:AuthenticationHeader>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
+         </trev:AuthenticationHeader>
+         <trev1:Form>
+            <trev1:ExtraForm>
+               <trev1:SelectedServiceFee>0</trev1:SelectedServiceFee>
+            </trev1:ExtraForm>
+            <trev1:ProductIds xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
+               <arr:guid>{request.ProductId}</arr:guid>
+            </trev1:ProductIds>
+         </trev1:Form>
+      </tem:request>
+   </tem:MakePrebooking>
+</soap:Body>
+</soap:Envelope>";
+    }
+
+    private static BookingResponse ParseBookingResponse(XDocument doc)
+    {
+        var response = new BookingResponse
+        {
+            HasError = false
+        };
+
+        var shoppingFile = doc.GetDescendants("ShoppingFile").FirstOrDefault();
+        if (shoppingFile != null)
+        {
+            response.ShoppingFileId = shoppingFile.GetValue("Id");
+            response.Currency = shoppingFile.GetValue("Currency");
+        }
+
+        var airBooking = doc.GetDescendants("T_AirBooking").FirstOrDefault();
+        if (airBooking != null)
+        {
+            response.ProductId = airBooking.GetValue("ProductId");
+            response.PNR = airBooking.GetValue("BookingCode");
+            response.Status = airBooking.GetValue("Status");
+            response.TotalFare = airBooking.GetDecimalValue("TotalFare");
+            response.Currency ??= airBooking.GetValue("Currency");
+
+            // Yolcu bilgileri
+            foreach (var pax in airBooking.GetDescendants("T_AirBookingItem"))
+            {
+                var paxRef = pax.GetDescendants("PaxReference").FirstOrDefault();
+                response.Passengers.Add(new BookingPassengerResult
+                {
+                    PaxType = paxRef?.GetValue("LocalPaxType"),
+                    SequenceNo = paxRef?.GetIntValue("LocalSequenceNo") ?? 0,
+                    FirstName = pax.GetValue("FirstName"),
+                    LastName = pax.GetValue("LastName"),
+                    Gender = pax.GetValue("Gender"),
+                    BirthDate = pax.GetValue("BirthDate")
+                });
+            }
+
+            // Segment bilgileri
+            foreach (var seg in airBooking.GetDescendants("T_Segment"))
+            {
+                response.Segments.Add(new BookingSegmentResult
+                {
+                    SequenceNo = seg.GetIntValue("SequenceNo"),
+                    OriginCode = seg.GetValue("OriginCode"),
+                    DestinationCode = seg.GetValue("DestinationCode"),
+                    DepartureDay = seg.GetValue("DepartureDay"),
+                    DepartureTime = seg.GetValue("DepartureTime"),
+                    ArrivalDay = seg.GetValue("ArrivalDay"),
+                    ArrivalTime = seg.GetValue("ArrivalTime"),
+                    MarketingAirline = seg.GetValue("MarketingAirline"),
+                    FlightNumber = seg.GetValue("FlightNumber"),
+                    BookingClass = seg.GetValue("BookingClass"),
+                    Status = seg.GetValue("Status")
+                });
+            }
+        }
+
+        // PNR bos ise ShoppingFile seviyesindeki AirBookings'tan almaya calis
+        if (string.IsNullOrEmpty(response.PNR))
+        {
+            response.PNR = doc.GetValue("BookingCode");
+        }
+
+        // Fiyat ozeti
+        var priceSummary = doc.GetDescendants("PriceSummary").FirstOrDefault();
+        if (priceSummary != null && response.TotalFare == 0)
+        {
+            response.TotalFare = priceSummary.GetDecimalValue("GrandTotal");
+        }
+
+        return response;
     }
 
     #endregion

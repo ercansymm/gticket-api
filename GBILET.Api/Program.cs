@@ -1,5 +1,6 @@
+using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
-using GBILET.Infrastructure.Data; 
+using GBILET.Infrastructure.Data;
 using GBILET.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +23,8 @@ else
         options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
     );
 }
+
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 
 builder.Services
     .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
