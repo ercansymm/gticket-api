@@ -1219,24 +1219,28 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 ? pax.BirthDate
                 : $"{pax.BirthDate}T00:00:00.000+00:00";
 
+            var passportValidDateXml = string.IsNullOrEmpty(pax.PassportExpiry)
+                ? @"<trev3:PassportValidDate i:nil=""true""/>"
+                : $"<trev3:PassportValidDate>{pax.PassportExpiry}T00:00:00.000+00:00</trev3:PassportValidDate>";
+
             passengersXml.Append($@"
-               <trev3:T_Passenger>
-                  <trev3:BirthDate>{birthDateFormatted}</trev3:BirthDate>
-                  <trev3:CitizenNo>{pax.CitizenNo}</trev3:CitizenNo>
-                  <trev3:DestinationAddress/>
-                  <trev3:Email>{(isContact ? request.Contact.Email : "")}</trev3:Email>
-                  <trev3:FirstName>{pax.FirstName}</trev3:FirstName>
-                  <trev3:FrequentFlayerNo/>
-                  <trev3:Gender>{pax.Gender}</trev3:Gender>
-                  <trev3:HesCode/>
-                  <trev3:Id>00000000-0000-0000-0000-000000000000</trev3:Id>
-                  <trev3:IfContact>{isContact.ToString().ToLower()}</trev3:IfContact>
-                  <trev3:LastName>{pax.LastName}</trev3:LastName>
-                  <trev3:Nationality>{pax.Nationality}</trev3:Nationality>
-                  <trev3:PassportCountry>{pax.PassportCountry}</trev3:PassportCountry>
-                  <trev3:PassportNo>{pax.PassportNo}</trev3:PassportNo>
-                  <trev3:PassportValidDate>{pax.PassportExpiry}</trev3:PassportValidDate>
-                  <trev3:PaxReferences>
+                <trev3:T_Passenger>
+                   <trev3:BirthDate>{birthDateFormatted}</trev3:BirthDate>
+                   <trev3:CitizenNo>{pax.CitizenNo}</trev3:CitizenNo>
+                   <trev3:DestinationAddress/>
+                   <trev3:Email>{(isContact ? request.Contact.Email : "")}</trev3:Email>
+                   <trev3:FirstName>{pax.FirstName}</trev3:FirstName>
+                   <trev3:FrequentFlayerNo/>
+                   <trev3:Gender>{pax.Gender}</trev3:Gender>
+                   <trev3:HesCode/>
+                   <trev3:Id>00000000-0000-0000-0000-000000000000</trev3:Id>
+                   <trev3:IfContact>{isContact.ToString().ToLower()}</trev3:IfContact>
+                   <trev3:LastName>{pax.LastName}</trev3:LastName>
+                   <trev3:Nationality>{pax.Nationality}</trev3:Nationality>
+                   <trev3:PassportCountry>{pax.PassportCountry}</trev3:PassportCountry>
+                   <trev3:PassportNo>{pax.PassportNo}</trev3:PassportNo>
+                   {passportValidDateXml}
+                   <trev3:PaxReferences>
                      <trev3:T_ForwardPaxReference>
                         <trev3:ProductId>{request.ProductId}</trev3:ProductId>
                         <trev3:ProductItemId>00000000-0000-0000-0000-000000000000</trev3:ProductItemId>
@@ -1256,7 +1260,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-xmlns:trev3=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Shopping"">
+xmlns:trev3=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Shopping""
+xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 <soap:Body>
    <tem:UpdatePassengers>
       <tem:request>
