@@ -1144,9 +1144,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:LastName>{pax.LastName}</trev2:LastName>
               <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
               <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
-              <trev2:PassportNo>{pax.PassportNo ?? ""}</trev2:PassportNo>
+              <trev2:PassportNo>{pax.PassportNo ?? "NA"}</trev2:PassportNo>
               <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
-              <trev2:SequenceNo>{i}</trev2:SequenceNo>
+              <trev2:SequenceNo>{i + 1}</trev2:SequenceNo>
               <trev2:TempTag>{Guid.NewGuid()}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
               <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
