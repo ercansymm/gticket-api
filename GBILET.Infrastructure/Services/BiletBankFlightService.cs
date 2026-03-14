@@ -330,7 +330,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
                </trev2:PreferedAirlines>";
         }
 
-        return $@"<?xml version=""1.0"" encoding=""utf-8""?
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
