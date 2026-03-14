@@ -1241,19 +1241,27 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 ? pax.BirthDate.Split('T')[0]
                 : pax.BirthDate;
 
+            // WSDL alphabetical order: BirthDate, CitizenNo, DestinationAddress, Email, FirstName,
+            // FrequentFlayerNo, Gender, HesCode, Id, IfContact, LastName, Nationality, PassportCountry,
+            // PassportNo, PassportValidDate, PaxReferences, Phone, SecondaryPhoneNumber, SequenceNo,
+            // TempTag, Type, WheelChairServiceType
             passengersXml.Append($@"
             <trev2:T_Passenger>
               <trev2:BirthDate>{birthDate}</trev2:BirthDate>
               <trev2:CitizenNo>{pax.CitizenNo ?? "00000000000"}</trev2:CitizenNo>
+              <trev2:DestinationAddress i:nil=""true""/>
               <trev2:Email>{(isContact ? request.Contact.Email : "")}</trev2:Email>
               <trev2:FirstName>{pax.FirstName}</trev2:FirstName>
+              <trev2:FrequentFlayerNo i:nil=""true""/>
               <trev2:Gender>{pax.Gender}</trev2:Gender>
+              <trev2:HesCode i:nil=""true""/>
               <trev2:Id>00000000-0000-0000-0000-000000000000</trev2:Id>
               <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
               <trev2:LastName>{pax.LastName}</trev2:LastName>
               <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
               <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
               <trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>
+              <trev2:PassportValidDate i:nil=""true""/>
               <trev2:PaxReferences>
                 <trev2:T_ForwardPaxReference>
                   <trev2:ProductId>{request.ProductId}</trev2:ProductId>
@@ -1261,6 +1269,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 </trev2:T_ForwardPaxReference>
               </trev2:PaxReferences>
               <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
+              <trev2:SecondaryPhoneNumber i:nil=""true""/>
               <trev2:SequenceNo>{i}</trev2:SequenceNo>
               <trev2:TempTag>{Guid.NewGuid()}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
@@ -1268,6 +1277,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             </trev2:T_Passenger>");
         }
 
+        // WSDL IO_UpdatePassengersForm order: IsContactRefused, KvkkConfirmation,
+        // ModifiedPassengers, NewPassengers, ProductIds
         return $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
@@ -1284,6 +1295,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev1:Form>
+            <trev1:IsContactRefused i:nil=""true""/>
+            <trev1:KvkkConfirmation>false</trev1:KvkkConfirmation>
             <trev1:ModifiedPassengers i:nil=""true""/>
             <trev1:NewPassengers>{passengersXml}
             </trev1:NewPassengers>
