@@ -1228,12 +1228,12 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 <trev3:T_Passenger>
                    <trev3:BirthDate>{birthDateFormatted}</trev3:BirthDate>
                    <trev3:CitizenNo>{pax.CitizenNo}</trev3:CitizenNo>
-                   <trev3:DestinationAddress/>
+                   <trev3:DestinationAddress i:nil=""true""/>
                    <trev3:Email>{(isContact ? request.Contact.Email : "")}</trev3:Email>
                    <trev3:FirstName>{pax.FirstName}</trev3:FirstName>
-                   <trev3:FrequentFlayerNo/>
+                   <trev3:FrequentFlayerNo i:nil=""true""/>
                    <trev3:Gender>{pax.Gender}</trev3:Gender>
-                   <trev3:HesCode/>
+                   <trev3:HesCode i:nil=""true""/>
                    <trev3:Id>00000000-0000-0000-0000-000000000000</trev3:Id>
                    <trev3:IfContact>{isContact.ToString().ToLower()}</trev3:IfContact>
                    <trev3:LastName>{pax.LastName}</trev3:LastName>
@@ -1242,18 +1242,18 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                    <trev3:PassportNo>{pax.PassportNo}</trev3:PassportNo>
                    {passportValidDateXml}
                    <trev3:PaxReferences>
-                     <trev3:T_ForwardPaxReference>
-                        <trev3:ProductId>{request.ProductId}</trev3:ProductId>
-                        <trev3:ProductItemId>00000000-0000-0000-0000-000000000000</trev3:ProductItemId>
-                     </trev3:T_ForwardPaxReference>
-                  </trev3:PaxReferences>
-                  <trev3:Phone>{(isContact ? request.Contact.Phone : "")}</trev3:Phone>
-                  <trev3:SecondaryPhoneNumber/>
-                  <trev3:SequenceNo>{pax.SequenceNo}</trev3:SequenceNo>
-                  <trev3:TempTag/>
-                  <trev3:Type>{pax.PaxType}</trev3:Type>
-                  <trev3:WheelChairServiceType>0</trev3:WheelChairServiceType>
-               </trev3:T_Passenger>");
+                      <trev3:T_ForwardPaxReference>
+                         <trev3:ProductId>{request.ProductId}</trev3:ProductId>
+                         <trev3:ProductItemId>00000000-0000-0000-0000-000000000000</trev3:ProductItemId>
+                      </trev3:T_ForwardPaxReference>
+                   </trev3:PaxReferences>
+                   <trev3:Phone>{(isContact ? request.Contact.Phone : "")}</trev3:Phone>
+                   <trev3:SecondaryPhoneNumber i:nil=""true""/>
+                   <trev3:SequenceNo>{pax.SequenceNo}</trev3:SequenceNo>
+                   <trev3:TempTag i:nil=""true""/>
+                   <trev3:Type>{pax.PaxType}</trev3:Type>
+                   <trev3:WheelChairServiceType>0</trev3:WheelChairServiceType>
+                </trev3:T_Passenger>");
         }
 
         return $@"<?xml version=""1.0"" encoding=""utf-8""?>
