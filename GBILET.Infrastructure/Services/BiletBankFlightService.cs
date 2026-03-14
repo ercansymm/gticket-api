@@ -1262,9 +1262,13 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             <trev1:ModifiedPassengers i:nil=""true""/>
             <trev1:NewPassengers>{passengersXml}
             </trev1:NewPassengers>
+            <trev1:ProductItemIds>
+               <arr:guid>{request.ProductItemId}</arr:guid>
+            </trev1:ProductItemIds>
             <trev1:ProductIds>
                <arr:guid>{request.ProductId}</arr:guid>
             </trev1:ProductIds>
+            <trev1:ShoppingFileId>{request.ShoppingFileId}</trev1:ShoppingFileId>
          </trev1:Form>
       </tem:request>
    </tem:UpdatePassengers>
