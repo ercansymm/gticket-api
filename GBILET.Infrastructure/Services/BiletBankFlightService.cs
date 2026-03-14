@@ -100,6 +100,8 @@ public class BiletBankFlightService : IFlightService
         }
 
         var response = await AllocateAsync(sessionId, sessionToken, request);
+        response.SessionId = sessionId;
+        response.SessionToken = sessionToken;
         return response;
     }
 
@@ -111,7 +113,7 @@ public class BiletBankFlightService : IFlightService
 
     private async Task<LoginResponse> LoginAsync()
     {
-        var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+        var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authentication.IO"">
@@ -329,7 +331,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
                </trev2:PreferedAirlines>";
         }
 
-        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
@@ -1217,11 +1219,11 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var isContact = pax.SequenceNo == 1;
             var birthDateFormatted = pax.BirthDate.Contains('T')
                 ? pax.BirthDate
-                : $"{pax.BirthDate}T00:00:00.000+00:00";
+                : $"{pax.BirthDate}T00:00:00";
 
             var passportValidDateXml = string.IsNullOrEmpty(pax.PassportExpiry)
                 ? @"<trev3:PassportValidDate i:nil=""true""/>"
-                : $"<trev3:PassportValidDate>{pax.PassportExpiry}T00:00:00.000+00:00</trev3:PassportValidDate>";
+                : $"<trev3:PassportValidDate>{(pax.PassportExpiry.Contains('T') ? pax.PassportExpiry : $"{pax.PassportExpiry}T00:00:00")}</trev3:PassportValidDate>";
 
             passengersXml.Append($@"
                 <trev3:T_Passenger>
