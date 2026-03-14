@@ -1235,7 +1235,6 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         for (int i = 0; i < request.Passengers.Count; i++)
         {
             var pax = request.Passengers[i];
-            var sequenceNo = i + 1;
             var isContact = i == 0;
 
             var birthDate = pax.BirthDate.Contains('T')
@@ -1243,24 +1242,24 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 : pax.BirthDate;
 
             passengersXml.Append($@"
-                <trev2:T_Passenger>
-                   <trev2:BirthDate>{birthDate}</trev2:BirthDate>
-                   <trev2:CitizenNo>{pax.CitizenNo ?? "00000000000"}</trev2:CitizenNo>
-                   <trev2:Email>{(isContact ? request.Contact.Email : "")}</trev2:Email>
-                   <trev2:FirstName>{pax.FirstName}</trev2:FirstName>
-                   <trev2:Gender>{pax.Gender}</trev2:Gender>
-                   <trev2:Id>00000000-0000-0000-0000-000000000000</trev2:Id>
-                   <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
-                   <trev2:LastName>{pax.LastName}</trev2:LastName>
-                   <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
-                   <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
-                   <trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>
-                   <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
-                   <trev2:SequenceNo>{sequenceNo}</trev2:SequenceNo>
-                   <trev2:TempTag>{Guid.NewGuid()}</trev2:TempTag>
-                   <trev2:Type>{pax.PaxType}</trev2:Type>
-                   <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
-                </trev2:T_Passenger>");
+            <trev2:T_Passenger>
+              <trev2:BirthDate>{birthDate}</trev2:BirthDate>
+              <trev2:CitizenNo>{pax.CitizenNo ?? "00000000000"}</trev2:CitizenNo>
+              <trev2:Email>{(isContact ? request.Contact.Email : "")}</trev2:Email>
+              <trev2:FirstName>{pax.FirstName}</trev2:FirstName>
+              <trev2:Gender>{pax.Gender}</trev2:Gender>
+              <trev2:Id>00000000-0000-0000-0000-000000000000</trev2:Id>
+              <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
+              <trev2:LastName>{pax.LastName}</trev2:LastName>
+              <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
+              <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
+              <trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>
+              <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
+              <trev2:SequenceNo>{i}</trev2:SequenceNo>
+              <trev2:TempTag>{Guid.NewGuid()}</trev2:TempTag>
+              <trev2:Type>{pax.PaxType}</trev2:Type>
+              <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
+            </trev2:T_Passenger>");
         }
 
         return $@"<?xml version=""1.0"" encoding=""utf-8""?>
@@ -1279,13 +1278,12 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev1:Form>
-            <trev1:ModifiedPassengers>{passengersXml}
-            </trev1:ModifiedPassengers>
-            <trev1:NewPassengers i:nil=""true""/>
+            <trev1:ModifiedPassengers i:nil=""true""/>
+            <trev1:NewPassengers>{passengersXml}
+            </trev1:NewPassengers>
             <trev1:ProductIds>
                <arr:guid>{request.ProductId}</arr:guid>
             </trev1:ProductIds>
-            <trev1:ShoppingFileId>{request.ShoppingFileId}</trev1:ShoppingFileId>
          </trev1:Form>
       </tem:request>
    </tem:UpdatePassengers>
