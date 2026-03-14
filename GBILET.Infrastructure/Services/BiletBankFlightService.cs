@@ -1143,7 +1143,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
                         return new ServiceReference1.T_Passenger
                         {
-                            BirthDate = birthDate,
+                            BirthDate = birthDate + "T00:00:00",
                             CitizenNo = pax.CitizenNo ?? "00000000000",
                             Email = isContact ? request.Contact.Email : "",
                             FirstName = pax.FirstName,
