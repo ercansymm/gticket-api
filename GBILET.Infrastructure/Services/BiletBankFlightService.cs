@@ -1177,7 +1177,13 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var serializer = new System.Runtime.Serialization.DataContractSerializer(typeof(ServiceReference1.IO_UpdatePassengersRequest));
             using var ms = new System.IO.MemoryStream();
             serializer.WriteObject(ms, wcfRequest);
-            var requestBodyXml = Encoding.UTF8.GetString(ms.ToArray());
+            var fullXml = Encoding.UTF8.GetString(ms.ToArray());
+
+            // Root element tag'ini kaldir, sadece icerigi (child elements) al
+            // Sunucu <request> altindaki elementleri dogrudan bekliyor, root wrapper namespace uyumsuzlugu yaratiyor
+            var xDoc = XDocument.Parse(fullXml);
+            var innerElements = xDoc.Root!.Elements();
+            var requestBodyXml = string.Concat(innerElements.Select(e => e.ToString()));
 
             // SOAP envelope'a sar
             var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
