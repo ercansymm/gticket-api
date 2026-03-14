@@ -32,7 +32,7 @@ public class GTicketDbContext : DbContext
             e.HasKey(b => b.Id);
             e.HasIndex(b => b.PNR);
             e.HasIndex(b => b.Status);
-            e.HasOne(b => b.User).WithMany().HasForeignKey(b => b.UserId);
+            e.HasOne(b => b.User).WithMany().HasForeignKey(b => b.UserId).IsRequired(false);
             e.HasMany(b => b.Passengers).WithOne(p => p.Booking).HasForeignKey(p => p.BookingId);
             e.HasMany(b => b.FlightSegments).WithOne(s => s.Booking).HasForeignKey(s => s.BookingId);
             e.HasMany(b => b.Payments).WithOne(p => p.Booking).HasForeignKey(p => p.BookingId);

@@ -40,6 +40,28 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GTicketDbContext>();
     db.Database.EnsureCreated();
+
+    // Mevcut DB'de UserId NOT NULL constraint'ini nullable yap
+    try
+    {
+        var dbProviderName = builder.Configuration.GetValue<string>("DbProvider");
+        if (dbProviderName == "PostgreSQL")
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE "Bookings" ALTER COLUMN "UserId" DROP NOT NULL;
+                """);
+        }
+        else
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE Bookings ALTER COLUMN UserId uniqueidentifier NULL;
+                """);
+        }
+    }
+    catch
+    {
+        // Constraint zaten nullable ise veya tablo yoksa hatayi yut
+    }
 }
 
 app.UseSwagger();

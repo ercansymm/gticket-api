@@ -9,7 +9,7 @@ namespace GBILET.Core.Entities;
 public class Booking
 {
     public Guid Id { get; set; }
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
     public Guid? BiletBankFileId { get; set; }
     public string? PNR { get; set; }
     public string Status { get; set; } = "Created";
@@ -20,7 +20,7 @@ public class Booking
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
-    public User User { get; set; }
+    public User? User { get; set; }
     public List<Passenger> Passengers { get; set; } = new();
     public List<FlightSegment> FlightSegments { get; set; } = new();
     public List<Payment> Payments { get; set; } = new();
