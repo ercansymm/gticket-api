@@ -1189,7 +1189,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
             // WCF Client ile dogrudan cagir — SOAP XML'i WCF kendisi olusturur
             var result = await client.UpdatePassengersAsync(wcfRequest);
-            await client.CloseAsync();
+      
 
             if (result.HasError)
             {
