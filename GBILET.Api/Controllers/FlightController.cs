@@ -98,6 +98,9 @@ public class FlightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.ProductId))
                 return BadRequest(new { error = "ProductId alani zorunludur (Allocate response'taki T_AirBooking.ProductId)." });
 
+            if (string.IsNullOrWhiteSpace(request.ProductItemId))
+                return BadRequest(new { error = "ProductItemId alani zorunludur (Allocate response'taki BookingItems[].ProductItemId)." });
+
             if (request.Passengers == null || request.Passengers.Count == 0)
                 return BadRequest(new { error = "En az bir yolcu bilgisi girilmelidir." });
 

@@ -1237,6 +1237,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                    <trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>
                    <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
                    <trev2:SequenceNo>{pax.SequenceNo}</trev2:SequenceNo>
+                   <trev2:TempTag>{Guid.NewGuid()}</trev2:TempTag>
                    <trev2:Type>{pax.PaxType}</trev2:Type>
                    <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
                 </trev2:T_Passenger>");

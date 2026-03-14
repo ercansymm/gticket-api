@@ -23,6 +23,11 @@ public class BookingRequest
     public string ProductId { get; set; } = null!;
 
     /// <summary>
+    /// Allocate response'tan alinan ProductItemId (T_AirBookingItem.ProductItemId)
+    /// </summary>
+    public string ProductItemId { get; set; } = null!;
+
+    /// <summary>
     /// Yolcu listesi (ADT, CHD, INF sýrasýna göre)
     /// </summary>
     public List<BookingPassenger> Passengers { get; set; } = [];
