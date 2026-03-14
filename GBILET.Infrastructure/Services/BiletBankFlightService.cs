@@ -1235,7 +1235,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         for (int i = 0; i < request.Passengers.Count; i++)
         {
             var pax = request.Passengers[i];
-            var sequenceNo = i + 1; // API 1-tabanli SequenceNo kullaniyor (response'ta LocalSequenceNo=1)
+            var sequenceNo = i + 1;
             var isContact = i == 0;
 
             var birthDate = pax.BirthDate.Contains('T')
@@ -1279,9 +1279,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev1:Form>
-            <trev1:ModifiedPassengers i:nil=""true""/>
-            <trev1:NewPassengers>{passengersXml}
-            </trev1:NewPassengers>
+            <trev1:ModifiedPassengers>{passengersXml}
+            </trev1:ModifiedPassengers>
+            <trev1:NewPassengers i:nil=""true""/>
             <trev1:ProductIds>
                <arr:guid>{request.ProductId}</arr:guid>
             </trev1:ProductIds>
