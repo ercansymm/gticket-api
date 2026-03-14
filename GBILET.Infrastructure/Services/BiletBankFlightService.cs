@@ -1217,7 +1217,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var isContact = pax.SequenceNo == 1;
             var birthDateFormatted = pax.BirthDate.Contains('T')
                 ? pax.BirthDate
-                : $"{pax.BirthDate}T00:00:00";
+                : $"{pax.BirthDate}T00:00:00.000+00:00";
 
             passengersXml.Append($@"
                <trev3:T_Passenger>
