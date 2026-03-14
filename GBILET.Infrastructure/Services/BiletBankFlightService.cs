@@ -1113,16 +1113,20 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
 
     private async Task<BookingResponse> UpdatePassengersAsync(
-        string sessionId,
-        string sessionToken,
-        BookingRequest request)
+          string sessionId,
+          string sessionToken,
+          BookingRequest request)
     {
-        string debugXml = string.Empty;
-        string responseText = string.Empty;
+        string debugInfo = string.Empty;
 
         try
         {
-            // WCF generated client kullanarak dogru XML serialize ediyoruz
+            // WCF Client olustur
+            var binding = new System.ServiceModel.BasicHttpBinding(System.ServiceModel.BasicHttpSecurityMode.Transport);
+            binding.MaxReceivedMessageSize = 65536 * 10;
+            var endpoint = new System.ServiceModel.EndpointAddress("https://apitest.biletbank.com/TrevooWS.svc");
+            var client = new ServiceReference1.I_ShoppingClient(binding, endpoint);
+
             var wcfRequest = new ServiceReference1.IO_UpdatePassengersRequest
             {
                 AuthenticationHeader = new ServiceReference1.T_AuthenticationHeader
@@ -1143,7 +1147,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
                         return new ServiceReference1.T_Passenger
                         {
-                            BirthDate = birthDate + "T00:00:00",
+                            BirthDate = birthDate,
                             CitizenNo = pax.CitizenNo ?? "00000000000",
                             Email = isContact ? request.Contact.Email : "",
                             FirstName = pax.FirstName,
@@ -1155,7 +1159,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                             PassportCountry = pax.PassportCountry ?? pax.Nationality,
                             PassportNo = pax.PassportNo ?? "",
                             Phone = isContact ? request.Contact.Phone : "",
-                            SequenceNo = i +1,
+                            SequenceNo = i + 1,
                             TempTag = Guid.NewGuid().ToString(),
                             Type = pax.PaxType,
                             WheelChairServiceType = 0,
@@ -1173,70 +1177,37 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 }
             };
 
-            // DataContractSerializer ile serialize ederek debug XML olustur
-            var serializer = new System.Runtime.Serialization.DataContractSerializer(typeof(ServiceReference1.IO_UpdatePassengersRequest));
-            using var ms = new System.IO.MemoryStream();
-            serializer.WriteObject(ms, wcfRequest);
-            var fullXml = Encoding.UTF8.GetString(ms.ToArray());
-
-            // Root element tag'ini kaldir, sadece icerigi (child elements) al
-            // Sunucu <request> altindaki elementleri dogrudan bekliyor, root wrapper namespace uyumsuzlugu yaratiyor
-            var xDoc = XDocument.Parse(fullXml);
-            var innerElements = xDoc.Root!.Elements();
-            var requestBodyXml = string.Concat(innerElements.Select(e => e.ToString()));
-
-            // SOAP envelope'a sar
-            var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"">
-<soap:Body>
-   <UpdatePassengers xmlns=""http://tempuri.org/"">
-      <request>{requestBodyXml}</request>
-   </UpdatePassengers>
-</soap:Body>
-</soap:Envelope>";
-
-            debugXml = soapRequest;
-
-            _logger.LogInformation("[UpdatePassengers] SOAP Request:\n{SoapRequest}", soapRequest);
-
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/UpdatePassengers");
-
-            var response = await _httpClient.PostAsync(_proxyUrl, content);
-            responseText = await response.Content.ReadAsStringAsync();
-
-            _logger.LogInformation("[UpdatePassengers] HTTP Status: {StatusCode}", (int)response.StatusCode);
-            _logger.LogInformation("[UpdatePassengers] SOAP Response:\n{SoapResponse}", responseText);
-
-            if (!response.IsSuccessStatusCode)
+            debugInfo = System.Text.Json.JsonSerializer.Serialize(new
             {
-                return new BookingResponse
-                {
-                    HasError = true,
-                    ErrorMessage = $"UpdatePassengers HTTP {(int)response.StatusCode}: {responseText}",
-                    RawSoapResponse = responseText,
-                    RawSoapRequest = debugXml
-                };
-            }
+                SessionId = sessionId,
+                ProductId = request.ProductId,
+                ProductItemId = request.ProductItemId,
+                PassengerCount = request.Passengers.Count
+            });
 
-            var doc = XDocument.Parse(responseText);
-            var hasError = doc.GetValue("HasError");
-            if (hasError == "true")
+            _logger.LogInformation("[UpdatePassengers] WCF Client ile cagiriliyor. Debug: {Debug}", debugInfo);
+
+            // WCF Client ile dogrudan cagir — SOAP XML'i WCF kendisi olusturur
+            var result = await client.UpdatePassengersAsync(wcfRequest);
+            await client.CloseAsync();
+
+            if (result.HasError)
             {
-                var errorMsg = doc.GetValue("ErrorMessage")
-                    ?? doc.GetValue("DebugMessage")
-                    ?? doc.GetValue("Message")
-                    ?? doc.GetValue("ServiceError");
+                var errorMsg = result.ServiceError?.ErrorMessage
+                    ?? result.ServiceError?.DebugMessage
+                    ?? "Bilinmeyen hata";
+
+                _logger.LogWarning("[UpdatePassengers] Hata: {Error}", errorMsg);
                 return new BookingResponse
                 {
                     HasError = true,
                     ErrorMessage = errorMsg,
-                    RawSoapResponse = responseText,
-                    RawSoapRequest = debugXml
+                    RawSoapRequest = debugInfo
                 };
             }
 
-            return new BookingResponse { HasError = false, RawSoapResponse = responseText, RawSoapRequest = debugXml };
+            _logger.LogInformation("[UpdatePassengers] Basarili!");
+            return new BookingResponse { HasError = false, RawSoapRequest = debugInfo };
         }
         catch (Exception ex)
         {
@@ -1244,12 +1215,12 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             return new BookingResponse
             {
                 HasError = true,
-                ErrorMessage = $"UpdatePassengers exception: {ex.Message} | StackTrace: {ex.StackTrace}",
-                RawSoapResponse = responseText,
-                RawSoapRequest = debugXml
+                ErrorMessage = $"UpdatePassengers exception: {ex.Message}",
+                RawSoapRequest = debugInfo
             };
         }
     }
+    
 
     private async Task<BookingResponse> MakePrebookingAsync(
         string sessionId,
