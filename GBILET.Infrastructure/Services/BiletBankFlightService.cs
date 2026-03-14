@@ -1255,10 +1255,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
               <trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>
               <trev2:PaxReferences>
-                <trev2:ForwardPaxReference>
+                <trev2:T_ForwardPaxReference>
                   <trev2:ProductId>{request.ProductId}</trev2:ProductId>
                   <trev2:ProductItemId>{request.ProductItemId}</trev2:ProductItemId>
-                </trev2:ForwardPaxReference>
+                </trev2:T_ForwardPaxReference>
               </trev2:PaxReferences>
               <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
               <trev2:SequenceNo>{i}</trev2:SequenceNo>
