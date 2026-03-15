@@ -1279,6 +1279,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:PassportValidDate i:nil=""true""/>
               <trev2:PaxReferences>
                 <trev2:T_ForwardPaxReference>
+                  <trev2:PaxReferenceId>{pax.PaxReferenceId}</trev2:PaxReferenceId>
                   <trev2:ProductId>{request.ProductId}</trev2:ProductId>
                   <trev2:ProductItemId>{request.ProductItemId}</trev2:ProductItemId>
                 </trev2:T_ForwardPaxReference>

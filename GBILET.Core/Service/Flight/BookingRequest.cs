@@ -103,6 +103,12 @@ public class BookingPassenger
     /// UpdatePassengers SOAP cagrisi icin zorunludur.
     /// </summary>
     public string? TempTag { get; set; }
+
+    /// <summary>
+    /// Allocate response'taki T_AirBookingItem.PaxReference.PaxReferenceId degeri.
+    /// Her yolcunun hangi urun kalemine bagli oldugunu belirtir.
+    /// </summary>
+    public string? PaxReferenceId { get; set; }
 }
 
 /// <summary>
