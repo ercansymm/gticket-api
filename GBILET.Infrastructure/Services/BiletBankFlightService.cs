@@ -1133,66 +1133,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
         try
         {
-            // Yolcu XML'lerini olustur - SADECE dokumandaki alanlar
-            var passengersXml = new StringBuilder();
-            for (int i = 0; i < request.Passengers.Count; i++)
-            {
-                var pax = request.Passengers[i];
-                var birthDate = pax.BirthDate.Contains('T')
-                    ? pax.BirthDate.Split('T')[0]
-                    : pax.BirthDate;
-                var isContact = i == 0;
-                var paxId = Guid.NewGuid().ToString();
-
-                passengersXml.Append($@"
-            <trev2:T_Passenger>
-              <trev2:BirthDate>{birthDate}</trev2:BirthDate>
-              <trev2:CitizenNo>{pax.CitizenNo ?? "00000000000"}</trev2:CitizenNo>
-              <trev2:Email>{(isContact ? request.Contact.Email : "")}</trev2:Email>
-              <trev2:FirstName>{pax.FirstName}</trev2:FirstName>
-              <trev2:Gender>{pax.Gender}</trev2:Gender>
-              <trev2:Id>{paxId}</trev2:Id>
-              <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
-              <trev2:LastName>{pax.LastName}</trev2:LastName>
-              <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
-              <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
-              <trev2:PassportNo>{pax.PassportNo ?? ""}</trev2:PassportNo>
-              <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
-              <trev2:SequenceNo>{i + 1}</trev2:SequenceNo>
-              <trev2:TempTag>{paxId}</trev2:TempTag>
-              <trev2:Type>{pax.PaxType}</trev2:Type>
-              <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
-            </trev2:T_Passenger>");
-            }
-
-            var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
-               xmlns:tem=""http://tempuri.org/""
-               xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
-               xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-               xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Shopping""
-               xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays""
-               xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
-  <soap:Body>
-    <tem:UpdatePassengers>
-      <tem:request>
-        <trev:AuthenticationHeader>
-          <trev:SessionId>{sessionId}</trev:SessionId>
-          <trev:SessionToken>{sessionToken}</trev:SessionToken>
-        </trev:AuthenticationHeader>
-        <trev1:Form>
-          <trev1:ModifiedPassengers i:nil=""true""/>
-          <trev1:NewPassengers>{passengersXml}
-          </trev1:NewPassengers>
-          <trev1:ProductIds>
-            <arr:guid>{request.ProductId}</arr:guid>
-          </trev1:ProductIds>
-        </trev1:Form>
-      </tem:request>
-    </tem:UpdatePassengers>
-  </soap:Body>
-</soap:Envelope>";
-
+            var soapRequest = BuildUpdatePassengersSoapRequest(sessionId, sessionToken, request);
             debugXml = soapRequest;
             _logger.LogInformation("[UpdatePassengers] SOAP Request:\n{SoapRequest}", soapRequest);
 
