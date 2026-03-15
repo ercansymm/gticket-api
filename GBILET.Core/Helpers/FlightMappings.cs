@@ -2,6 +2,19 @@ namespace GBILET.Core.Helpers;
 
 public static class FlightMappings
 {
+    // Veritabanýndan yüklenen havayolu verileri (fallback olarak hard-coded dictionary kalýyor)
+    private static Dictionary<string, string> _dbAirlines = new(StringComparer.OrdinalIgnoreCase);
+    private static bool _airlinesLoadedFromDb;
+
+    /// <summary>
+    /// Uygulama baþlangýcýnda veritabanýndan yüklenen havayolu verilerini set eder.
+    /// </summary>
+    public static void LoadAirlinesFromDatabase(Dictionary<string, string> airlines)
+    {
+        _dbAirlines = new Dictionary<string, string>(airlines, StringComparer.OrdinalIgnoreCase);
+        _airlinesLoadedFromDb = true;
+    }
+
     public static readonly Dictionary<string, string> Airlines = new(StringComparer.OrdinalIgnoreCase)
     {
         ["VF"] = "AJet",
@@ -236,6 +249,12 @@ public static class FlightMappings
     public static string GetAirlineName(string? code)
     {
         if (string.IsNullOrEmpty(code)) return "";
+
+        // Önce veritabanýndan yüklenen veriye bak
+        if (_airlinesLoadedFromDb && _dbAirlines.TryGetValue(code, out var dbName))
+            return dbName;
+
+        // Fallback: hard-coded dictionary
         return Airlines.TryGetValue(code, out var name) ? name : code;
     }
 

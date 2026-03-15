@@ -1,5 +1,6 @@
 using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
+using GBILET.Core.Helpers;
 using GBILET.Infrastructure.Data;
 using GBILET.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,7 @@ else
 }
 
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IAirlineRepository, AirlineRepository>();
 
 builder.Services.AddMemoryCache();
 
@@ -54,6 +56,18 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GTicketDbContext>();
     db.Database.EnsureCreated();
+
+    // Havayolu verilerini veritabanýndan yükle
+    try
+    {
+        var airlineRepo = scope.ServiceProvider.GetRequiredService<IAirlineRepository>();
+        var airlines = await airlineRepo.GetAirlineDictionaryAsync();
+        FlightMappings.LoadAirlinesFromDatabase(airlines);
+    }
+    catch
+    {
+        // Veritabanýndan yüklenemezse hard-coded fallback kullanýlýr
+    }
 
     // Mevcut DB'de UserId NOT NULL constraint'ini nullable yap
 

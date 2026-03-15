@@ -24,5 +24,12 @@ public class Passenger
     public string? Phone { get; set; }
     public string? HesCode { get; set; }
 
+    // BiletBank referansları
+    public string? TempTag { get; set; }
+    public string? PaxReferenceId { get; set; }
+
+    // Bilet bilgileri
+    public string? TicketNumber { get; set; }
+
     public Booking Booking { get; set; }
 }

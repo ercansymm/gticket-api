@@ -19,6 +19,13 @@ public class BookingLog
     public bool IsSuccess { get; set; } = false;
     public string? ErrorMessage { get; set; }
     public string? IpAddress { get; set; }
+
+    // Performans takibi
+    public int? ResponseTimeMs { get; set; }
+
+    // HTTP detayları
+    public int? HttpStatusCode { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Booking? Booking { get; set; }

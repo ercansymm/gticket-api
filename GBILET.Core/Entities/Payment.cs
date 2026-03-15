@@ -18,5 +18,21 @@ public class Payment
     public string Status { get; set; } = "Pending";
     public DateTime TransactionDate { get; set; } = DateTime.UtcNow;
 
+    // Kart bilgileri (maskelenmiş)
+    public string? CardLastFour { get; set; }
+    public string? CardHolder { get; set; }
+
+    // 3D Secure
+    public bool Is3DSecure { get; set; } = false;
+    public string? RedirectUrl { get; set; }
+
+    // Ödeme sağlayıcı
+    public string? ProviderTransactionId { get; set; }
+    public string? ErrorMessage { get; set; }
+
+    // İade
+    public DateTime? RefundedAt { get; set; }
+    public decimal? RefundAmount { get; set; }
+
     public Booking Booking { get; set; }
 }

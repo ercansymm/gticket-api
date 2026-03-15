@@ -19,6 +19,42 @@ public class Booking
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    // Benzersiz işlem takip ID'si
+    public string? TransactionId { get; set; }
+
+    // Hızlı erişim için kalkış/varış
+    public string? Origin { get; set; }
+    public string? Destination { get; set; }
+
+    // Havayolu
+    public string? AirlineCode { get; set; }
+    public string? FlightNumber { get; set; }
+
+    // BiletBank ek referanslar
+    public string? SessionId { get; set; }
+    public string? SessionToken { get; set; }
+    public string? ProductItemId { get; set; }
+
+    // Komisyon
+    public decimal ServiceFee { get; set; } = 0;
+    public decimal OurCommission { get; set; } = 0;
+
+    // Adım zaman damgaları
+    public DateTime? AllocatedAt { get; set; }
+    public DateTime? BookedAt { get; set; }
+    public DateTime? PaidAt { get; set; }
+    public DateTime? TicketedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+
+    // Hata takibi
+    public string? LastError { get; set; }
+    public int RetryCount { get; set; } = 0;
+
+    // Yolcu sayıları
+    public int AdultCount { get; set; } = 1;
+    public int ChildCount { get; set; } = 0;
+    public int InfantCount { get; set; } = 0;
+
     // Navigation properties
     public User? User { get; set; }
     public List<Passenger> Passengers { get; set; } = new();
