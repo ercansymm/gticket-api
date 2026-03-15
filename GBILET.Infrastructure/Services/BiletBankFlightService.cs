@@ -1254,7 +1254,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 ? pax.BirthDate.Split('T')[0]
                 : pax.BirthDate;
 
-            var paxId = Guid.NewGuid().ToString();
+            // Allocate response'tan gelen TempTag varsa onu kullan, yoksa yeni GUID uret
+            var tempTag = !string.IsNullOrEmpty(pax.TempTag) ? pax.TempTag : Guid.NewGuid().ToString();
+            var paxId = tempTag;
 
             // WSDL alphabetical order: BirthDate, CitizenNo, DestinationAddress, Email, FirstName,
             // FrequentFlayerNo, Gender, HesCode, Id, IfContact, LastName, Nationality, PassportCountry,
@@ -1287,7 +1289,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
               <trev2:SecondaryPhoneNumber i:nil=""true""/>
               <trev2:SequenceNo>{i + 1}</trev2:SequenceNo>
-              <trev2:TempTag>{paxId}</trev2:TempTag>
+              <trev2:TempTag>{tempTag}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
               <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
             </trev2:T_Passenger>");
