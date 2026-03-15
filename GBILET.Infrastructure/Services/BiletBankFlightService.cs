@@ -1,6 +1,8 @@
 ﻿using GBILET.Core.Models.Flight;
+using GBILET.Core.Models.Flight;
 using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Extensions;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text; 
@@ -13,6 +15,7 @@ public class BiletBankFlightService : IFlightService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<BiletBankFlightService> _logger;
+    private readonly IMemoryCache _cache;
     private readonly string _clientName;
     private readonly string _password;
     private readonly string _username;
@@ -21,10 +24,12 @@ public class BiletBankFlightService : IFlightService
     public BiletBankFlightService(
         HttpClient httpClient,
         IConfiguration configuration,
-        ILogger<BiletBankFlightService> logger)
+        ILogger<BiletBankFlightService> logger,
+        IMemoryCache cache)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _cache = cache;
 
         _clientName = configuration["BiletBank:ClientName"]!;
         _password = configuration["BiletBank:Password"]!;
@@ -49,6 +54,36 @@ public class BiletBankFlightService : IFlightService
         response.SessionId = loginResult.SessionId;
         response.SessionToken = loginResult.SessionToken;
         return response;
+    }
+
+    public async Task<FlightSearchResponseDto> SearchFlightDtoAsync(SearchRequest request)
+    {
+        var rawResponse = await SearchFlightAsync(request);
+        var dto = FlightSearchMapper.MapToDto(rawResponse, _logger);
+
+        // Session bilgilerini cache'le (sonraki adımlarda allocate/booking için)
+        if (!rawResponse.HasError && !string.IsNullOrEmpty(rawResponse.SearchId))
+        {
+            var cacheKey = $"flight_session_{rawResponse.SearchId}";
+            var sessionData = new FlightSessionData
+            {
+                SearchId = rawResponse.SearchId,
+                ShoppingFileId = rawResponse.ShoppingFileId,
+                SessionId = rawResponse.SessionId,
+                SessionToken = rawResponse.SessionToken
+            };
+
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(20));
+
+            _cache.Set(cacheKey, sessionData, cacheOptions);
+
+            _logger.LogInformation(
+                "[SearchFlightDto] Session cached: SearchId={SearchId}, SessionId={SessionId}",
+                rawResponse.SearchId, rawResponse.SessionId);
+        }
+
+        return dto;
     }
 
     public async Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request)

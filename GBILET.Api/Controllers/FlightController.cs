@@ -2,7 +2,9 @@
 using GBILET.Core.Models.Flight;
 using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
+using GBILET.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace GBILET.Api.Controllers;
 
@@ -12,11 +14,13 @@ public class FlightController : ControllerBase
 {
     private readonly IFlightService _flightService;
     private readonly IBookingRepository _bookingRepository;
+    private readonly IMemoryCache _cache;
 
-    public FlightController(IFlightService flightService, IBookingRepository bookingRepository)
+    public FlightController(IFlightService flightService, IBookingRepository bookingRepository, IMemoryCache cache)
     {
         _flightService = flightService;
         _bookingRepository = bookingRepository;
+        _cache = cache;
     }
 
     [HttpPost("search")]
@@ -39,6 +43,30 @@ public class FlightController : ControllerBase
             if (request.InfantCount > request.AdultCount)
                 return BadRequest(new { error = "Bebek sayısı yetişkin sayısını geçemez." });
 
+            var result = await _flightService.SearchFlightDtoAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
+    [HttpPost("search/raw")]
+    public async Task<IActionResult> SearchRaw([FromBody] SearchRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Origin) || string.IsNullOrWhiteSpace(request.Destination))
+                return BadRequest(new { error = "Origin ve Destination alanları zorunludur." });
+
+            if (request.DepartureDate == default)
+                return BadRequest(new { error = "DepartureDate alanı zorunludur." });
+
             var result = await _flightService.SearchFlightAsync(request);
             return Ok(result);
         }
@@ -50,6 +78,87 @@ public class FlightController : ControllerBase
                 inner = ex.InnerException?.Message
             });
         }
+    }
+
+    [HttpPost("search/sort")]
+    public IActionResult Sort([FromBody] FlightSortRequest request)
+    {
+        try
+        {
+            if (request.Flights == null || request.Flights.Count == 0)
+                return BadRequest(new { error = "Sıralanacak uçuş listesi boş." });
+
+            var sorted = request.SortBy?.ToLowerInvariant() switch
+            {
+                "price" or "cheapest" => request.Flights.OrderBy(f => f.TotalFare).ToList(),
+                "earliest" => request.Flights.OrderBy(f => f.DepartureTime).ToList(),
+                "latest" => request.Flights.OrderByDescending(f => f.DepartureTime).ToList(),
+                "shortest" or "duration" => request.Flights
+                    .OrderBy(f => f.DurationHours * 60 + f.DurationMinutes).ToList(),
+                _ => request.Flights
+            };
+
+            return Ok(sorted);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("search/filter")]
+    public IActionResult Filter([FromBody] FlightFilterRequest request)
+    {
+        try
+        {
+            if (request.Flights == null || request.Flights.Count == 0)
+                return BadRequest(new { error = "Filtrelenecek uçuş listesi boş." });
+
+            var filtered = request.Flights.AsEnumerable();
+
+            if (request.DirectOnly == true)
+                filtered = filtered.Where(f => f.IsDirect);
+
+            if (request.RefundableOnly == true)
+                filtered = filtered.Where(f => f.IsRefundable);
+
+            if (request.MinPrice.HasValue)
+                filtered = filtered.Where(f => f.TotalFare >= request.MinPrice.Value);
+
+            if (request.MaxPrice.HasValue)
+                filtered = filtered.Where(f => f.TotalFare <= request.MaxPrice.Value);
+
+            if (request.AirlineCodes is { Count: > 0 })
+                filtered = filtered.Where(f => request.AirlineCodes.Contains(f.AirlineCode, StringComparer.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(request.DepartureTimeFrom) && !string.IsNullOrEmpty(request.DepartureTimeTo))
+            {
+                filtered = filtered.Where(f =>
+                    string.Compare(f.DepartureTime, request.DepartureTimeFrom, StringComparison.Ordinal) >= 0 &&
+                    string.Compare(f.DepartureTime, request.DepartureTimeTo, StringComparison.Ordinal) <= 0);
+            }
+
+            var result = filtered.ToList();
+            var filterOptions = FlightSearchMapper.BuildFilterOptions(result);
+
+            return Ok(new { flights = result, filterOptions });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("session/{searchId}")]
+    public IActionResult GetSession(string searchId)
+    {
+        var cacheKey = $"flight_session_{searchId}";
+        if (_cache.TryGetValue<FlightSessionData>(cacheKey, out var sessionData) && sessionData != null)
+        {
+            return Ok(sessionData);
+        }
+
+        return NotFound(new { error = "Session bulunamadı veya süresi dolmuş." });
     }
 
     [HttpPost("allocate")]

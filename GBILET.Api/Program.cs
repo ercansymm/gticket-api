@@ -38,6 +38,8 @@ else
 
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 
+builder.Services.AddMemoryCache();
+
 builder.Services
     .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
     {
