@@ -1142,6 +1142,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     ? pax.BirthDate.Split('T')[0]
                     : pax.BirthDate;
                 var isContact = i == 0;
+                var paxId = Guid.NewGuid().ToString();
 
                 passengersXml.Append($@"
             <trev2:T_Passenger>
@@ -1150,15 +1151,15 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:Email>{(isContact ? request.Contact.Email : "")}</trev2:Email>
               <trev2:FirstName>{pax.FirstName}</trev2:FirstName>
               <trev2:Gender>{pax.Gender}</trev2:Gender>
-              <trev2:Id>{Guid.NewGuid()}</trev2:Id>
+              <trev2:Id>{paxId}</trev2:Id>
               <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
               <trev2:LastName>{pax.LastName}</trev2:LastName>
               <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
               <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
               <trev2:PassportNo>{pax.PassportNo ?? ""}</trev2:PassportNo>
               <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
-              <trev2:SequenceNo>{i}</trev2:SequenceNo>
-              <trev2:TempTag>{pax.TempTag}</trev2:TempTag>
+              <trev2:SequenceNo>{i + 1}</trev2:SequenceNo>
+              <trev2:TempTag>{paxId}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
               <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
             </trev2:T_Passenger>");
@@ -1312,6 +1313,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 ? pax.BirthDate.Split('T')[0]
                 : pax.BirthDate;
 
+            var paxId = Guid.NewGuid().ToString();
+
             // WSDL alphabetical order: BirthDate, CitizenNo, DestinationAddress, Email, FirstName,
             // FrequentFlayerNo, Gender, HesCode, Id, IfContact, LastName, Nationality, PassportCountry,
             // PassportNo, PassportValidDate, PaxReferences, Phone, SecondaryPhoneNumber, SequenceNo,
@@ -1326,7 +1329,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:FrequentFlayerNo i:nil=""true""/>
               <trev2:Gender>{pax.Gender}</trev2:Gender>
               <trev2:HesCode i:nil=""true""/>
-              <trev2:Id>00000000-0000-0000-0000-000000000000</trev2:Id>
+              <trev2:Id>{paxId}</trev2:Id>
               <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
               <trev2:LastName>{pax.LastName}</trev2:LastName>
               <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
@@ -1341,8 +1344,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               </trev2:PaxReferences>
               <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
               <trev2:SecondaryPhoneNumber i:nil=""true""/>
-              <trev2:SequenceNo>{i}</trev2:SequenceNo>
-              <trev2:TempTag>{Guid.NewGuid()}</trev2:TempTag>
+              <trev2:SequenceNo>{i + 1}</trev2:SequenceNo>
+              <trev2:TempTag>{paxId}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
               <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
             </trev2:T_Passenger>");
