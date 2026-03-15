@@ -1,5 +1,4 @@
 ﻿using GBILET.Core.Models.Flight;
-using GBILET.Core.Models.Flight;
 using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Extensions;
 using Microsoft.Extensions.Caching.Memory;
