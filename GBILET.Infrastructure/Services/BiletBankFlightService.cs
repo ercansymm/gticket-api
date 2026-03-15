@@ -883,6 +883,21 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             });
         }
 
+        // T_Passenger bulunamadiysa BookingItems'tan yolcu bilgilerini turet
+        if (response.Passengers.Count == 0)
+        {
+            var allBookingItems = response.AirBookings.SelectMany(ab => ab.BookingItems).ToList();
+            foreach (var item in allBookingItems)
+            {
+                response.Passengers.Add(new AllocatePassenger
+                {
+                    TempTag = Guid.NewGuid().ToString(),
+                    SequenceNo = item.PaxSequenceNo,
+                    Type = item.PaxType ?? "ADT"
+                });
+            }
+        }
+
         // LastAllocatedProductIds
         var productIds = doc.GetDescendants("LastAllocatedProductIds").FirstOrDefault();
         if (productIds != null)
@@ -1277,7 +1292,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:LastName>{pax.LastName}</trev2:LastName>
               <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
               <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
-              <trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>
+              {(string.IsNullOrEmpty(pax.PassportNo) ? "<trev2:PassportNo i:nil=\"true\"/>" : $"<trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>")}
               <trev2:PassportValidDate i:nil=""true""/>
               <trev2:PaxReferences>
                 <trev2:T_ForwardPaxReference>
