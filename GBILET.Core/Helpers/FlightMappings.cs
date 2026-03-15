@@ -1,13 +1,13 @@
-namespace GBILET.Core.Helpers;
+ï»¿namespace GBILET.Core.Helpers;
 
 public static class FlightMappings
 {
-    // Veritabanýndan yüklenen havayolu verileri (fallback olarak hard-coded dictionary kalýyor)
+    // VeritabanÄ±ndan yÃ¼klenen havayolu verileri (fallback olarak hard-coded dictionary kalÄ±yor)
     private static Dictionary<string, string> _dbAirlines = new(StringComparer.OrdinalIgnoreCase);
     private static bool _airlinesLoadedFromDb;
 
     /// <summary>
-    /// Uygulama baþlangýcýnda veritabanýndan yüklenen havayolu verilerini set eder.
+    /// Uygulama baÅŸlangÄ±cÄ±nda veritabanÄ±ndan yÃ¼klenen havayolu verilerini set eder.
     /// </summary>
     public static void LoadAirlinesFromDatabase(Dictionary<string, string> airlines)
     {
@@ -18,7 +18,7 @@ public static class FlightMappings
     public static readonly Dictionary<string, string> Airlines = new(StringComparer.OrdinalIgnoreCase)
     {
         ["VF"] = "AJet",
-        ["TK"] = "Türk Hava Yollarý",
+        ["TK"] = "TÃ¼rk Hava YollarÄ±",
         ["PC"] = "Pegasus",
         ["XQ"] = "SunExpress",
         ["AJ"] = "AnadoluJet",
@@ -63,11 +63,11 @@ public static class FlightMappings
 
     public static readonly Dictionary<string, string> Airports = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Türkiye
-        ["SAW"] = "Ýstanbul Sabiha Gökçen",
-        ["IST"] = "Ýstanbul Havalimaný",
-        ["ESB"] = "Ankara Esenboða",
-        ["ADB"] = "Ýzmir Adnan Menderes",
+        // TÃ¼rkiye
+        ["SAW"] = "Ä°stanbul Sabiha GÃ¶kÃ§en",
+        ["IST"] = "Ä°stanbul HavalimanÄ±",
+        ["ESB"] = "Ankara EsenboÄŸa",
+        ["ADB"] = "Ä°zmir Adnan Menderes",
         ["AYT"] = "Antalya",
         ["TZX"] = "Trabzon",
         ["BJV"] = "Bodrum Milas",
@@ -75,45 +75,45 @@ public static class FlightMappings
         ["GZT"] = "Gaziantep",
         ["VAN"] = "Van Ferit Melen",
         ["ERZ"] = "Erzurum",
-        ["EZS"] = "Elazýð",
-        ["DIY"] = "Diyarbakýr",
-        ["SZF"] = "Samsun Çarþamba",
+        ["EZS"] = "ElazÄ±ÄŸ",
+        ["DIY"] = "DiyarbakÄ±r",
+        ["SZF"] = "Samsun Ã‡arÅŸamba",
         ["KYA"] = "Konya",
         ["ASR"] = "Kayseri Erkilet",
         ["HTY"] = "Hatay",
-        ["MLX"] = "Malatya Erhaç",
-        ["GNY"] = "Þanlýurfa GAP",
+        ["MLX"] = "Malatya ErhaÃ§",
+        ["GNY"] = "ÅžanlÄ±urfa GAP",
         ["MZH"] = "Amasya Merzifon",
         ["NOP"] = "Sinop",
-        ["KCM"] = "Kahramanmaraþ",
+        ["KCM"] = "KahramanmaraÅŸ",
         ["OGU"] = "Ordu-Giresun",
-        ["CKZ"] = "Çanakkale",
-        ["BZC"] = "Balýkesir Koca Seyit",
-        ["DNZ"] = "Denizli Çardak",
-        ["ISE"] = "Isparta Süleyman Demirel",
+        ["CKZ"] = "Ã‡anakkale",
+        ["BZC"] = "BalÄ±kesir Koca Seyit",
+        ["DNZ"] = "Denizli Ã‡ardak",
+        ["ISE"] = "Isparta SÃ¼leyman Demirel",
         ["MQM"] = "Mardin",
-        ["NKT"] = "Þýrnak Þerafettin Elçi",
+        ["NKT"] = "ÅžÄ±rnak Åžerafettin ElÃ§i",
         ["SXZ"] = "Siirt",
-        ["YKO"] = "Hakkari Yüksekova Selahaddin Eyyubi",
+        ["YKO"] = "Hakkari YÃ¼ksekova Selahaddin Eyyubi",
         ["BAL"] = "Batman",
-        ["IGD"] = "Iðdýr Þehit Bülent Aydýn",
+        ["IGD"] = "IÄŸdÄ±r Åžehit BÃ¼lent AydÄ±n",
         ["KSY"] = "Kars Harakani",
-        ["MSR"] = "Muþ",
-        ["BGG"] = "Bingöl",
+        ["MSR"] = "MuÅŸ",
+        ["BGG"] = "BingÃ¶l",
         ["TJK"] = "Tokat",
-        ["ONQ"] = "Zonguldak Çaycuma",
-        ["AOE"] = "Eskiþehir Hasan Polatkan",
-        ["USQ"] = "Uþak",
+        ["ONQ"] = "Zonguldak Ã‡aycuma",
+        ["AOE"] = "EskiÅŸehir Hasan Polatkan",
+        ["USQ"] = "UÅŸak",
         ["AFY"] = "Afyon",
-        ["EDO"] = "Balýkesir Merkez",
-        ["TEQ"] = "Tekirdað Çorlu",
-        ["BDM"] = "Bandýrma",
-        ["KZR"] = "Zafer (Kütahya-Afyon-Uþak)",
-        ["ADA"] = "Adana Þakirpaþa",
-        ["NAV"] = "Nevþehir Kapadokya",
+        ["EDO"] = "BalÄ±kesir Merkez",
+        ["TEQ"] = "TekirdaÄŸ Ã‡orlu",
+        ["BDM"] = "BandÄ±rma",
+        ["KZR"] = "Zafer (KÃ¼tahya-Afyon-UÅŸak)",
+        ["ADA"] = "Adana ÅžakirpaÅŸa",
+        ["NAV"] = "NevÅŸehir Kapadokya",
         ["GZP"] = "Rize-Artvin",
 
-        // Popüler yurtdýþý
+        // PopÃ¼ler yurtdÄ±ÅŸÄ±
         ["LHR"] = "Londra Heathrow",
         ["CDG"] = "Paris Charles de Gaulle",
         ["FRA"] = "Frankfurt",
@@ -121,24 +121,24 @@ public static class FlightMappings
         ["FCO"] = "Roma Fiumicino",
         ["BCN"] = "Barcelona El Prat",
         ["MAD"] = "Madrid Barajas",
-        ["MUC"] = "Münih",
-        ["ZRH"] = "Zürih",
+        ["MUC"] = "MÃ¼nih",
+        ["ZRH"] = "ZÃ¼rih",
         ["VIE"] = "Viyana",
-        ["BRU"] = "Brüksel",
+        ["BRU"] = "BrÃ¼ksel",
         ["CPH"] = "Kopenhag",
         ["OSL"] = "Oslo",
         ["ARN"] = "Stockholm Arlanda",
         ["HEL"] = "Helsinki",
         ["ATH"] = "Atina",
-        ["WAW"] = "Varþova",
+        ["WAW"] = "VarÅŸova",
         ["PRG"] = "Prag",
-        ["BUD"] = "Budapeþte",
-        ["OTP"] = "Bükreþ",
+        ["BUD"] = "BudapeÅŸte",
+        ["OTP"] = "BÃ¼kreÅŸ",
         ["SOF"] = "Sofya",
         ["BEG"] = "Belgrad",
         ["ZAG"] = "Zagreb",
         ["TIA"] = "Tiran",
-        ["SKP"] = "Üsküp",
+        ["SKP"] = "ÃœskÃ¼p",
         ["SJJ"] = "Saraybosna",
         ["DXB"] = "Dubai",
         ["DOH"] = "Doha",
@@ -162,7 +162,7 @@ public static class FlightMappings
         ["IAD"] = "Washington Dulles",
         ["YYZ"] = "Toronto Pearson",
         ["PEK"] = "Pekin",
-        ["PVG"] = "Þanghay Pudong",
+        ["PVG"] = "Åžanghay Pudong",
         ["HND"] = "Tokyo Haneda",
         ["NRT"] = "Tokyo Narita",
         ["ICN"] = "Seul Incheon",
@@ -174,7 +174,7 @@ public static class FlightMappings
         ["SYD"] = "Sidney",
         ["MEL"] = "Melbourne",
         ["GIG"] = "Rio de Janeiro",
-        ["GRU"] = "São Paulo",
+        ["GRU"] = "SÃ£o Paulo",
         ["ADD"] = "Addis Ababa",
         ["JNB"] = "Johannesburg",
         ["NBO"] = "Nairobi",
@@ -184,7 +184,7 @@ public static class FlightMappings
         ["SVO"] = "Moskova Sheremetyevo",
         ["DME"] = "Moskova Domodedovo",
         ["LED"] = "St. Petersburg",
-        ["DUS"] = "Düsseldorf",
+        ["DUS"] = "DÃ¼sseldorf",
         ["HAM"] = "Hamburg",
         ["TXL"] = "Berlin Tegel",
         ["BER"] = "Berlin Brandenburg",
@@ -218,30 +218,30 @@ public static class FlightMappings
         // Esnek
         ["M"] = "Ekonomi Esnek",
         ["S"] = "Ekonomi Esnek",
-        // Ýndirimli
-        ["B"] = "Ekonomi Ýndirimli",
-        ["H"] = "Ekonomi Ýndirimli",
-        ["K"] = "Ekonomi Ýndirimli",
-        ["L"] = "Ekonomi Ýndirimli",
-        ["Q"] = "Ekonomi Ýndirimli",
-        ["T"] = "Ekonomi Ýndirimli",
-        ["E"] = "Ekonomi Ýndirimli",
-        ["N"] = "Ekonomi Ýndirimli",
-        ["V"] = "Ekonomi Ýndirimli",
-        ["W"] = "Ekonomi Ýndirimli",
-        ["G"] = "Ekonomi Ýndirimli",
-        ["O"] = "Ekonomi Ýndirimli",
-        ["X"] = "Ekonomi Ýndirimli",
+        // Ä°ndirimli
+        ["B"] = "Ekonomi Ä°ndirimli",
+        ["H"] = "Ekonomi Ä°ndirimli",
+        ["K"] = "Ekonomi Ä°ndirimli",
+        ["L"] = "Ekonomi Ä°ndirimli",
+        ["Q"] = "Ekonomi Ä°ndirimli",
+        ["T"] = "Ekonomi Ä°ndirimli",
+        ["E"] = "Ekonomi Ä°ndirimli",
+        ["N"] = "Ekonomi Ä°ndirimli",
+        ["V"] = "Ekonomi Ä°ndirimli",
+        ["W"] = "Ekonomi Ä°ndirimli",
+        ["G"] = "Ekonomi Ä°ndirimli",
+        ["O"] = "Ekonomi Ä°ndirimli",
+        ["X"] = "Ekonomi Ä°ndirimli",
         // Business
         ["C"] = "Business",
         ["D"] = "Business",
         ["J"] = "Business",
         ["Z"] = "Business",
-        ["I"] = "Business Ýndirimli",
+        ["I"] = "Business Ä°ndirimli",
         // First
         ["F"] = "First Class",
         ["A"] = "First Class",
-        ["P"] = "First Class Ýndirimli",
+        ["P"] = "First Class Ä°ndirimli",
         // Premium Economy
         ["R"] = "Premium Ekonomi"
     };
@@ -250,7 +250,7 @@ public static class FlightMappings
     {
         if (string.IsNullOrEmpty(code)) return "";
 
-        // Önce veritabanýndan yüklenen veriye bak
+        // Ã–nce veritabanÄ±ndan yÃ¼klenen veriye bak
         if (_airlinesLoadedFromDb && _dbAirlines.TryGetValue(code, out var dbName))
             return dbName;
 

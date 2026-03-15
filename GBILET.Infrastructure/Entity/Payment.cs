@@ -1,4 +1,4 @@
-namespace GBILET.Infrastructure.Entity;
+ï»¿namespace GBILET.Infrastructure.Entity;
 
 public class Payment
 {
@@ -12,7 +12,7 @@ public class Payment
     public string Status { get; set; } = "Pending";
     public DateTime TransactionDate { get; set; } = DateTime.UtcNow;
 
-    // Kart bilgileri (maskelenmiş)
+    // Kart bilgileri (maskelenmiÅŸ)
     public string? CardLastFour { get; set; }
     public string? CardHolder { get; set; }
 
@@ -20,11 +20,11 @@ public class Payment
     public bool Is3DSecure { get; set; } = false;
     public string? RedirectUrl { get; set; }
 
-    // Ödeme sağlayıcı
+    // Ã–deme saÄŸlayÄ±cÄ±
     public string? ProviderTransactionId { get; set; }
     public string? ErrorMessage { get; set; }
 
-    // İade
+    // Ä°ade
     public DateTime? RefundedAt { get; set; }
     public decimal? RefundAmount { get; set; }
 

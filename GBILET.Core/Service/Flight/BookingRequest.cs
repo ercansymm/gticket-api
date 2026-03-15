@@ -1,4 +1,4 @@
-namespace GBILET.Core.Service.Flight;
+ï»¿namespace GBILET.Core.Service.Flight;
 
 public class BookingRequest
 {
@@ -28,7 +28,7 @@ public class BookingRequest
     public string ProductItemId { get; set; } = null!;
 
     /// <summary>
-    /// Yolcu listesi (ADT, CHD, INF sýrasýna göre)
+    /// Yolcu listesi (ADT, CHD, INF sÄ±rasÄ±na gÃ¶re)
     /// </summary>
     public List<BookingPassenger> Passengers { get; set; } = [];
 

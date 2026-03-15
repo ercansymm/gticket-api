@@ -1,4 +1,4 @@
-using GBILET.Core.Service;
+ï»¿using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
 using GBILET.Core.Helpers;
 using GBILET.Infrastructure.Data;
@@ -64,7 +64,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<GTicketDbContext>();
     db.Database.EnsureCreated();
 
-    // Havayolu verilerini veritabanýndan yükle
+    // Havayolu verilerini veritabanÄ±ndan yÃ¼kle
     try
     {
         var airlineRepo = scope.ServiceProvider.GetRequiredService<IAirlineRepository>();
@@ -73,7 +73,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch
     {
-        // Veritabanýndan yüklenemezse hard-coded fallback kullanýlýr
+        // VeritabanÄ±ndan yÃ¼klenemezse hard-coded fallback kullanÄ±lÄ±r
     }
 
     // Mevcut DB'de UserId NOT NULL constraint'ini nullable yap

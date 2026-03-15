@@ -1,4 +1,4 @@
-namespace GBILET.Core.Models.Flight;
+ï»¿namespace GBILET.Core.Models.Flight;
 
 public class FlightSearchResponseDto
 {
@@ -23,7 +23,7 @@ public class FlightResultDto
     public string? FlightNumber { get; set; }
     public string? BookingProvider { get; set; }
 
-    // Güzergah
+    // GÃ¼zergah
     public string? OriginCode { get; set; }
     public string? OriginName { get; set; }
     public string? DestinationCode { get; set; }
@@ -38,7 +38,7 @@ public class FlightResultDto
     public int DurationMinutes { get; set; }
     public string? DurationFormatted { get; set; }
 
-    // Uçak
+    // UÃ§ak
     public string? Equipment { get; set; }
 
     // Fiyat
@@ -54,7 +54,7 @@ public class FlightResultDto
     public bool IsReservable { get; set; }
     public string? RefundableText { get; set; }
 
-    // Sýnýf
+    // SÄ±nÄ±f
     public string? FareType { get; set; }
     public string? BookingClass { get; set; }
     public string? BookingClassName { get; set; }
@@ -104,7 +104,7 @@ public class FlightSegmentDto
     public string? FareType { get; set; }
     public string? FareTypeName { get; set; }
 
-    // Aktarma bekleme süresi (ilk segment hariç)
+    // Aktarma bekleme sÃ¼resi (ilk segment hariÃ§)
     public int? LayoverMinutes { get; set; }
     public string? LayoverFormatted { get; set; }
 }

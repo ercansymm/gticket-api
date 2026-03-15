@@ -1,4 +1,4 @@
-namespace GBILET.Infrastructure.Entity;
+﻿namespace GBILET.Infrastructure.Entity;
 
 public class Passenger
 {
@@ -18,7 +18,7 @@ public class Passenger
     public string? Phone { get; set; }
     public string? HesCode { get; set; }
 
-    // BiletBank referanslar�
+    // BiletBank referansları
     public string? TempTag { get; set; }
     public string? PaxReferenceId { get; set; }
 

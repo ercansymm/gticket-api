@@ -1,4 +1,4 @@
-using GBILET.Core.Service;
+ï»¿using GBILET.Core.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GBILET.Api.Controllers;
@@ -43,7 +43,7 @@ public class AirportController : ControllerBase
     {
         var airport = await _airportRepository.GetByIataCodeAsync(iataCode);
         if (airport == null)
-            return NotFound(new { error = $"'{iataCode}' kodlu havalimaný bulunamadý." });
+            return NotFound(new { error = $"'{iataCode}' kodlu havalimanÄ± bulunamadÄ±." });
 
         return Ok(airport);
     }

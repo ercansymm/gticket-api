@@ -1,4 +1,4 @@
-using GBILET.Core.Helpers;
+ï»¿using GBILET.Core.Helpers;
 using GBILET.Core.Models.Flight;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
@@ -40,14 +40,14 @@ public static class FlightSearchMapper
         var firstSegment = segments.FirstOrDefault();
         var lastSegment = segments.LastOrDefault();
 
-        // Segment DTO'larýný oluþtur
+        // Segment DTO'larÄ±nÄ± oluÅŸtur
         var segmentDtos = new List<FlightSegmentDto>();
         for (int i = 0; i < segments.Count; i++)
         {
             var seg = segments[i];
             var segDto = MapSegment(seg);
 
-            // Aktarma bekleme süresi (ilk segment hariç)
+            // Aktarma bekleme sÃ¼resi (ilk segment hariÃ§)
             if (i > 0)
             {
                 var prevSeg = segments[i - 1];
@@ -62,7 +62,7 @@ public static class FlightSearchMapper
             segmentDtos.Add(segDto);
         }
 
-        // Toplam süre: ilk segmentin kalkýþýndan son segmentin varýþýna
+        // Toplam sÃ¼re: ilk segmentin kalkÄ±ÅŸÄ±ndan son segmentin varÄ±ÅŸÄ±na
         var (totalHours, totalMinutes, totalDurationMinutes) = CalculateTotalDuration(firstSegment, lastSegment);
 
         // Aktarma bilgisi
@@ -74,7 +74,7 @@ public static class FlightSearchMapper
         string airlineCode = firstSegment?.MarketingAirline ?? "";
         string airlineName = FlightMappings.GetAirlineName(airlineCode);
 
-        // Güzergah (OD — ilk origin, son destination)
+        // GÃ¼zergah (OD â€” ilk origin, son destination)
         string originCode = firstSegment?.OriginCode ?? "";
         string destinationCode = lastSegment?.DestinationCode ?? "";
 
@@ -82,7 +82,7 @@ public static class FlightSearchMapper
         int availableSeats = option.SegmentAvailabilities.FirstOrDefault()?.AvailableSeats ?? 0;
         string availableSeatsText = availableSeats <= 3
             ? $"Son {availableSeats} koltuk!"
-            : $"{availableSeats} koltuk kaldý";
+            : $"{availableSeats} koltuk kaldÄ±";
 
         // Komisyon
         var firstPaxFare = option.PassengerFareItems.FirstOrDefault();
@@ -90,7 +90,7 @@ public static class FlightSearchMapper
         decimal commMax = firstPaxFare?.CustomerCommission?.Maximum ?? 0;
         decimal commVal = firstPaxFare?.CustomerCommission?.Value ?? 0;
 
-        // Fiyat doðrulama (loglama)
+        // Fiyat doÄŸrulama (loglama)
         ValidatePricing(option, logger);
 
         var result = new FlightResultDto
@@ -105,7 +105,7 @@ public static class FlightSearchMapper
             FlightNumber = firstSegment?.FlightNumber,
             BookingProvider = option.BookingProvider,
 
-            // Güzergah
+            // GÃ¼zergah
             OriginCode = originCode,
             OriginName = FlightMappings.GetAirportName(originCode),
             DestinationCode = destinationCode,
@@ -120,7 +120,7 @@ public static class FlightSearchMapper
             DurationMinutes = totalMinutes,
             DurationFormatted = FormatDuration(totalDurationMinutes),
 
-            // Uçak
+            // UÃ§ak
             Equipment = firstSegment?.Equipment,
 
             // Fiyat
@@ -134,9 +134,9 @@ public static class FlightSearchMapper
             // Durum
             IsRefundable = option.IsRefundable,
             IsReservable = option.IsReservable,
-            RefundableText = option.IsRefundable ? "Ýade Edilebilir" : "Ýade Edilemez",
+            RefundableText = option.IsRefundable ? "Ä°ade Edilebilir" : "Ä°ade Edilemez",
 
-            // Sýnýf
+            // SÄ±nÄ±f
             FareType = FlightMappings.GetFareTypeName(firstSegment?.FareType),
             BookingClass = firstSegment?.BookingClass,
             BookingClassName = FlightMappings.GetBookingClassName(firstSegment?.BookingClass),
@@ -197,7 +197,7 @@ public static class FlightSearchMapper
 
     private static (int hours, int minutes, int totalMinutes) CalculateSegmentDuration(FlightSegment seg)
     {
-        // Duration zaten parse edilmiþ (dakika cinsinden) ise kullan
+        // Duration zaten parse edilmiÅŸ (dakika cinsinden) ise kullan
         if (seg.Duration > 0)
         {
             int h = seg.Duration / 60;
@@ -229,7 +229,7 @@ public static class FlightSearchMapper
             DateTime.TryParse($"{arrivalDay}T{arrivalTime}", CultureInfo.InvariantCulture, DateTimeStyles.None, out var arr))
         {
             var duration = arr - dep;
-            // Gece yarýsý geçiþinde negatif çýkabilir
+            // Gece yarÄ±sÄ± geÃ§iÅŸinde negatif Ã§Ä±kabilir
             if (duration.TotalMinutes < 0)
                 duration = duration.Add(TimeSpan.FromDays(1));
 
@@ -261,15 +261,15 @@ public static class FlightSearchMapper
     private static string BuildStopText(List<FlightSegment> segments, int stopCount, bool isDirect)
     {
         if (isDirect)
-            return "Aktarmasýz";
+            return "AktarmasÄ±z";
 
-        // Aktarma þehirlerini bul (ara segment'lerin varýþ noktalarý = aktarma noktalarý)
+        // Aktarma ÅŸehirlerini bul (ara segment'lerin varÄ±ÅŸ noktalarÄ± = aktarma noktalarÄ±)
         var stopCities = new List<string>();
         for (int i = 0; i < segments.Count - 1; i++)
         {
             var destCode = segments[i].DestinationCode;
             var cityName = FlightMappings.GetAirportName(destCode);
-            // Eðer havalimaný adý bulunamadýysa kodu göster
+            // EÄŸer havalimanÄ± adÄ± bulunamadÄ±ysa kodu gÃ¶ster
             stopCities.Add(cityName != destCode ? cityName : destCode ?? "");
         }
 
@@ -294,8 +294,8 @@ public static class FlightSearchMapper
         {
             "TRY" => "TL",
             "USD" => "$",
-            "EUR" => "€",
-            "GBP" => "£",
+            "EUR" => "â‚¬",
+            "GBP" => "Â£",
             _ => currency
         };
         return $"{formatted} {currencySymbol}";

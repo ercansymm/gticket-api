@@ -1,4 +1,4 @@
-namespace GBILET.Infrastructure.Entity;
+﻿namespace GBILET.Infrastructure.Entity;
 
 public class BookingLog
 {
@@ -17,7 +17,7 @@ public class BookingLog
     // Performans takibi
     public int? ResponseTimeMs { get; set; }
 
-    // HTTP detaylar�
+    // HTTP detayları
     public int? HttpStatusCode { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

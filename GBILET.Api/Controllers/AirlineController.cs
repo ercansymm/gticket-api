@@ -1,4 +1,4 @@
-using GBILET.Core.Entities;
+﻿using GBILET.Core.Entities;
 using GBILET.Core.Helpers;
 using GBILET.Core.Service;
 using Microsoft.AspNetCore.Mvc;
@@ -28,7 +28,7 @@ public class AirlineController : ControllerBase
     {
         var airline = await _airlineRepository.GetByCodeAsync(code);
         if (airline == null)
-            return NotFound(new { error = $"'{code}' kodlu havayolu bulunamad�." });
+            return NotFound(new { error = $"'{code}' kodlu havayolu bulunamadı." });
 
         return Ok(airline);
     }
