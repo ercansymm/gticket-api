@@ -1,37 +1,32 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace GBILET.Infrastructure.Entity;
 
 public class Payment
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
+    public Guid Id { get; set; }
     public Guid BookingId { get; set; }
-
-    [MaxLength(50)]
-    public string? PaymentMethod { get; set; } // CreditCard, BankTransfer, Cash
-
-    [Column(TypeName = "decimal(18,2)")]
     public decimal Amount { get; set; }
+    public string Currency { get; set; } = "TRY";
+    public string? CardHolderName { get; set; }
+    public string? MaskedCardNumber { get; set; }
+    public int InstallmentCount { get; set; } = 1;
+    public string Status { get; set; } = "Pending";
+    public DateTime TransactionDate { get; set; } = DateTime.UtcNow;
 
-    [MaxLength(5)]
-    public string? Currency { get; set; } // TRY, USD, EUR
+    // Kart bilgileri (maskelenmiþ)
+    public string? CardLastFour { get; set; }
+    public string? CardHolder { get; set; }
 
-    [MaxLength(50)]
-    public string? Status { get; set; } // Pending, Completed, Failed, Refunded
+    // 3D Secure
+    public bool Is3DSecure { get; set; } = false;
+    public string? RedirectUrl { get; set; }
 
-    [MaxLength(100)]
-    public string? TransactionId { get; set; }
+    // Ödeme saðlayýcý
+    public string? ProviderTransactionId { get; set; }
+    public string? ErrorMessage { get; set; }
 
-    [MaxLength(500)]
-    public string? Description { get; set; }
+    // Ýade
+    public DateTime? RefundedAt { get; set; }
+    public decimal? RefundAmount { get; set; }
 
-    public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    // Navigation Properties
-    [ForeignKey("BookingId")]
-    public virtual Booking Booking { get; set; } = null!;
+    public Booking Booking { get; set; }
 }

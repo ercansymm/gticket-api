@@ -1,49 +1,60 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
 namespace GBILET.Infrastructure.Entity;
 
 public class Booking
 {
-    [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
-    public Guid? UserId { get; set; } // Nullable - anonim rezervasyonlar için
-
-    [MaxLength(10)]
+    public Guid Id { get; set; }
+    public Guid? UserId { get; set; }
+    public Guid? BiletBankFileId { get; set; }
     public string? PNR { get; set; }
-
-    [MaxLength(50)]
-    public string? Status { get; set; } // Allocated, Reserved, Ticketed, Cancelled
-
-    public Guid? ShoppingFileId { get; set; }
-    public Guid? ProductId { get; set; }
-
-    [MaxLength(10)]
-    public string? FlightType { get; set; } // OW, RT
-
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal TotalFare { get; set; }
-
-    [MaxLength(5)]
-    public string? Currency { get; set; } // TRY, USD, EUR
-
-    [MaxLength(500)]
-    public string? ContactEmail { get; set; }
-
-    [MaxLength(20)]
-    public string? ContactPhone { get; set; }
-
+    public string Status { get; set; } = "Created";
+    public decimal? GrandTotal { get; set; }
+    public string? Currency { get; set; } = "TRY";
+    public bool IsFinalized { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation Properties
-    [ForeignKey("UserId")]
-    public virtual User? User { get; set; }
-    public virtual ICollection<Passenger> Passengers { get; set; } = new List<Passenger>();
-    public virtual ICollection<FlightSegment> FlightSegments { get; set; } = new List<FlightSegment>();
-    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
-    public virtual FareDetails? FareDetails { get; set; }
-    public virtual BillingInfo? BillingInfo { get; set; }
-    public virtual ICollection<BookingLog> BookingLogs { get; set; } = new List<BookingLog>();
+    // Benzersiz işlem takip ID'si
+    public string? TransactionId { get; set; }
+
+    // Hızlı erişim için kalkış/varış
+    public string? Origin { get; set; }
+    public string? Destination { get; set; }
+
+    // Havayolu
+    public string? AirlineCode { get; set; }
+    public string? FlightNumber { get; set; }
+
+    // BiletBank ek referanslar
+    public string? SessionId { get; set; }
+    public string? SessionToken { get; set; }
+    public string? ProductItemId { get; set; }
+
+    // Komisyon
+    public decimal ServiceFee { get; set; } = 0;
+    public decimal OurCommission { get; set; } = 0;
+
+    // Adım zaman damgaları
+    public DateTime? AllocatedAt { get; set; }
+    public DateTime? BookedAt { get; set; }
+    public DateTime? PaidAt { get; set; }
+    public DateTime? TicketedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+
+    // Hata takibi
+    public string? LastError { get; set; }
+    public int RetryCount { get; set; } = 0;
+
+    // Yolcu sayıları
+    public int AdultCount { get; set; } = 1;
+    public int ChildCount { get; set; } = 0;
+    public int InfantCount { get; set; } = 0;
+
+    // Navigation properties
+    public User? User { get; set; }
+    public List<Passenger> Passengers { get; set; } = new();
+    public List<FlightSegment> FlightSegments { get; set; } = new();
+    public List<Payment> Payments { get; set; } = new();
+    public List<FareDetail> FareDetails { get; set; } = new();
+    public BillingInfo? BillingInfo { get; set; }
+    public List<BookingLog> BookingLogs { get; set; } = new();
 }
