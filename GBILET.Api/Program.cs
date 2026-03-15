@@ -54,6 +54,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
 
     // Mevcut DB'de UserId NOT NULL constraint'ini nullable yap
+
     try
     {
         var dbProviderName = builder.Configuration.GetValue<string>("DbProvider");

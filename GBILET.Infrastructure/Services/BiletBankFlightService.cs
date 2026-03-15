@@ -481,6 +481,10 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 
     private static FlightSegment ParseSegment(XElement seg)
     {
+        var rawDepartureTime = seg.GetValue("DepartureTime");
+        var rawArrivalTime = seg.GetValue("ArrivalTime");
+        var rawDuration = seg.GetValue("Duration");
+
         return new FlightSegment
         {
             SegmentId = seg.GetValue("SegmentId"),
@@ -489,10 +493,10 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             DestinationCode = seg.GetValue("DestinationCode"),
             OD_OriginCode = seg.GetValue("OD_OriginCode"),
             OD_DestinationCode = seg.GetValue("OD_DestinationCode"),
-            DepartureDay = seg.GetValue("DepartureDay"),
-            DepartureTime = seg.GetValue("DepartureTime"),
-            ArrivalDay = seg.GetValue("ArrivalDay"),
-            ArrivalTime = seg.GetValue("ArrivalTime"),
+            DepartureDay = FormatDay(seg.GetValue("DepartureDay")),
+            DepartureTime = FormatIso8601DurationAsTime(rawDepartureTime),
+            ArrivalDay = FormatDay(seg.GetValue("ArrivalDay")),
+            ArrivalTime = FormatIso8601DurationAsTime(rawArrivalTime),
             MarketingAirline = seg.GetValue("MarketingAirline"),
             OperatingAirline = seg.GetValue("OperatingAirline"),
             FlightNumber = seg.GetValue("FlightNumber"),
@@ -500,9 +504,72 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             FareBasis = seg.GetValue("FareBasis"),
             FareType = seg.GetValue("FareType"),
             Equipment = seg.GetValue("Equipment"),
-            Duration = seg.GetIntValue("Duration"),
+            Duration = ParseIso8601DurationToMinutes(rawDuration),
             SelectedBrandedFareItemId = seg.GetValue("SelectedBrandedFareItemId")
         };
+    }
+
+    private static (int hours, int minutes) ParseIso8601Duration(string? value)
+    {
+        if (string.IsNullOrEmpty(value) || !value.StartsWith("PT"))
+            return (0, 0);
+
+        int hours = 0, minutes = 0;
+        var span = value.AsSpan(2); // skip "PT"
+        var numberStart = -1;
+
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (char.IsDigit(span[i]))
+            {
+                if (numberStart == -1) numberStart = i;
+            }
+            else
+            {
+                if (numberStart == -1) continue;
+                var num = int.Parse(span[numberStart..i]);
+                if (span[i] == 'H') hours = num;
+                else if (span[i] == 'M') minutes = num;
+                numberStart = -1;
+            }
+        }
+
+        return (hours, minutes);
+    }
+
+    private static int ParseIso8601DurationToMinutes(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return 0;
+
+        if (int.TryParse(value, out var plainMinutes))
+            return plainMinutes;
+
+        var (h, m) = ParseIso8601Duration(value);
+        return h * 60 + m;
+    }
+
+    private static string? FormatIso8601DurationAsTime(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+
+        if (!value.StartsWith("PT"))
+            return value;
+
+        var (h, m) = ParseIso8601Duration(value);
+        return $"{h:D2}:{m:D2}";
+    }
+
+    private static string? FormatDay(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+
+        if (DateTime.TryParse(value, out var dt))
+            return dt.ToString("yyyy-MM-dd");
+
+        return value;
     }
 
     private static PassengerFareItem ParsePassengerFareItem(XElement pfi)
@@ -1295,11 +1362,12 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               {(string.IsNullOrEmpty(pax.PassportNo) ? "<trev2:PassportNo i:nil=\"true\"/>" : $"<trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>")}
               <trev2:PassportValidDate i:nil=""true""/>
               <trev2:PaxReferences>
-                <trev2:T_ForwardPaxReference>
+                <trev:T_ForwardPaxReference>
                   <trev:PaxReferenceId>{pax.PaxReferenceId}</trev:PaxReferenceId>
                   <trev:ProductId>{request.ProductId}</trev:ProductId>
                   <trev:ProductItemId>{request.ProductItemId}</trev:ProductItemId>
-                </trev2:T_ForwardPaxReference>
+                  <trev:SequenceNo>{i + 1}</trev:SequenceNo>
+                </trev:T_ForwardPaxReference>
               </trev2:PaxReferences>
               <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
               <trev2:SecondaryPhoneNumber i:nil=""true""/>
