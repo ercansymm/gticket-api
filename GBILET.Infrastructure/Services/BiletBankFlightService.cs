@@ -872,6 +872,17 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             }
         }
 
+        // Passengers (T_Passenger) — TempTag degerlerini parse et
+        foreach (var pax in doc.GetDescendants("T_Passenger"))
+        {
+            response.Passengers.Add(new AllocatePassenger
+            {
+                TempTag = pax.GetValue("TempTag"),
+                SequenceNo = pax.GetIntValue("SequenceNo"),
+                Type = pax.GetValue("Type")
+            });
+        }
+
         // LastAllocatedProductIds
         var productIds = doc.GetDescendants("LastAllocatedProductIds").FirstOrDefault();
         if (productIds != null)
@@ -1147,7 +1158,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:PassportNo>{pax.PassportNo ?? ""}</trev2:PassportNo>
               <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
               <trev2:SequenceNo>{i}</trev2:SequenceNo>
-              <trev2:TempTag>{Guid.NewGuid()}</trev2:TempTag>
+              <trev2:TempTag>{pax.TempTag}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
               <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
             </trev2:T_Passenger>");

@@ -97,6 +97,12 @@ public class BookingPassenger
     /// Uyruk kodu (ornegin: TR)
     /// </summary>
     public string Nationality { get; set; } = "TR";
+
+    /// <summary>
+    /// Allocate response'taki T_Passenger.TempTag degeri.
+    /// UpdatePassengers SOAP cagrisi icin zorunludur.
+    /// </summary>
+    public string? TempTag { get; set; }
 }
 
 /// <summary>

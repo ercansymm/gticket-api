@@ -63,6 +63,12 @@ public class AllocateResponse
     public bool IsRunningAccountPaymentEnabled { get; set; }
 
     /// <summary>
+    /// Allocate response'taki yolcu bilgileri (T_Passenger).
+    /// Booking asamasinda TempTag degerlerini kullanmak icin gereklidir.
+    /// </summary>
+    public List<AllocatePassenger> Passengers { get; set; } = [];
+
+    /// <summary>
     /// Oturum bilgileri (sonraki cagrilarda kullanilabilir)
     /// </summary>
     public string? SessionId { get; set; }
@@ -233,4 +239,11 @@ public class AllocatePriceItem
     public string? ProductId { get; set; }
     public string? ProductType { get; set; }
     public decimal Total { get; set; }
+}
+
+public class AllocatePassenger
+{
+    public string? TempTag { get; set; }
+    public int SequenceNo { get; set; }
+    public string? Type { get; set; }
 }
