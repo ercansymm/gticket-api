@@ -5,6 +5,10 @@ using GBILET.Infrastructure.Data;
 using GBILET.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
+// PostgreSQL: DateTimeKind.Unspecified olan DateTime değerlerini kabul et
+// Npgsql 6+ varsayılan olarak sadece UTC kabul eder; bu switch legacy davranışı etkinleştirir
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()
