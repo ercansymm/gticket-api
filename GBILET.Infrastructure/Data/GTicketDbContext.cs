@@ -185,6 +185,18 @@ public class GTicketDbContext : DbContext
             e.Property(pr => pr.Currency).HasMaxLength(3);
         });
 
+        // FareDetail decimal configuration
+        modelBuilder.Entity<FareDetail>(e =>
+        {
+            e.Property(f => f.BaseFare).HasColumnType("decimal(18,2)");
+            e.Property(f => f.TotalTax).HasColumnType("decimal(18,2)");
+            e.Property(f => f.ServiceFee).HasColumnType("decimal(18,2)");
+            e.Property(f => f.GrandTotal).HasColumnType("decimal(18,2)");
+            e.Property(f => f.BiletBankCost).HasColumnType("decimal(18,2)");
+            e.Property(f => f.OurPrice).HasColumnType("decimal(18,2)");
+            e.Property(f => f.Profit).HasColumnType("decimal(18,2)");
+        });
+
         // Booking new fields configuration
         modelBuilder.Entity<Booking>(e2 =>
         {
@@ -203,6 +215,7 @@ public class GTicketDbContext : DbContext
         // Payment new fields configuration
         modelBuilder.Entity<Payment>(e2 =>
         {
+            e2.Property(p => p.Amount).HasColumnType("decimal(18,2)");
             e2.Property(p => p.CardLastFour).HasMaxLength(4);
             e2.Property(p => p.CardHolder).HasMaxLength(100);
             e2.Property(p => p.ProviderTransactionId).HasMaxLength(100);

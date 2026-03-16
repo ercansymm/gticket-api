@@ -246,4 +246,10 @@ public class AllocatePassenger
     public string? TempTag { get; set; }
     public int SequenceNo { get; set; }
     public string? Type { get; set; }
+
+    /// <summary>
+    /// T_AirBookingItem > PaxReference > PaxReferenceId
+    /// TempTag ile eslesme icin kullanilir.
+    /// </summary>
+    public string? PaxReferenceId { get; set; }
 }

@@ -974,13 +974,23 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         }
 
         // Passengers (T_Passenger) — TempTag degerlerini parse et
+        // BookingItems'tan PaxReferenceId'leri topla (TempTag ile eslestirmek icin)
+        var paxRefLookup = response.AirBookings
+            .SelectMany(ab => ab.BookingItems)
+            .Where(bi => bi.PaxReferenceId != null)
+            .ToDictionary(bi => bi.PaxSequenceNo, bi => bi.PaxReferenceId);
+
         foreach (var pax in doc.GetDescendants("T_Passenger"))
         {
+            var seqNo = pax.GetIntValue("SequenceNo");
+            paxRefLookup.TryGetValue(seqNo, out var paxRefId);
+
             response.Passengers.Add(new AllocatePassenger
             {
                 TempTag = pax.GetValue("TempTag"),
-                SequenceNo = pax.GetIntValue("SequenceNo"),
-                Type = pax.GetValue("Type")
+                SequenceNo = seqNo,
+                Type = pax.GetValue("Type"),
+                PaxReferenceId = paxRefId
             });
         }
 
@@ -990,11 +1000,13 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var allBookingItems = response.AirBookings.SelectMany(ab => ab.BookingItems).ToList();
             foreach (var item in allBookingItems)
             {
+                // TempTag olarak PaxReferenceId kullanilmali — yoksa BiletBank API eslestirme yapamiyor
                 response.Passengers.Add(new AllocatePassenger
                 {
-                    TempTag = Guid.NewGuid().ToString(),
+                    TempTag = item.PaxReferenceId ?? Guid.NewGuid().ToString(),
                     SequenceNo = item.PaxSequenceNo,
-                    Type = item.PaxType ?? "ADT"
+                    Type = item.PaxType ?? "ADT",
+                    PaxReferenceId = item.PaxReferenceId
                 });
             }
         }
@@ -1370,9 +1382,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 ? pax.BirthDate.Split('T')[0]
                 : pax.BirthDate;
 
-            // Allocate response'tan gelen TempTag varsa onu kullan, yoksa yeni GUID uret
+            // Kural 1: TempTag = Allocate response'taki PaxReferenceId (aynen kopyalanacak)
             var tempTag = !string.IsNullOrEmpty(pax.TempTag) ? pax.TempTag : Guid.NewGuid().ToString();
-            var paxId = tempTag;
+            // Kural 2: Id = her zaman yeni GUID uretilecek
+            var paxId = Guid.NewGuid().ToString();
 
             // WSDL alphabetical order: BirthDate, CitizenNo, DestinationAddress, Email, FirstName,
             // FrequentFlayerNo, Gender, HesCode, Id, IfContact, LastName, Nationality, PassportCountry,
