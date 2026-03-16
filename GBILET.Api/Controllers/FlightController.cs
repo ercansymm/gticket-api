@@ -226,6 +226,14 @@ public class FlightController : ControllerBase
 
                 if (string.IsNullOrWhiteSpace(pax.Gender))
                     return BadRequest(new { error = $"Yolcu {pax.SequenceNo}: Cinsiyet (M/F) zorunludur." });
+
+                if (string.IsNullOrWhiteSpace(pax.PaxReferenceId))
+                    return BadRequest(new { error = $"Yolcu {pax.SequenceNo}: PaxReferenceId zorunludur (Allocate response'taki passengers[].paxReferenceId)." });
+
+                // TempTag bos geldiyse PaxReferenceId'den otomatik doldur
+                // BiletBank TempTag <-> PaxReferenceId eslesmesi bekliyor
+                if (string.IsNullOrWhiteSpace(pax.TempTag))
+                    pax.TempTag = pax.PaxReferenceId;
             }
 
             // BiletBank SOAP cagrilari (UpdatePassengers + MakePrebooking)

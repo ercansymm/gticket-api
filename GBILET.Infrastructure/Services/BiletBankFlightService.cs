@@ -140,6 +140,14 @@ public class BiletBankFlightService : IFlightService
 
     public async Task<BookingResponse> BookFlightAsync(BookingRequest request)
     {
+        // TempTag bos gelen yolcularda PaxReferenceId'yi TempTag olarak ata
+        // BiletBank eslestirmeyi TempTag = PaxReferenceId uzerinden yapiyor
+        foreach (var pax in request.Passengers)
+        {
+            if (string.IsNullOrEmpty(pax.TempTag) && !string.IsNullOrEmpty(pax.PaxReferenceId))
+                pax.TempTag = pax.PaxReferenceId;
+        }
+
         var response = await BookAsync(request.SessionId, request.SessionToken, request);
         return response;
     }
@@ -985,9 +993,11 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var seqNo = pax.GetIntValue("SequenceNo");
             paxRefLookup.TryGetValue(seqNo, out var paxRefId);
 
+            var rawTempTag = pax.GetValue("TempTag");
             response.Passengers.Add(new AllocatePassenger
             {
-                TempTag = pax.GetValue("TempTag"),
+                // TempTag bos gelebilir; bu durumda PaxReferenceId kullanilmali
+                TempTag = !string.IsNullOrEmpty(rawTempTag) ? rawTempTag : paxRefId,
                 SequenceNo = seqNo,
                 Type = pax.GetValue("Type"),
                 PaxReferenceId = paxRefId
@@ -1383,7 +1393,14 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 : pax.BirthDate;
 
             // Kural 1: TempTag = Allocate response'taki PaxReferenceId (aynen kopyalanacak)
-            var tempTag = !string.IsNullOrEmpty(pax.TempTag) ? pax.TempTag : Guid.NewGuid().ToString();
+            // BookFlightAsync'te TempTag = PaxReferenceId olarak set ediliyor,
+            // burada fallback olarak PaxReferenceId'ye bakilir
+            var tempTag = !string.IsNullOrEmpty(pax.TempTag)
+                ? pax.TempTag
+                : !string.IsNullOrEmpty(pax.PaxReferenceId)
+                    ? pax.PaxReferenceId
+                    : throw new InvalidOperationException(
+                        $"Yolcu {i + 1}: TempTag ve PaxReferenceId bos. Allocate response'taki paxReferenceId degerini gonderin.");
             // Kural 2: Id = her zaman yeni GUID uretilecek
             var paxId = Guid.NewGuid().ToString();
 
