@@ -64,6 +64,43 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<GTicketDbContext>();
     db.Database.EnsureCreated();
 
+    // Bozuk Türkçe karakterleri düzelt (önceki encoding hatalı seed'den kalma)
+    try
+    {
+        var corruptedAirlines = db.Airlines
+            .Where(a => a.NameTr.Contains("\uFFFD") || a.NameTr.Contains("T�rk"))
+            .ToList();
+
+        if (corruptedAirlines.Count > 0)
+        {
+            var fixMap = new Dictionary<string, string>
+            {
+                { "TK", "Türk Hava Yolları" },
+                { "PC", "Pegasus Hava Yolları" },
+                { "VF", "AnadoluJet" },
+                { "XQ", "SunExpress" },
+                { "XC", "Corendon Airlines" },
+                { "LH", "Lufthansa" },
+                { "BA", "British Airways" },
+                { "AF", "Air France" },
+                { "EK", "Emirates" },
+                { "QR", "Qatar Airways" }
+            };
+
+            foreach (var airline in corruptedAirlines)
+            {
+                if (fixMap.TryGetValue(airline.Code, out var fixedName))
+                    airline.NameTr = fixedName;
+            }
+
+            db.SaveChanges();
+        }
+    }
+    catch
+    {
+        // Tablo henüz yoksa veya başka hata olursa yut
+    }
+
     // Havayolu verilerini veritabanından yükle
     try
     {
