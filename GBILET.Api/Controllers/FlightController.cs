@@ -311,6 +311,37 @@ public class FlightController : ControllerBase
                 CreatedAt = DateTime.UtcNow
             });
 
+            // BiletBank response'ta yolcu bilgileri eksik gelebilir — request'ten tamamla
+            foreach (var paxResult in result.Passengers)
+            {
+                var reqPax = request.Passengers.FirstOrDefault(p => p.SequenceNo == paxResult.SequenceNo);
+                if (reqPax != null)
+                {
+                    paxResult.FirstName ??= reqPax.FirstName;
+                    paxResult.LastName ??= reqPax.LastName;
+                    paxResult.Gender ??= reqPax.Gender;
+                    paxResult.BirthDate ??= reqPax.BirthDate;
+                    paxResult.PaxType ??= reqPax.PaxType;
+                }
+            }
+
+            // Response'ta hic yolcu yoksa request'ten olustur
+            if (result.Passengers.Count == 0)
+            {
+                foreach (var reqPax in request.Passengers)
+                {
+                    result.Passengers.Add(new BookingPassengerResult
+                    {
+                        PaxType = reqPax.PaxType,
+                        SequenceNo = reqPax.SequenceNo,
+                        FirstName = reqPax.FirstName,
+                        LastName = reqPax.LastName,
+                        Gender = reqPax.Gender,
+                        BirthDate = reqPax.BirthDate
+                    });
+                }
+            }
+
             return Ok(result);
         }
         catch (Exception ex)

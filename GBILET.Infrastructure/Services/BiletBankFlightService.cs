@@ -1520,6 +1520,22 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
             response.Currency = shoppingFile.GetValue("Currency");
         }
 
+        // Yolcu bilgileri — ShoppingFile/Passengers/Passenger (T_Passenger) dugumleri
+        var passengerLookup = new Dictionary<int, BookingPassengerResult>();
+        foreach (var paxNode in doc.GetDescendants("T_Passenger"))
+        {
+            var seqNo = paxNode.GetIntValue("SequenceNo");
+            passengerLookup[seqNo] = new BookingPassengerResult
+            {
+                SequenceNo = seqNo,
+                PaxType = paxNode.GetValue("Type"),
+                FirstName = paxNode.GetValue("FirstName"),
+                LastName = paxNode.GetValue("LastName"),
+                Gender = paxNode.GetValue("Gender"),
+                BirthDate = paxNode.GetValue("BirthDate")
+            };
+        }
+
         var airBooking = doc.GetDescendants("T_AirBooking").FirstOrDefault();
         if (airBooking != null)
         {
@@ -1529,19 +1545,33 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
             response.TotalFare = airBooking.GetDecimalValue("TotalFare");
             response.Currency ??= airBooking.GetValue("Currency");
 
-            // Yolcu bilgileri
-            foreach (var pax in airBooking.GetDescendants("T_AirBookingItem"))
+            // T_AirBookingItem'lardan PaxReference bilgisini al, T_Passenger ile esle
+            foreach (var item in airBooking.GetDescendants("T_AirBookingItem"))
             {
-                var paxRef = pax.GetDescendants("PaxReference").FirstOrDefault();
-                response.Passengers.Add(new BookingPassengerResult
+                var paxRef = item.GetDescendants("PaxReference").FirstOrDefault();
+                var seqNo = paxRef?.GetIntValue("LocalSequenceNo") ?? 0;
+                var paxType = paxRef?.GetValue("LocalPaxType");
+
+                if (passengerLookup.TryGetValue(seqNo, out var paxResult))
                 {
-                    PaxType = paxRef?.GetValue("LocalPaxType"),
-                    SequenceNo = paxRef?.GetIntValue("LocalSequenceNo") ?? 0,
-                    FirstName = pax.GetValue("FirstName"),
-                    LastName = pax.GetValue("LastName"),
-                    Gender = pax.GetValue("Gender"),
-                    BirthDate = pax.GetValue("BirthDate")
-                });
+                    paxResult.PaxType ??= paxType;
+                    if (!response.Passengers.Contains(paxResult))
+                        response.Passengers.Add(paxResult);
+                }
+                else
+                {
+                    response.Passengers.Add(new BookingPassengerResult
+                    {
+                        PaxType = paxType,
+                        SequenceNo = seqNo
+                    });
+                }
+            }
+
+            // T_AirBookingItem bulunamadiysa sadece T_Passenger'lardan yolcu listesi olustur
+            if (response.Passengers.Count == 0 && passengerLookup.Count > 0)
+            {
+                response.Passengers.AddRange(passengerLookup.Values.OrderBy(p => p.SequenceNo));
             }
 
             // Segment bilgileri
