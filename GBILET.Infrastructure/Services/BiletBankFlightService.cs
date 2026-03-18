@@ -1237,14 +1237,14 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
             // Adim 2: MakePrebooking — on rezervasyon yap (PNR olusur)
             var prebookingResult = await MakePrebookingAsync(sessionId, sessionToken, request);
+
+            // UpdatePassengers SOAP verilerini sonuca ekle (log icin)
+            prebookingResult.UpdatePassengersSoapRequest = updateResult.RawSoapRequest;
+            prebookingResult.UpdatePassengersSoapResponse = updateResult.RawSoapResponse;
+
             if (prebookingResult.HasError)
             {
-                return new BookingResponse
-                {
-                    HasError = true,
-                    ErrorMessage = $"MakePrebooking hatasi: {prebookingResult.ErrorMessage}",
-                    RawSoapResponse = prebookingResult.RawSoapResponse
-                };
+                return prebookingResult;
             }
 
             return prebookingResult;

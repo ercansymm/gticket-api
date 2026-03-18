@@ -239,6 +239,14 @@ public class FlightController : ControllerBase
             // BiletBank SOAP cagrilari (UpdatePassengers + MakePrebooking)
             var result = await _flightService.BookFlightAsync(request);
 
+            // Ilk segmentten kalkis/varis ve havayolu bilgilerini al
+            var firstSegment = result.Segments.FirstOrDefault();
+
+            // Yolcu sayilarini hesapla
+            int adultCount = request.Passengers.Count(p => p.PaxType == "ADT");
+            int childCount = request.Passengers.Count(p => p.PaxType == "CHD");
+            int infantCount = request.Passengers.Count(p => p.PaxType == "INF");
+
             // DB'ye booking kaydi olustur
             var bookingEntity = new Booking
             {
@@ -250,7 +258,20 @@ public class FlightController : ControllerBase
                 Currency = result.Currency ?? "TRY",
                 IsFinalized = false,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                TransactionId = Guid.NewGuid().ToString(),
+                SessionId = request.SessionId,
+                SessionToken = request.SessionToken,
+                ProductItemId = request.ProductItemId,
+                Origin = firstSegment?.OriginCode,
+                Destination = firstSegment?.DestinationCode,
+                AirlineCode = firstSegment?.MarketingAirline,
+                FlightNumber = firstSegment?.FlightNumber,
+                BookedAt = DateTime.UtcNow,
+                AdultCount = adultCount > 0 ? adultCount : 1,
+                ChildCount = childCount,
+                InfantCount = infantCount,
+                LastError = result.HasError ? result.ErrorMessage : null
             };
 
             // Yolcu kayitlari
@@ -271,7 +292,9 @@ public class FlightController : ControllerBase
                     PassportCountry = pax.PassportCountry,
                     Nationality = pax.Nationality,
                     Email = pax.SequenceNo == 1 ? request.Contact.Email : null,
-                    Phone = pax.SequenceNo == 1 ? request.Contact.Phone : null
+                    Phone = pax.SequenceNo == 1 ? request.Contact.Phone : null,
+                    TempTag = pax.TempTag,
+                    PaxReferenceId = pax.PaxReferenceId
                 });
             }
 
@@ -297,7 +320,22 @@ public class FlightController : ControllerBase
 
             await _bookingRepository.CreateBookingAsync(bookingEntity);
 
-            // Booking log kaydi
+            // UpdatePassengers log kaydi
+            await _bookingRepository.AddLogAsync(new BookingLog
+            {
+                Id = Guid.NewGuid(),
+                BookingId = bookingEntity.Id,
+                SessionId = request.SessionId,
+                SessionToken = request.SessionToken,
+                Operation = "UpdatePassengers",
+                IsSuccess = !result.HasError,
+                ErrorMessage = result.HasError ? result.ErrorMessage : null,
+                RequestBody = result.UpdatePassengersSoapRequest,
+                ResponseBody = result.UpdatePassengersSoapResponse,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            // MakePrebooking log kaydi
             await _bookingRepository.AddLogAsync(new BookingLog
             {
                 Id = Guid.NewGuid(),
@@ -307,6 +345,7 @@ public class FlightController : ControllerBase
                 Operation = "MakePrebooking",
                 IsSuccess = !result.HasError,
                 ErrorMessage = result.ErrorMessage,
+                RequestBody = result.RawSoapRequest,
                 ResponseBody = result.RawSoapResponse,
                 CreatedAt = DateTime.UtcNow
             });

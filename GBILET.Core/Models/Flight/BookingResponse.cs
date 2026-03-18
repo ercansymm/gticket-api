@@ -54,6 +54,16 @@ public class BookingResponse
     /// Debug: Gonderilen SOAP request (gecici - production'da kaldirilacak)
     /// </summary>
     public string? RawSoapRequest { get; set; }
+
+    /// <summary>
+    /// UpdatePassengers adiminin SOAP request'i (log icin)
+    /// </summary>
+    public string? UpdatePassengersSoapRequest { get; set; }
+
+    /// <summary>
+    /// UpdatePassengers adiminin SOAP response'u (log icin)
+    /// </summary>
+    public string? UpdatePassengersSoapResponse { get; set; }
 }
 
 /// <summary>
