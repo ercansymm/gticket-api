@@ -3,6 +3,11 @@
 public class BookingRequest
 {
     /// <summary>
+    /// Islemi yapan kullanicinin ID'si (GUID)
+    /// </summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>
     /// Allocate response'tan alinan SessionId
     /// </summary>
     public string SessionId { get; set; } = null!;

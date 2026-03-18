@@ -198,6 +198,9 @@ public class FlightController : ControllerBase
             if (request == null)
                 return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
 
+            if (request.UserId == Guid.Empty)
+                return BadRequest(new { error = "UserId alani zorunludur (GUID formatinda)." });
+
             if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
                 return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur (Allocate response'tan alinir)." });
 
@@ -251,6 +254,7 @@ public class FlightController : ControllerBase
             var bookingEntity = new Booking
             {
                 Id = Guid.NewGuid(),
+                UserId = request.UserId,
                 BiletBankFileId = Guid.TryParse(result.ShoppingFileId, out var fileId) ? fileId : null,
                 PNR = result.PNR,
                 Status = result.HasError ? "Failed" : (result.Status ?? "Reserved"),
