@@ -32,19 +32,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var dbProvider = builder.Configuration.GetValue<string>("DbProvider");
-if (dbProvider == "PostgreSQL")
-{
-    builder.Services.AddDbContext<GTicketDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-    );
-}
-else
-{
-    builder.Services.AddDbContext<GTicketDbContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-    );
-}
+builder.Services.AddDbContext<GTicketDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
 
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IAirlineRepository, AirlineRepository>();
