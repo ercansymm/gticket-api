@@ -10,4 +10,10 @@ public interface IFlightService
     Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request);
     Task<UpdatePassengersResponse> UpdatePassengersAsync(UpdatePassengersRequest request);
     Task<MakePreBookingResponse> MakePreBookingAsync(MakePreBookingRequest request);
+    Task<RemoveProductResponse> RemoveProductAsync(RemoveProductRequest request);
+    Task<MakePaymentResponse> MakePaymentAsync(MakePaymentRequest request);
+    Task<FinalizeShoppingResponse> FinalizeShoppingAsync(FinalizeShoppingRequest request);
+    Task<PokeShoppingFileResponse> PokeShoppingFileAsync(PokeShoppingFileRequest request);
+    Task<ReadShoppingFileResponse> ReadShoppingFileAsync(ReadShoppingFileRequest request);
+    Task<LogoutResponse> LogoutAsync(LogoutRequest request);
 }

@@ -453,4 +453,384 @@ public class FlightController : ControllerBase
             });
         }
     }
+
+    [HttpPost("remove-product")]
+    public async Task<IActionResult> RemoveProduct([FromBody] RemoveProductRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ProductId))
+                return BadRequest(new { error = "ProductId alani zorunludur." });
+
+            var result = await _flightService.RemoveProductAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
+    [HttpPost("make-payment")]
+    public async Task<IActionResult> MakePayment([FromBody] MakePaymentRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId alani zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ProductId))
+                return BadRequest(new { error = "ProductId alani zorunludur." });
+
+            if (request.Amount <= 0)
+                return BadRequest(new { error = "Amount sifirdan buyuk olmalidir." });
+
+            if (request.PaymentType == "CreditCard" && request.CreditCard == null)
+                return BadRequest(new { error = "Kredi karti ile odeme icin CreditCard bilgileri zorunludur." });
+
+            if (request.CreditCard != null)
+            {
+                if (string.IsNullOrWhiteSpace(request.CreditCard.CardNumber))
+                    return BadRequest(new { error = "Kart numarasi zorunludur." });
+
+                if (string.IsNullOrWhiteSpace(request.CreditCard.CardHolderName))
+                    return BadRequest(new { error = "Kart sahibi adi zorunludur." });
+
+                if (string.IsNullOrWhiteSpace(request.CreditCard.ExpiryMonth) || string.IsNullOrWhiteSpace(request.CreditCard.ExpiryYear))
+                    return BadRequest(new { error = "Son kullanma tarihi (ay/yil) zorunludur." });
+
+                if (string.IsNullOrWhiteSpace(request.CreditCard.Cvv))
+                    return BadRequest(new { error = "CVV zorunludur." });
+            }
+
+            var result = await _flightService.MakePaymentAsync(request);
+
+            // Odeme basariliysa DB'deki booking durumunu guncelle
+            if (!result.HasError && result.IsPaymentSuccessful && request.BookingId.HasValue)
+            {
+                try
+                {
+                    await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, "Paid");
+                    await _bookingRepository.AddLogAsync(new BookingLog
+                    {
+                        Id = Guid.NewGuid(),
+                        BookingId = request.BookingId.Value,
+                        SessionId = request.SessionId,
+                        SessionToken = request.SessionToken,
+                        Operation = "MakePayment",
+                        IsSuccess = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[MakePayment] DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
+                }
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
+    [HttpPost("finalize-shopping")]
+    public async Task<IActionResult> FinalizeShopping([FromBody] FinalizeShoppingRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId alani zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ProductId))
+                return BadRequest(new { error = "ProductId alani zorunludur." });
+
+            var result = await _flightService.FinalizeShoppingAsync(request);
+
+            // Biletleme basariliysa DB'deki booking durumunu guncelle
+            if (!result.HasError && request.BookingId.HasValue)
+            {
+                try
+                {
+                    var booking = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
+                    if (booking != null)
+                    {
+                        booking.Status = result.Status ?? "Ticketed";
+                        booking.IsFinalized = true;
+                        booking.TicketedAt = DateTime.UtcNow;
+                        booking.UpdatedAt = DateTime.UtcNow;
+
+                        // Bilet numaralarini yolculara ata
+                        foreach (var ticket in result.Tickets)
+                        {
+                            var pax = booking.Passengers.FirstOrDefault(p =>
+                                string.Equals(p.FirstName, ticket.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(p.LastName, ticket.LastName, StringComparison.OrdinalIgnoreCase));
+
+                            if (pax != null)
+                                pax.TicketNumber = ticket.TicketNumber;
+                        }
+
+                        await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, booking.Status);
+                        await _bookingRepository.AddLogAsync(new BookingLog
+                        {
+                            Id = Guid.NewGuid(),
+                            BookingId = request.BookingId.Value,
+                            SessionId = request.SessionId,
+                            SessionToken = request.SessionToken,
+                            Operation = "FinalizeShopping",
+                            IsSuccess = true,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[FinalizeShopping] DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
+                }
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
+    [HttpPost("poke-shopping-file")]
+    public async Task<IActionResult> PokeShoppingFile([FromBody] PokeShoppingFileRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId alani zorunludur." });
+
+            var result = await _flightService.PokeShoppingFileAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
+    [HttpPost("read-shopping-file")]
+    public async Task<IActionResult> ReadShoppingFile([FromBody] ReadShoppingFileRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId alani zorunludur." });
+
+            var result = await _flightService.ReadShoppingFileAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
+
+            var result = await _flightService.LogoutAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
+    [HttpGet("booking/{bookingId}")]
+    public async Task<IActionResult> GetBooking(Guid bookingId)
+    {
+        try
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            if (booking == null)
+                return NotFound(new { error = $"Booking bulunamadi: {bookingId}" });
+
+            return Ok(new
+            {
+                booking.Id,
+                booking.PNR,
+                booking.Status,
+                booking.GrandTotal,
+                booking.Currency,
+                booking.IsFinalized,
+                booking.Origin,
+                booking.Destination,
+                booking.AirlineCode,
+                booking.FlightNumber,
+                booking.AdultCount,
+                booking.ChildCount,
+                booking.InfantCount,
+                booking.ServiceFee,
+                booking.CreatedAt,
+                booking.BookedAt,
+                booking.PaidAt,
+                booking.TicketedAt,
+                booking.SessionId,
+                booking.SessionToken,
+                isGuest = booking.UserId == null,
+                booking.UserId,
+                booking.GuestSessionId,
+                passengers = booking.Passengers.Select(p => new
+                {
+                    p.SequenceNo,
+                    p.Type,
+                    p.FirstName,
+                    p.LastName,
+                    p.Gender,
+                    p.BirthDate,
+                    p.CitizenNo,
+                    p.PassportNo,
+                    p.Nationality,
+                    p.TicketNumber,
+                    p.Email,
+                    p.Phone
+                }),
+                segments = booking.FlightSegments.Select(s => new
+                {
+                    s.MarketingAirline,
+                    s.FlightNumber,
+                    s.OriginCode,
+                    s.DestinationCode,
+                    s.DepartureDate,
+                    s.DepartureTime,
+                    s.ArrivalDate,
+                    s.ArrivalTime,
+                    s.BookingClass
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("booking/pnr/{pnr}")]
+    public async Task<IActionResult> GetBookingByPnr(string pnr)
+    {
+        try
+        {
+            var booking = await _bookingRepository.GetByPnrAsync(pnr);
+            if (booking == null)
+                return NotFound(new { error = $"PNR bulunamadi: {pnr}" });
+
+            return Ok(new
+            {
+                booking.Id,
+                booking.PNR,
+                booking.Status,
+                booking.GrandTotal,
+                booking.Currency,
+                booking.IsFinalized,
+                booking.Origin,
+                booking.Destination,
+                booking.AirlineCode,
+                booking.FlightNumber,
+                booking.AdultCount,
+                booking.ChildCount,
+                booking.InfantCount,
+                booking.CreatedAt,
+                booking.BookedAt,
+                booking.PaidAt,
+                booking.TicketedAt,
+                isGuest = booking.UserId == null,
+                passengers = booking.Passengers.Select(p => new
+                {
+                    p.SequenceNo,
+                    p.Type,
+                    p.FirstName,
+                    p.LastName,
+                    p.Gender,
+                    p.TicketNumber
+                }),
+                segments = booking.FlightSegments.Select(s => new
+                {
+                    s.MarketingAirline,
+                    s.FlightNumber,
+                    s.OriginCode,
+                    s.DestinationCode,
+                    s.DepartureDate,
+                    s.DepartureTime,
+                    s.ArrivalDate,
+                    s.ArrivalTime
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
