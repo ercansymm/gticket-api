@@ -1681,40 +1681,43 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
         string shoppingFileId)
     {
         return $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<s:Envelope xmlns:s=""http://schemas.xmlsoap.org/soap/envelope/"">
-  <s:Body>
-    <MakePrebooking xmlns=""http://tempuri.org/"">
-      <request xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS""
-               xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Model.Air.Shopping"">
-        <trev:AuthenticationHeader>
-          <trev:SessionId>{sessionId}</trev:SessionId>
-          <trev:SessionToken>{sessionToken}</trev:SessionToken>
-        </trev:AuthenticationHeader>
-        <trev:ExtraParamList>
-          <trev:ExtendedData>
-            <trev:Name>IntendedShoppingFileId</trev:Name>
-            <trev:Value>{shoppingFileId}</trev:Value>
-          </trev:ExtendedData>
-          <trev:ExtendedData>
-            <trev:Name>DoReservation</trev:Name>
-            <trev:Value>true</trev:Value>
-          </trev:ExtendedData>
-        </trev:ExtraParamList>
-        <trev:Form>
-          <trev2:Branded>
-            <trev2:IO_Air_Branded_Form>
-              <trev2:BrandedFareItemId>{brandedFareItemId}</trev2:BrandedFareItemId>
-              <trev2:ProductId>{productId}</trev2:ProductId>
-            </trev2:IO_Air_Branded_Form>
-          </trev2:Branded>
-          <trev2:ProductIds>
-            <trev:guid>{productId}</trev:guid>
-          </trev2:ProductIds>
-        </trev:Form>
-      </request>
-    </MakePrebooking>
-  </s:Body>
-</s:Envelope>";
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
+xmlns:tem=""http://tempuri.org/""
+xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
+<soap:Body>
+   <tem:MakePrebooking>
+      <tem:request>
+         <trev:AuthenticationHeader>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
+         </trev:AuthenticationHeader>
+         <trev:ExtraParamList>
+            <trev:ExtendedData>
+               <trev:Name>IntendedShoppingFileId</trev:Name>
+               <trev:Value>{shoppingFileId}</trev:Value>
+            </trev:ExtendedData>
+            <trev:ExtendedData>
+               <trev:Name>DoReservation</trev:Name>
+               <trev:Value>true</trev:Value>
+            </trev:ExtendedData>
+         </trev:ExtraParamList>
+         <trev1:Form>
+            <trev1:Branded>
+               <trev1:IO_Air_Branded_Form>
+                  <trev1:BrandedFareItemId>{brandedFareItemId}</trev1:BrandedFareItemId>
+                  <trev1:ProductId>{productId}</trev1:ProductId>
+               </trev1:IO_Air_Branded_Form>
+            </trev1:Branded>
+            <trev1:ProductIds xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
+               <arr:guid>{productId}</arr:guid>
+            </trev1:ProductIds>
+         </trev1:Form>
+      </tem:request>
+   </tem:MakePrebooking>
+</soap:Body>
+</soap:Envelope>";
     }
 
     private static MakePreBookingResponse ParseMakePreBookingResponse(XDocument doc)
