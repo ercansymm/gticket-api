@@ -1,0 +1,5 @@
+﻿Burası bizim database'imiz
+Customer 
+CustomerName
+CustomerSurname
+CustomerEmail

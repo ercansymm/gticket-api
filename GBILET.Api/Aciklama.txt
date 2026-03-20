@@ -1,0 +1,5 @@
+﻿Dış dünyadan gelen istekleri karşılar.
+Fontend buraya bağlanır
+örneğin: http://localhost:5000/api/values
+Bu adrese gelen istekler burada karşılanır ve gerekli işlemler yapıldıktan sonra sonuç döndürülür.
+button (kaydet) tıklandığında bu adrese bir istek gönderilir ve burada karşılanır.

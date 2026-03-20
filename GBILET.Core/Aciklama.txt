@@ -1,0 +1,21 @@
+﻿Buraya kuralları ve modelleri yazıyoruz örneğin
+
+database'imde benim Customer var yani GBILET.Infrastructure burda ama bunun karşışığı projede yok örneğin databaseimde Customer var 
+burda CustomerName 
+	  CustomerSurname
+	  CustomerEmail
+var diyelim ki
+
+Core da şunu yapacağız
+public class Customer
+{
+	public string CustomerName { get; set; }
+	public string CustomerSurname { get; set; }
+	public string CustomerEmail { get; set; }
+}
+öncelikle bunu class mantığında yapıcaz sonrasında ise bunu şunu dicez
+
+CustomerName = 0 dan başlayarak 50 karaktere kadar olabilir
+sadece rakam olamaz
+sadece harf olabilir
+gibi gibi gibi şeyler yazacağız yani kurallarımızı yazacağız ve bu kuralların doğruluğunu kontrol edeceğiz
