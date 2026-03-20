@@ -26,4 +26,19 @@ public class MakePreBookingRequest
     /// Allocate response'taki ShoppingFileId degeri.
     /// </summary>
     public string ShoppingFileId { get; set; } = null!;
+
+    /// <summary>
+    /// Kayitli kullanici ID'si — opsiyonel, verilmezse misafir oturumu olusturulur.
+    /// </summary>
+    public Guid? UserId { get; set; }
+
+    /// <summary>
+    /// Yolcu listesi — DB'ye booking kaydý olusturmak icin gerekli.
+    /// </summary>
+    public List<UpdatePassengerItem> Passengers { get; set; } = [];
+
+    /// <summary>
+    /// Rezervasyon sahibi iletisim bilgileri — DB kaydý icin gerekli.
+    /// </summary>
+    public UpdatePassengerContact Contact { get; set; } = null!;
 }

@@ -190,41 +190,8 @@ public class FlightController : ControllerBase
         }
     }
 
-    [HttpPost("make-prebooking")]
-    public async Task<IActionResult> MakePreBooking([FromBody] MakePreBookingRequest? request)
-    {
-        try
-        {
-            if (request == null)
-                return BadRequest(new { error = "Request body parse edilemedi. JSON formatını kontrol edin." });
-
-            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
-                return BadRequest(new { error = "SessionId ve SessionToken alanları zorunludur (Allocate response'tan alınır)." });
-
-            if (string.IsNullOrWhiteSpace(request.ProductId))
-                return BadRequest(new { error = "ProductId alanı zorunludur (Allocate response'taki AirBookings[0].ProductId)." });
-
-            if (string.IsNullOrWhiteSpace(request.BrandedFareItemId))
-                return BadRequest(new { error = "BrandedFareItemId alanı zorunludur (Allocate response'taki AirBookings[0].BrandedFareItems[0].BrandedFareItemId)." });
-
-            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
-                return BadRequest(new { error = "ShoppingFileId alanı zorunludur (Allocate response'taki ShoppingFileId)." });
-
-            var result = await _flightService.MakePreBookingAsync(request);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new
-            {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
-            });
-        }
-    }
-
-    [HttpPost("book")]
-    public async Task<IActionResult> Book([FromBody] BookingRequest? request)
+    [HttpPost("update-passengers")]
+    public async Task<IActionResult> UpdatePassengers([FromBody] UpdatePassengersRequest? request)
     {
         try
         {
@@ -238,10 +205,10 @@ public class FlightController : ControllerBase
                 return BadRequest(new { error = "ShoppingFileId alani zorunludur (Allocate response'tan alinir)." });
 
             if (string.IsNullOrWhiteSpace(request.ProductId))
-                return BadRequest(new { error = "ProductId alani zorunludur (Allocate response'taki T_AirBooking.ProductId)." });
+                return BadRequest(new { error = "ProductId alani zorunludur (Allocate response'taki AirBookings[0].ProductId)." });
 
             if (string.IsNullOrWhiteSpace(request.ProductItemId))
-                return BadRequest(new { error = "ProductItemId alani zorunludur (Allocate response'taki BookingItems[].ProductItemId)." });
+                return BadRequest(new { error = "ProductItemId alani zorunludur (Allocate response'taki BookingItems[0].ProductItemId)." });
 
             if (request.Passengers == null || request.Passengers.Count == 0)
                 return BadRequest(new { error = "En az bir yolcu bilgisi girilmelidir." });
@@ -263,26 +230,55 @@ public class FlightController : ControllerBase
                 if (string.IsNullOrWhiteSpace(pax.PaxReferenceId))
                     return BadRequest(new { error = $"Yolcu {pax.SequenceNo}: PaxReferenceId zorunludur (Allocate response'taki passengers[].paxReferenceId)." });
 
-                // TempTag bos geldiyse PaxReferenceId'den otomatik doldur
-                // BiletBank TempTag <-> PaxReferenceId eslesmesi bekliyor
                 if (string.IsNullOrWhiteSpace(pax.TempTag))
                     pax.TempTag = pax.PaxReferenceId;
             }
 
-            // BiletBank SOAP cagrilari (UpdatePassengers + MakePrebooking)
-            var result = await _flightService.BookFlightAsync(request);
+            var result = await _flightService.UpdatePassengersAsync(request);
+            return Ok(new { result.HasError, result.ErrorMessage });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
 
-            // Ilk segmentten kalkis/varis ve havayolu bilgilerini al
-            var firstSegment = result.Segments.FirstOrDefault();
+    [HttpPost("make-prebooking")]
+    public async Task<IActionResult> MakePreBooking([FromBody] MakePreBookingRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
 
-            // Yolcu sayilarini hesapla
-            int adultCount = request.Passengers.Count(p => p.PaxType == "ADT");
-            int childCount = request.Passengers.Count(p => p.PaxType == "CHD");
-            int infantCount = request.Passengers.Count(p => p.PaxType == "INF");
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur (Allocate response'tan alinir)." });
 
-            // Kullanici tespiti:
-            // - UserId verilmisse kayitli kullanici olarak isle
-            // - Verilmemisse misafir oturumu olustur/bul (email uzerinden eslestirilir)
+            if (string.IsNullOrWhiteSpace(request.ProductId))
+                return BadRequest(new { error = "ProductId alani zorunludur (Allocate response'taki AirBookings[0].ProductId)." });
+
+            if (string.IsNullOrWhiteSpace(request.BrandedFareItemId))
+                return BadRequest(new { error = "BrandedFareItemId alani zorunludur (Allocate response'taki AirBookings[0].BrandedFareItems[0].BrandedFareItemId)." });
+
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId alani zorunludur (Allocate response'taki ShoppingFileId)." });
+
+            if (request.Passengers == null || request.Passengers.Count == 0)
+                return BadRequest(new { error = "En az bir yolcu bilgisi girilmelidir (DB kaydı icin gerekli)." });
+
+            if (request.Contact == null || string.IsNullOrWhiteSpace(request.Contact.Email))
+                return BadRequest(new { error = "Iletisim bilgisi (Email) zorunludur." });
+
+            var result = await _flightService.MakePreBookingAsync(request);
+
+            if (result.HasError)
+                return Ok(result);
+
+            // Basarili prebooking — DB'ye booking kaydi olustur
             Guid? resolvedUserId = null;
             Guid? resolvedGuestSessionId = null;
 
@@ -292,8 +288,7 @@ public class FlightController : ControllerBase
             }
             else
             {
-                var contactEmail = request.Contact.Email;
-                var existingGuest = await _bookingRepository.GetGuestSessionByEmailAsync(contactEmail);
+                var existingGuest = await _bookingRepository.GetGuestSessionByEmailAsync(request.Contact.Email);
                 if (existingGuest != null)
                 {
                     resolvedGuestSessionId = existingGuest.Id;
@@ -304,7 +299,7 @@ public class FlightController : ControllerBase
                     var newGuest = await _bookingRepository.CreateGuestSessionAsync(new GuestSession
                     {
                         Id = Guid.NewGuid(),
-                        Email = contactEmail,
+                        Email = request.Contact.Email,
                         Phone = request.Contact.Phone,
                         IpAddress = ipAddress,
                         CreatedAt = DateTime.UtcNow
@@ -313,15 +308,19 @@ public class FlightController : ControllerBase
                 }
             }
 
-            // DB'ye booking kaydi olustur
+            var firstSegment = result.Segments.FirstOrDefault();
+            int adultCount = request.Passengers.Count(p => p.PaxType == "ADT");
+            int childCount = request.Passengers.Count(p => p.PaxType == "CHD");
+            int infantCount = request.Passengers.Count(p => p.PaxType == "INF");
+
             var bookingEntity = new Booking
             {
                 Id = Guid.NewGuid(),
                 UserId = resolvedUserId,
                 GuestSessionId = resolvedGuestSessionId,
                 BiletBankFileId = Guid.TryParse(result.ShoppingFileId, out var fileId) ? fileId : null,
-                PNR = result.PNR,
-                Status = result.HasError ? "Failed" : (result.Status ?? "Reserved"),
+                PNR = result.BookingCode,
+                Status = result.Status ?? "Reserved",
                 GrandTotal = result.TotalFare,
                 Currency = result.Currency ?? "TRY",
                 IsFinalized = false,
@@ -330,7 +329,6 @@ public class FlightController : ControllerBase
                 TransactionId = Guid.NewGuid().ToString(),
                 SessionId = request.SessionId,
                 SessionToken = request.SessionToken,
-                ProductItemId = request.ProductItemId,
                 Origin = firstSegment?.OriginCode,
                 Destination = firstSegment?.DestinationCode,
                 AirlineCode = firstSegment?.MarketingAirline,
@@ -338,11 +336,9 @@ public class FlightController : ControllerBase
                 BookedAt = DateTime.UtcNow,
                 AdultCount = adultCount > 0 ? adultCount : 1,
                 ChildCount = childCount,
-                InfantCount = infantCount,
-                LastError = result.HasError ? result.ErrorMessage : null
+                InfantCount = infantCount
             };
 
-            // Yolcu kayitlari
             foreach (var pax in request.Passengers)
             {
                 bookingEntity.Passengers.Add(new Passenger
@@ -366,14 +362,13 @@ public class FlightController : ControllerBase
                 });
             }
 
-            // Segment kayitlari (BiletBank response'tan)
             foreach (var seg in result.Segments)
             {
                 bookingEntity.FlightSegments.Add(new Core.Entities.FlightSegment
                 {
                     Id = Guid.NewGuid(),
                     BookingId = bookingEntity.Id,
-                    SequenceNo = seg.SequenceNo,
+                    SequenceNo = 0,
                     MarketingAirline = seg.MarketingAirline ?? "",
                     FlightNumber = seg.FlightNumber ?? "",
                     OriginCode = seg.OriginCode ?? "",
@@ -388,76 +383,29 @@ public class FlightController : ControllerBase
 
             await _bookingRepository.CreateBookingAsync(bookingEntity);
 
-            // UpdatePassengers log kaydi
             await _bookingRepository.AddLogAsync(new BookingLog
             {
                 Id = Guid.NewGuid(),
                 BookingId = bookingEntity.Id,
                 SessionId = request.SessionId,
                 SessionToken = request.SessionToken,
-                Operation = "UpdatePassengers",
-                IsSuccess = !result.HasError,
-                ErrorMessage = result.HasError ? result.ErrorMessage : null,
-                RequestBody = result.UpdatePassengersSoapRequest,
-                ResponseBody = result.UpdatePassengersSoapResponse,
+                Operation = "MakePreBooking",
+                IsSuccess = true,
                 CreatedAt = DateTime.UtcNow
             });
-
-            // MakePrebooking log kaydi
-            await _bookingRepository.AddLogAsync(new BookingLog
-            {
-                Id = Guid.NewGuid(),
-                BookingId = bookingEntity.Id,
-                SessionId = request.SessionId,
-                SessionToken = request.SessionToken,
-                Operation = "MakePrebooking",
-                IsSuccess = !result.HasError,
-                ErrorMessage = result.ErrorMessage,
-                RequestBody = result.RawSoapRequest,
-                ResponseBody = result.RawSoapResponse,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            // BiletBank response'ta yolcu bilgileri eksik gelebilir — request'ten tamamla
-            foreach (var paxResult in result.Passengers)
-            {
-                var reqPax = request.Passengers.FirstOrDefault(p => p.SequenceNo == paxResult.SequenceNo);
-                if (reqPax != null)
-                {
-                    paxResult.FirstName ??= reqPax.FirstName;
-                    paxResult.LastName ??= reqPax.LastName;
-                    paxResult.Gender ??= reqPax.Gender;
-                    paxResult.BirthDate ??= reqPax.BirthDate;
-                    paxResult.PaxType ??= reqPax.PaxType;
-                }
-            }
-
-            // Response'ta hic yolcu yoksa request'ten olustur
-            if (result.Passengers.Count == 0)
-            {
-                foreach (var reqPax in request.Passengers)
-                {
-                    result.Passengers.Add(new BookingPassengerResult
-                    {
-                        PaxType = reqPax.PaxType,
-                        SequenceNo = reqPax.SequenceNo,
-                        FirstName = reqPax.FirstName,
-                        LastName = reqPax.LastName,
-                        Gender = reqPax.Gender,
-                        BirthDate = reqPax.BirthDate
-                    });
-                }
-            }
 
             return Ok(new
             {
-                result.PNR,
-                result.Status,
                 result.HasError,
                 result.ErrorMessage,
+                result.BookingCode,
+                result.Status,
                 result.TotalFare,
                 result.Currency,
                 result.ShoppingFileId,
+                result.IsPriceChanged,
+                result.PrebookingExpiresAt,
+                result.ReservationExpiresAt,
                 result.Segments,
                 result.Passengers,
                 bookingId = bookingEntity.Id,

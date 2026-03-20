@@ -8,6 +8,6 @@ public interface IFlightService
     Task<AirSearchResponse> SearchFlightAsync(SearchRequest request);
     Task<FlightSearchResponseDto> SearchFlightDtoAsync(SearchRequest request);
     Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request);
-    Task<BookingResponse> BookFlightAsync(BookingRequest request);
+    Task<UpdatePassengersResponse> UpdatePassengersAsync(UpdatePassengersRequest request);
     Task<MakePreBookingResponse> MakePreBookingAsync(MakePreBookingRequest request);
 }

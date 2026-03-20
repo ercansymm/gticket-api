@@ -138,18 +138,17 @@ public class BiletBankFlightService : IFlightService
         return response;
     }
 
-    public async Task<BookingResponse> BookFlightAsync(BookingRequest request)
+    public async Task<UpdatePassengersResponse> UpdatePassengersAsync(UpdatePassengersRequest request)
     {
         // TempTag bos gelen yolcularda PaxReferenceId'yi TempTag olarak ata
-        // BiletBank eslestirmeyi TempTag = PaxReferenceId uzerinden yapiyor
         foreach (var pax in request.Passengers)
         {
             if (string.IsNullOrEmpty(pax.TempTag) && !string.IsNullOrEmpty(pax.PaxReferenceId))
                 pax.TempTag = pax.PaxReferenceId;
         }
 
-        var response = await BookAsync(request.SessionId, request.SessionToken, request);
-        return response;
+        var inner = await UpdatePassengersInternalAsync(request.SessionId, request.SessionToken, request);
+        return inner;
     }
 
     private async Task<LoginResponse> LoginAsync()
@@ -1215,56 +1214,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
     #region Booking
 
-    private async Task<BookingResponse> BookAsync(
-        string sessionId,
-        string sessionToken,
-        BookingRequest request)
-    {
-        try
-        {
-            // Adim 1: UpdatePassengers — yolcu bilgilerini kaydet
-            var updateResult = await UpdatePassengersAsync(sessionId, sessionToken, request);
-            if (updateResult.HasError)
-            {
-                return new BookingResponse
-                {
-                    HasError = true,
-                    ErrorMessage = $"UpdatePassengers hatasi: {updateResult.ErrorMessage}",
-                    RawSoapResponse = updateResult.RawSoapResponse,
-                    RawSoapRequest = updateResult.RawSoapRequest
-                };
-            }
-
-            // Adim 2: MakePrebooking — on rezervasyon yap (PNR olusur)
-            var prebookingResult = await MakePrebookingAsync(sessionId, sessionToken, request);
-
-            // UpdatePassengers SOAP verilerini sonuca ekle (log icin)
-            prebookingResult.UpdatePassengersSoapRequest = updateResult.RawSoapRequest;
-            prebookingResult.UpdatePassengersSoapResponse = updateResult.RawSoapResponse;
-
-            if (prebookingResult.HasError)
-            {
-                return prebookingResult;
-            }
-
-            return prebookingResult;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[Book] Exception");
-            return new BookingResponse
-            {
-                HasError = true,
-                ErrorMessage = $"Booking hatasi: {ex.Message}"
-            };
-        }
-    }
-
-
-    private async Task<BookingResponse> UpdatePassengersAsync(
+    private async Task<UpdatePassengersResponse> UpdatePassengersInternalAsync(
             string sessionId,
             string sessionToken,
-            BookingRequest request)
+            UpdatePassengersRequest request)
     {
         string debugXml = string.Empty;
         string responseText = string.Empty;
@@ -1286,7 +1239,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
             if (!response.IsSuccessStatusCode)
             {
-                return new BookingResponse
+                return new UpdatePassengersResponse
                 {
                     HasError = true,
                     ErrorMessage = $"UpdatePassengers HTTP {(int)response.StatusCode}: {responseText}",
@@ -1303,7 +1256,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     ?? doc.GetValue("DebugMessage")
                     ?? doc.GetValue("Message")
                     ?? doc.GetValue("ServiceError");
-                return new BookingResponse
+                return new UpdatePassengersResponse
                 {
                     HasError = true,
                     ErrorMessage = errorMsg,
@@ -1312,12 +1265,12 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 };
             }
 
-            return new BookingResponse { HasError = false, RawSoapResponse = responseText, RawSoapRequest = debugXml };
+            return new UpdatePassengersResponse { HasError = false, RawSoapResponse = responseText, RawSoapRequest = debugXml };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[UpdatePassengers] Exception");
-            return new BookingResponse
+            return new UpdatePassengersResponse
             {
                 HasError = true,
                 ErrorMessage = $"UpdatePassengers exception: {ex.Message} | StackTrace: {ex.StackTrace}",
@@ -1327,59 +1280,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         }
     }
 
-    private async Task<BookingResponse> MakePrebookingAsync(
-        string sessionId,
-        string sessionToken,
-        BookingRequest request)
-    {
-        var soapRequest = BuildMakePrebookingSoapRequest(sessionId, sessionToken, request);
-
-        _logger.LogInformation("[MakePrebooking] SOAP Request:\n{SoapRequest}", soapRequest);
-
-        var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-        content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePrebooking");
-
-        var response = await _httpClient.PostAsync(_proxyUrl, content);
-        var responseText = await response.Content.ReadAsStringAsync();
-
-        _logger.LogInformation("[MakePrebooking] HTTP Status: {StatusCode}", (int)response.StatusCode);
-        _logger.LogInformation("[MakePrebooking] SOAP Response:\n{SoapResponse}", responseText);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            return new BookingResponse
-            {
-                HasError = true,
-                ErrorMessage = $"MakePrebooking HTTP {(int)response.StatusCode}: {responseText}",
-                RawSoapResponse = responseText
-            };
-        }
-
-        var doc = XDocument.Parse(responseText);
-        var hasError = doc.GetValue("HasError");
-        if (hasError == "true")
-        {
-            var errorMsg = doc.GetValue("ErrorMessage")
-                ?? doc.GetValue("DebugMessage")
-                ?? doc.GetValue("Message")
-                ?? doc.GetValue("ServiceError");
-            return new BookingResponse
-            {
-                HasError = true,
-                ErrorMessage = errorMsg,
-                RawSoapResponse = responseText
-            };
-        }
-
-        var result = ParseBookingResponse(doc);
-        result.RawSoapResponse = responseText;
-        return result;
-    }
-
     private static string BuildUpdatePassengersSoapRequest(
         string sessionId,
         string sessionToken,
-        BookingRequest request)
+        UpdatePassengersRequest request)
     {
         var passengersXml = new StringBuilder();
 
@@ -1473,141 +1377,6 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
    </tem:UpdatePassengers>
 </soap:Body>
 </soap:Envelope>";
-    }
-
-    private static string BuildMakePrebookingSoapRequest(
-        string sessionId,
-        string sessionToken,
-        BookingRequest request)
-    {
-        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
-xmlns:tem=""http://tempuri.org/""
-xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
-xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
-<soap:Body>
-   <tem:MakePrebooking>
-      <tem:request>
-         <trev:AuthenticationHeader>
-            <trev:SessionId>{sessionId}</trev:SessionId>
-            <trev:SessionToken>{sessionToken}</trev:SessionToken>
-         </trev:AuthenticationHeader>
-         <trev1:Form>
-            <trev1:ExtraForm>
-               <trev1:SelectedServiceFee>0</trev1:SelectedServiceFee>
-            </trev1:ExtraForm>
-            <trev1:ProductIds xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
-               <arr:guid>{request.ProductId}</arr:guid>
-            </trev1:ProductIds>
-         </trev1:Form>
-      </tem:request>
-   </tem:MakePrebooking>
-</soap:Body>
-</soap:Envelope>";
-    }
-
-    private static BookingResponse ParseBookingResponse(XDocument doc)
-    {
-        var response = new BookingResponse
-        {
-            HasError = false
-        };
-
-        var shoppingFile = doc.GetDescendants("ShoppingFile").FirstOrDefault();
-        if (shoppingFile != null)
-        {
-            response.ShoppingFileId = shoppingFile.GetValue("Id");
-            response.Currency = shoppingFile.GetValue("Currency");
-        }
-
-        // Yolcu bilgileri — ShoppingFile/Passengers/Passenger (T_Passenger) dugumleri
-        var passengerLookup = new Dictionary<int, BookingPassengerResult>();
-        foreach (var paxNode in doc.GetDescendants("T_Passenger"))
-        {
-            var seqNo = paxNode.GetIntValue("SequenceNo");
-            passengerLookup[seqNo] = new BookingPassengerResult
-            {
-                SequenceNo = seqNo,
-                PaxType = paxNode.GetValue("Type"),
-                FirstName = paxNode.GetValue("FirstName"),
-                LastName = paxNode.GetValue("LastName"),
-                Gender = paxNode.GetValue("Gender"),
-                BirthDate = paxNode.GetValue("BirthDate")
-            };
-        }
-
-        var airBooking = doc.GetDescendants("T_AirBooking").FirstOrDefault();
-        if (airBooking != null)
-        {
-            response.ProductId = airBooking.GetValue("ProductId");
-            response.PNR = airBooking.GetValue("BookingCode");
-            response.Status = airBooking.GetValue("Status");
-            response.TotalFare = airBooking.GetDecimalValue("TotalFare");
-            response.Currency ??= airBooking.GetValue("Currency");
-
-            // T_AirBookingItem'lardan PaxReference bilgisini al, T_Passenger ile esle
-            foreach (var item in airBooking.GetDescendants("T_AirBookingItem"))
-            {
-                var paxRef = item.GetDescendants("PaxReference").FirstOrDefault();
-                var seqNo = paxRef?.GetIntValue("LocalSequenceNo") ?? 0;
-                var paxType = paxRef?.GetValue("LocalPaxType");
-
-                if (passengerLookup.TryGetValue(seqNo, out var paxResult))
-                {
-                    paxResult.PaxType ??= paxType;
-                    if (!response.Passengers.Contains(paxResult))
-                        response.Passengers.Add(paxResult);
-                }
-                else
-                {
-                    response.Passengers.Add(new BookingPassengerResult
-                    {
-                        PaxType = paxType,
-                        SequenceNo = seqNo
-                    });
-                }
-            }
-
-            // T_AirBookingItem bulunamadiysa sadece T_Passenger'lardan yolcu listesi olustur
-            if (response.Passengers.Count == 0 && passengerLookup.Count > 0)
-            {
-                response.Passengers.AddRange(passengerLookup.Values.OrderBy(p => p.SequenceNo));
-            }
-
-            // Segment bilgileri
-            foreach (var seg in airBooking.GetDescendants("T_Segment"))
-            {
-                response.Segments.Add(new BookingSegmentResult
-                {
-                    SequenceNo = seg.GetIntValue("SequenceNo"),
-                    OriginCode = seg.GetValue("OriginCode"),
-                    DestinationCode = seg.GetValue("DestinationCode"),
-                    DepartureDay = seg.GetValue("DepartureDay"),
-                    DepartureTime = seg.GetValue("DepartureTime"),
-                    ArrivalDay = seg.GetValue("ArrivalDay"),
-                    ArrivalTime = seg.GetValue("ArrivalTime"),
-                    MarketingAirline = seg.GetValue("MarketingAirline"),
-                    FlightNumber = seg.GetValue("FlightNumber"),
-                    BookingClass = seg.GetValue("BookingClass"),
-                    Status = seg.GetValue("Status")
-                });
-            }
-        }
-
-        // PNR bos ise ShoppingFile seviyesindeki AirBookings'tan almaya calis
-        if (string.IsNullOrEmpty(response.PNR))
-        {
-            response.PNR = doc.GetValue("BookingCode");
-        }
-
-        // Fiyat ozeti
-        var priceSummary = doc.GetDescendants("PriceSummary").FirstOrDefault();
-        if (priceSummary != null && response.TotalFare == 0)
-        {
-            response.TotalFare = priceSummary.GetDecimalValue("GrandTotal");
-        }
-
-        return response;
     }
 
     #endregion
