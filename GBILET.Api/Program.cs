@@ -108,26 +108,48 @@ using (var scope = app.Services.CreateScope())
     }
 
     // Mevcut DB'de UserId NOT NULL constraint'ini nullable yap
-
     try
     {
-        var dbProviderName = builder.Configuration.GetValue<string>("DbProvider");
-        if (dbProviderName == "PostgreSQL")
-        {
-            db.Database.ExecuteSqlRaw("""
-                ALTER TABLE "Bookings" ALTER COLUMN "UserId" DROP NOT NULL;
-                """);
-        }
-        else
-        {
-            db.Database.ExecuteSqlRaw("""
-                ALTER TABLE Bookings ALTER COLUMN UserId uniqueidentifier NULL;
-                """);
-        }
+        db.Database.ExecuteSqlRaw("""
+            ALTER TABLE "Bookings" ALTER COLUMN "UserId" DROP NOT NULL;
+            """);
     }
     catch
     {
         // Constraint zaten nullable ise veya tablo yoksa hatayi yut
+    }
+
+    // GuestSessions tablosunu olustur (yoksa)
+    try
+    {
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "GuestSessions" (
+                "Id"        uuid        NOT NULL PRIMARY KEY,
+                "Email"     text,
+                "Phone"     text,
+                "IpAddress" text,
+                "CreatedAt" timestamp with time zone NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS "IX_GuestSessions_Email" ON "GuestSessions" ("Email");
+            """);
+    }
+    catch
+    {
+        // Tablo zaten varsa yut
+    }
+
+    // Bookings tablosuna GuestSessionId kolonu ekle (yoksa)
+    try
+    {
+        db.Database.ExecuteSqlRaw("""
+            ALTER TABLE "Bookings"
+                ADD COLUMN IF NOT EXISTS "GuestSessionId" uuid NULL
+                    REFERENCES "GuestSessions"("Id");
+            """);
+    }
+    catch
+    {
+        // Kolon zaten varsa yut
     }
 }
 
