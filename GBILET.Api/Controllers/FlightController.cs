@@ -278,11 +278,16 @@ public class FlightController : ControllerBase
 
             var result = await _flightService.MakePreBookingAsync(request);
 
+            Console.WriteLine($">>> RESULT: HasError={result.HasError}, BookingCode={result.BookingCode}, Status={result.Status}");
+
             if (result.HasError)
                 return Ok(result);
 
             if (string.IsNullOrEmpty(result.BookingCode))
+            {
+                Console.WriteLine($">>> BOOKING CODE EMPTY, skipping DB write. BookingCode='{result.BookingCode}'");
                 return Ok(result);
+            }
 
             // Basarili prebooking — DB'ye booking kaydi olustur
             Guid? resolvedUserId = null;
@@ -291,6 +296,8 @@ public class FlightController : ControllerBase
 
             try
             {
+                Console.WriteLine(">>> DB WRITE START");
+
                 if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
                 {
                     resolvedUserId = request.UserId.Value;
@@ -404,9 +411,11 @@ public class FlightController : ControllerBase
 
                 await _bookingRepository.CreateBookingAsync(bookingEntity);
                 savedBookingId = bookingEntity.Id;
+                Console.WriteLine($">>> DB WRITE SUCCESS BookingId={bookingEntity.Id}");
             }
             catch (Exception dbEx)
             {
+                Console.WriteLine($">>> DB WRITE ERROR: {dbEx.Message} | Inner: {dbEx.InnerException?.Message}");
                 _logger.LogError(dbEx,
                     "[MakePreBooking] DB kaydi basarisiz. PNR={BookingCode} yine de donuluyor.",
                     result.BookingCode);
