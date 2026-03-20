@@ -5,6 +5,7 @@ using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using GBILET.Core.Entities;
 
 namespace GBILET.Api.Controllers;
 
@@ -15,12 +16,14 @@ public class FlightController : ControllerBase
     private readonly IFlightService _flightService;
     private readonly IBookingRepository _bookingRepository;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<FlightController> _logger;
 
-    public FlightController(IFlightService flightService, IBookingRepository bookingRepository, IMemoryCache cache)
+    public FlightController(IFlightService flightService, IBookingRepository bookingRepository, IMemoryCache cache, ILogger<FlightController> logger)
     {
         _flightService = flightService;
         _bookingRepository = bookingRepository;
         _cache = cache;
+        _logger = logger;
     }
 
     [HttpPost("search")]
@@ -278,121 +281,136 @@ public class FlightController : ControllerBase
             if (result.HasError)
                 return Ok(result);
 
+            if (string.IsNullOrEmpty(result.BookingCode))
+                return Ok(result);
+
             // Basarili prebooking — DB'ye booking kaydi olustur
             Guid? resolvedUserId = null;
             Guid? resolvedGuestSessionId = null;
+            Guid? savedBookingId = null;
 
-            if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
+            try
             {
-                resolvedUserId = request.UserId.Value;
-            }
-            else
-            {
-                var existingGuest = await _bookingRepository.GetGuestSessionByEmailAsync(request.Contact.Email);
-                if (existingGuest != null)
+                if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
                 {
-                    resolvedGuestSessionId = existingGuest.Id;
+                    resolvedUserId = request.UserId.Value;
                 }
                 else
                 {
-                    var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-                    var newGuest = await _bookingRepository.CreateGuestSessionAsync(new GuestSession
+                    var existingGuest = await _bookingRepository.GetGuestSessionByEmailAsync(request.Contact.Email);
+                    if (existingGuest != null)
+                    {
+                        resolvedGuestSessionId = existingGuest.Id;
+                    }
+                    else
+                    {
+                        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                        var newGuest = await _bookingRepository.CreateGuestSessionAsync(new GuestSession
+                        {
+                            Id = Guid.NewGuid(),
+                            Email = request.Contact.Email,
+                            Phone = request.Contact.Phone,
+                            IpAddress = ipAddress,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                        resolvedGuestSessionId = newGuest.Id;
+                    }
+                }
+
+                var firstSegment = result.Segments.FirstOrDefault();
+                int adultCount = request.Passengers.Count(p => p.PaxType == "ADT");
+                int childCount = request.Passengers.Count(p => p.PaxType == "CHD");
+                int infantCount = request.Passengers.Count(p => p.PaxType == "INF");
+
+                var bookingEntity = new Booking
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = resolvedUserId,
+                    GuestSessionId = resolvedGuestSessionId,
+                    BiletBankFileId = Guid.TryParse(result.ShoppingFileId, out var fileId) ? fileId : null,
+                    PNR = result.BookingCode,
+                    Status = result.Status ?? "PreBooked",
+                    GrandTotal = result.TotalFare,
+                    Currency = result.Currency ?? "TRY",
+                    ServiceFee = result.ServiceFee,
+                    IsFinalized = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    TransactionId = Guid.NewGuid().ToString(),
+                    SessionId = request.SessionId,
+                    SessionToken = request.SessionToken,
+                    Origin = firstSegment?.OriginCode,
+                    Destination = firstSegment?.DestinationCode,
+                    AirlineCode = firstSegment?.MarketingAirline,
+                    FlightNumber = firstSegment?.FlightNumber,
+                    BookedAt = DateTime.UtcNow,
+                    AdultCount = adultCount > 0 ? adultCount : 1,
+                    ChildCount = childCount,
+                    InfantCount = infantCount
+                };
+
+                foreach (var pax in request.Passengers)
+                {
+                    bookingEntity.Passengers.Add(new Passenger
                     {
                         Id = Guid.NewGuid(),
-                        Email = request.Contact.Email,
-                        Phone = request.Contact.Phone,
-                        IpAddress = ipAddress,
-                        CreatedAt = DateTime.UtcNow
+                        BookingId = bookingEntity.Id,
+                        SequenceNo = pax.SequenceNo,
+                        Type = pax.PaxType,
+                        FirstName = pax.FirstName,
+                        LastName = pax.LastName,
+                        Gender = pax.Gender,
+                        BirthDate = pax.BirthDate,
+                        CitizenNo = pax.CitizenNo,
+                        PassportNo = pax.PassportNo,
+                        PassportCountry = pax.PassportCountry,
+                        Nationality = pax.Nationality,
+                        Email = pax.SequenceNo == 1 ? request.Contact.Email : null,
+                        Phone = pax.SequenceNo == 1 ? request.Contact.Phone : null,
+                        TempTag = pax.TempTag,
+                        PaxReferenceId = pax.PaxReferenceId
                     });
-                    resolvedGuestSessionId = newGuest.Id;
                 }
-            }
 
-            var firstSegment = result.Segments.FirstOrDefault();
-            int adultCount = request.Passengers.Count(p => p.PaxType == "ADT");
-            int childCount = request.Passengers.Count(p => p.PaxType == "CHD");
-            int infantCount = request.Passengers.Count(p => p.PaxType == "INF");
+                foreach (var seg in result.Segments)
+                {
+                    bookingEntity.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
+                    {
+                        Id = Guid.NewGuid(),
+                        BookingId = bookingEntity.Id,
+                        SequenceNo = 0,
+                        MarketingAirline = seg.MarketingAirline ?? "",
+                        FlightNumber = seg.FlightNumber ?? "",
+                        OriginCode = seg.OriginCode ?? "",
+                        DestinationCode = seg.DestinationCode ?? "",
+                        DepartureDate = DateTime.TryParse(seg.DepartureDay, out var depDate) ? depDate : DateTime.MinValue,
+                        DepartureTime = seg.DepartureTime,
+                        ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var arrDate) ? arrDate : null,
+                        ArrivalTime = seg.ArrivalTime,
+                        BookingClass = seg.BookingClass
+                    });
+                }
 
-            var bookingEntity = new Booking
-            {
-                Id = Guid.NewGuid(),
-                UserId = resolvedUserId,
-                GuestSessionId = resolvedGuestSessionId,
-                BiletBankFileId = Guid.TryParse(result.ShoppingFileId, out var fileId) ? fileId : null,
-                PNR = result.BookingCode,
-                Status = result.Status ?? "Reserved",
-                GrandTotal = result.TotalFare,
-                Currency = result.Currency ?? "TRY",
-                IsFinalized = false,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                TransactionId = Guid.NewGuid().ToString(),
-                SessionId = request.SessionId,
-                SessionToken = request.SessionToken,
-                Origin = firstSegment?.OriginCode,
-                Destination = firstSegment?.DestinationCode,
-                AirlineCode = firstSegment?.MarketingAirline,
-                FlightNumber = firstSegment?.FlightNumber,
-                BookedAt = DateTime.UtcNow,
-                AdultCount = adultCount > 0 ? adultCount : 1,
-                ChildCount = childCount,
-                InfantCount = infantCount
-            };
-
-            foreach (var pax in request.Passengers)
-            {
-                bookingEntity.Passengers.Add(new Passenger
+                bookingEntity.BookingLogs.Add(new BookingLog
                 {
                     Id = Guid.NewGuid(),
                     BookingId = bookingEntity.Id,
-                    SequenceNo = pax.SequenceNo,
-                    Type = pax.PaxType,
-                    FirstName = pax.FirstName,
-                    LastName = pax.LastName,
-                    Gender = pax.Gender,
-                    BirthDate = pax.BirthDate,
-                    CitizenNo = pax.CitizenNo,
-                    PassportNo = pax.PassportNo,
-                    PassportCountry = pax.PassportCountry,
-                    Nationality = pax.Nationality,
-                    Email = pax.SequenceNo == 1 ? request.Contact.Email : null,
-                    Phone = pax.SequenceNo == 1 ? request.Contact.Phone : null,
-                    TempTag = pax.TempTag,
-                    PaxReferenceId = pax.PaxReferenceId
+                    SessionId = request.SessionId,
+                    SessionToken = request.SessionToken,
+                    Operation = "MakePreBooking",
+                    IsSuccess = true,
+                    CreatedAt = DateTime.UtcNow
                 });
+
+                await _bookingRepository.CreateBookingAsync(bookingEntity);
+                savedBookingId = bookingEntity.Id;
             }
-
-            foreach (var seg in result.Segments)
+            catch (Exception dbEx)
             {
-                bookingEntity.FlightSegments.Add(new Core.Entities.FlightSegment
-                {
-                    Id = Guid.NewGuid(),
-                    BookingId = bookingEntity.Id,
-                    SequenceNo = 0,
-                    MarketingAirline = seg.MarketingAirline ?? "",
-                    FlightNumber = seg.FlightNumber ?? "",
-                    OriginCode = seg.OriginCode ?? "",
-                    DestinationCode = seg.DestinationCode ?? "",
-                    DepartureDate = DateTime.TryParse(seg.DepartureDay, out var depDate) ? depDate : DateTime.MinValue,
-                    DepartureTime = seg.DepartureTime,
-                    ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var arrDate) ? arrDate : null,
-                    ArrivalTime = seg.ArrivalTime,
-                    BookingClass = seg.BookingClass
-                });
+                _logger.LogError(dbEx,
+                    "[MakePreBooking] DB kaydi basarisiz. PNR={BookingCode} yine de donuluyor.",
+                    result.BookingCode);
             }
-
-            await _bookingRepository.CreateBookingAsync(bookingEntity);
-
-            await _bookingRepository.AddLogAsync(new BookingLog
-            {
-                Id = Guid.NewGuid(),
-                BookingId = bookingEntity.Id,
-                SessionId = request.SessionId,
-                SessionToken = request.SessionToken,
-                Operation = "MakePreBooking",
-                IsSuccess = true,
-                CreatedAt = DateTime.UtcNow
-            });
 
             return Ok(new
             {
@@ -401,6 +419,9 @@ public class FlightController : ControllerBase
                 result.BookingCode,
                 result.Status,
                 result.TotalFare,
+                result.BaseFare,
+                result.Taxes,
+                result.ServiceFee,
                 result.Currency,
                 result.ShoppingFileId,
                 result.IsPriceChanged,
@@ -408,10 +429,10 @@ public class FlightController : ControllerBase
                 result.ReservationExpiresAt,
                 result.Segments,
                 result.Passengers,
-                bookingId = bookingEntity.Id,
+                bookingId = savedBookingId,
                 userId = resolvedUserId,
                 guestSessionId = resolvedGuestSessionId,
-                isGuest = resolvedGuestSessionId.HasValue
+                isGuest = request.UserId == null
             });
         }
         catch (Exception ex)
