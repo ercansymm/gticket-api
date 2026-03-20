@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using GBILET.Core.Entities;
 
 namespace GBILET.Infrastructure.Data;

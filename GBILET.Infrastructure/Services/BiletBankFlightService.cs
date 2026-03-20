@@ -1611,4 +1611,191 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
     }
 
     #endregion
+
+    #region MakePreBooking
+
+    public async Task<MakePreBookingResponse> MakePreBookingAsync(MakePreBookingRequest request)
+    {
+        var soapRequest = BuildMakePreBookingSoapRequest(
+            request.SessionId,
+            request.SessionToken,
+            request.ProductId,
+            request.BrandedFareItemId,
+            request.ShoppingFileId);
+
+        _logger.LogInformation("[MakePreBooking] SOAP Request:\n{SoapRequest}", soapRequest);
+
+        var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
+        content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePrebooking");
+
+        try
+        {
+            var response = await _httpClient.PostAsync(_proxyUrl, content);
+            var responseText = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[MakePreBooking] HTTP Status: {StatusCode}", (int)response.StatusCode);
+            _logger.LogInformation("[MakePreBooking] SOAP Response:\n{SoapResponse}", responseText);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new MakePreBookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"MakePreBooking HTTP {(int)response.StatusCode}: {responseText}"
+                };
+            }
+
+            var doc = XDocument.Parse(responseText);
+
+            var hasError = doc.GetValue("HasError");
+            if (hasError == "true")
+            {
+                return new MakePreBookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = doc.GetValue("ErrorMessage")
+                        ?? doc.GetValue("DebugMessage")
+                        ?? doc.GetValue("Message")
+                        ?? doc.GetValue("ServiceError")
+                };
+            }
+
+            return ParseMakePreBookingResponse(doc);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[MakePreBooking] Exception");
+            return new MakePreBookingResponse
+            {
+                HasError = true,
+                ErrorMessage = $"MakePreBooking hatasi: {ex.Message}"
+            };
+        }
+    }
+
+    private static string BuildMakePreBookingSoapRequest(
+        string sessionId,
+        string sessionToken,
+        string productId,
+        string brandedFareItemId,
+        string shoppingFileId)
+    {
+        return $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<s:Envelope xmlns:s=""http://schemas.xmlsoap.org/soap/envelope/"">
+  <s:Body>
+    <MakePrebooking xmlns=""http://tempuri.org/"">
+      <request xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS""
+               xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Model.Air.Shopping"">
+        <trev:AuthenticationHeader>
+          <trev:SessionId>{sessionId}</trev:SessionId>
+          <trev:SessionToken>{sessionToken}</trev:SessionToken>
+        </trev:AuthenticationHeader>
+        <trev:ExtraParamList>
+          <trev:ExtendedData>
+            <trev:Name>IntendedShoppingFileId</trev:Name>
+            <trev:Value>{shoppingFileId}</trev:Value>
+          </trev:ExtendedData>
+          <trev:ExtendedData>
+            <trev:Name>DoReservation</trev:Name>
+            <trev:Value>true</trev:Value>
+          </trev:ExtendedData>
+        </trev:ExtraParamList>
+        <trev:Form>
+          <trev2:Branded>
+            <trev2:IO_Air_Branded_Form>
+              <trev2:BrandedFareItemId>{brandedFareItemId}</trev2:BrandedFareItemId>
+              <trev2:ProductId>{productId}</trev2:ProductId>
+            </trev2:IO_Air_Branded_Form>
+          </trev2:Branded>
+          <trev2:ProductIds>
+            <trev:guid>{productId}</trev:guid>
+          </trev2:ProductIds>
+        </trev:Form>
+      </request>
+    </MakePrebooking>
+  </s:Body>
+</s:Envelope>";
+    }
+
+    private static MakePreBookingResponse ParseMakePreBookingResponse(XDocument doc)
+    {
+        var response = new MakePreBookingResponse { HasError = false };
+
+        var shoppingFile = doc.GetDescendants("ShoppingFile").FirstOrDefault();
+        if (shoppingFile != null)
+        {
+            response.ShoppingFileId = shoppingFile.GetValue("Id");
+            response.IsPriceChanged = shoppingFile.GetBoolValue("IsPriceChanged");
+            response.IsFlightInfoChanged = shoppingFile.GetBoolValue("IsFlightInfoChanged");
+            response.IsReservationCancelled = shoppingFile.GetBoolValue("IsReservationCancelled");
+            response.RemainingSum = shoppingFile.GetDecimalValue("RemainingSum");
+            response.Currency = shoppingFile.GetValue("Currency");
+            response.CanBeReserved = shoppingFile.GetBoolValue("CanBeReserved");
+        }
+
+        // AirBooking bilgileri
+        var airBooking = doc.GetDescendants("T_AirBooking").FirstOrDefault();
+        if (airBooking != null)
+        {
+            response.BookingCode = airBooking.GetValue("BookingCode");
+            response.ProductId = airBooking.GetValue("ProductId");
+            response.Status = airBooking.GetValue("Status");
+            response.BaseFare = airBooking.GetDecimalValue("BaseFare");
+            response.Taxes = airBooking.GetDecimalValue("Taxes");
+            response.ServiceFee = airBooking.GetDecimalValue("ServiceFee");
+            response.TotalFare = airBooking.GetDecimalValue("TotalFare");
+
+            var ruleAttr = airBooking.GetDescendants("FlightRuleAttribute").FirstOrDefault();
+            if (ruleAttr != null)
+                response.CanBeReserved = ruleAttr.GetBoolValue("IsReservable");
+        }
+
+        // TimeTable — on rezervasyon ve rezervasyon gecerlilik sureleri
+        var timeTable = doc.GetDescendants("TimeTable").FirstOrDefault();
+        if (timeTable != null)
+        {
+            var prebookingRaw = timeTable.GetValue("Prebooking_ExpiresAt");
+            if (DateTime.TryParse(prebookingRaw, out var prebookingExpiry))
+                response.PrebookingExpiresAt = prebookingExpiry;
+
+            var reservationRaw = timeTable.GetValue("Reservation_ExpiresAt");
+            if (DateTime.TryParse(reservationRaw, out var reservationExpiry))
+                response.ReservationExpiresAt = reservationExpiry;
+        }
+
+        // Yolcular
+        foreach (var pax in doc.GetDescendants("T_Passenger"))
+        {
+            response.Passengers.Add(new PreBookingPassenger
+            {
+                FirstName = pax.GetValue("FirstName"),
+                LastName = pax.GetValue("LastName"),
+                Type = pax.GetValue("Type"),
+                CitizenNo = pax.GetValue("CitizenNo"),
+                Gender = pax.GetValue("Gender")
+            });
+        }
+
+        // Segmentler
+        foreach (var seg in doc.GetDescendants("T_Segment"))
+        {
+            response.Segments.Add(new PreBookingSegment
+            {
+                SegmentId = seg.GetValue("Id"),
+                OriginCode = seg.GetValue("OriginCode"),
+                DestinationCode = seg.GetValue("DestinationCode"),
+                DepartureDay = seg.GetValue("DepartureDay"),
+                DepartureTime = seg.GetValue("DepartureTime"),
+                ArrivalDay = seg.GetValue("ArrivalDay"),
+                ArrivalTime = seg.GetValue("ArrivalTime"),
+                FlightNumber = seg.GetValue("FlightNumber"),
+                MarketingAirline = seg.GetValue("MarketingAirline"),
+                BookingClass = seg.GetValue("BookingClass")
+            });
+        }
+
+        return response;
+    }
+
+    #endregion
 }

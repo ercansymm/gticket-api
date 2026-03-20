@@ -190,6 +190,39 @@ public class FlightController : ControllerBase
         }
     }
 
+    [HttpPost("make-prebooking")]
+    public async Task<IActionResult> MakePreBooking([FromBody] MakePreBookingRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatını kontrol edin." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanları zorunludur (Allocate response'tan alınır)." });
+
+            if (string.IsNullOrWhiteSpace(request.ProductId))
+                return BadRequest(new { error = "ProductId alanı zorunludur (Allocate response'taki AirBookings[0].ProductId)." });
+
+            if (string.IsNullOrWhiteSpace(request.BrandedFareItemId))
+                return BadRequest(new { error = "BrandedFareItemId alanı zorunludur (Allocate response'taki AirBookings[0].BrandedFareItems[0].BrandedFareItemId)." });
+
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId alanı zorunludur (Allocate response'taki ShoppingFileId)." });
+
+            var result = await _flightService.MakePreBookingAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
     [HttpPost("book")]
     public async Task<IActionResult> Book([FromBody] BookingRequest? request)
     {
