@@ -1982,7 +1982,13 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
 
     public async Task<ReadShoppingFileResponse> ReadShoppingFileAsync(ReadShoppingFileRequest request)
     {
-        var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+        try
+        {
+            var sessionId = request.SessionId ?? "";
+            var sessionToken = request.SessionToken ?? "";
+            var shoppingFileId = request.ShoppingFileId ?? "";
+
+            var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
@@ -1991,23 +1997,19 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
    <tem:ReadShoppingFile>
       <tem:request>
          <trev:AuthenticationHeader>
-            <trev:SessionId>{request.SessionId}</trev:SessionId>
-            <trev:SessionToken>{request.SessionToken}</trev:SessionToken>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
-         <trev1:Form>
-            <trev1:ShoppingFileId>{request.ShoppingFileId}</trev1:ShoppingFileId>
-         </trev1:Form>
+         <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
       </tem:request>
    </tem:ReadShoppingFile>
 </soap:Body>
 </soap:Envelope>";
 
-        try
-        {
-            _logger.LogInformation("[ReadShoppingFile] SOAP Request:\n{SoapRequest}", soapRequest);
+_logger.LogInformation("[ReadShoppingFile] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/ReadShoppingFile");
+var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
+content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/ReadShoppingFile");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
