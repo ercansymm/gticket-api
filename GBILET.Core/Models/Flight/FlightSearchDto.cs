@@ -58,6 +58,8 @@ public class FlightResultDto
     public string? FareType { get; set; }
     public string? BookingClass { get; set; }
     public string? BookingClassName { get; set; }
+    public string? CabinClass { get; set; }
+    public string? CabinClassName { get; set; }
 
     // Kapasite
     public int AvailableSeats { get; set; }
@@ -76,9 +78,15 @@ public class FlightResultDto
     public decimal CustomerCommissionMax { get; set; }
     public decimal CustomerCommissionValue { get; set; }
 
-    // Branded Fare (ileride dolabilir)
+    // Branded Fare (ham veri)
     public List<BrandedFareItem> BrandedFareItems { get; set; } = [];
     public List<FreeBaggageAllowance> FreeBaggageAllowances { get; set; } = [];
+
+    // Paket seçenekleri (EcoFly, ExtraFly, PrimeFly vb.)
+    public List<BrandedFareOptionDto> FarePackages { get; set; } = [];
+
+    // Bagaj bilgisi özeti
+    public BaggageInfoDto? BaggageInfo { get; set; }
 }
 
 public class FlightSegmentDto
@@ -118,10 +126,43 @@ public class FlightFilterOptionsDto
     public bool HasRefundableFlights { get; set; }
     public string? EarliestDeparture { get; set; }
     public string? LatestDeparture { get; set; }
+    public List<string> CabinClasses { get; set; } = [];
+    public List<string> FarePackages { get; set; } = [];
 }
 
 public class AirlineFilterItem
 {
     public string? Code { get; set; }
     public string? Name { get; set; }
+}
+
+public class BrandedFareOptionDto
+{
+    public string? BrandedFareItemId { get; set; }
+    public string? BrandCode { get; set; }
+    public string? BrandName { get; set; }
+    public decimal TotalFare { get; set; }
+    public decimal TotalTaxes { get; set; }
+    public string? Currency { get; set; }
+    public string? TotalFareFormatted { get; set; }
+    public string? CabinClass { get; set; }
+    public string? BookingClass { get; set; }
+    public List<BrandedRuleDto> Rules { get; set; } = [];
+}
+
+public class BrandedRuleDto
+{
+    public string? Description { get; set; }
+    public bool IsIncluded { get; set; }
+    public bool IsChargeable { get; set; }
+    public string? ServiceGroup { get; set; }
+    public string? Application { get; set; }
+}
+
+public class BaggageInfoDto
+{
+    public string? Allowance { get; set; }
+    public string? Unit { get; set; }
+    public string? DisplayText { get; set; }
+    public string? Category { get; set; }
 }

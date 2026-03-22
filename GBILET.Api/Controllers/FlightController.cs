@@ -83,75 +83,6 @@ public class FlightController : ControllerBase
         }
     }
 
-    [HttpPost("search/sort")]
-    public IActionResult Sort([FromBody] FlightSortRequest request)
-    {
-        try
-        {
-            if (request.Flights == null || request.Flights.Count == 0)
-                return BadRequest(new { error = "Sıralanacak uçuş listesi boş." });
-
-            var sorted = request.SortBy?.ToLowerInvariant() switch
-            {
-                "price" or "cheapest" => request.Flights.OrderBy(f => f.TotalFare).ToList(),
-                "earliest" => request.Flights.OrderBy(f => f.DepartureTime).ToList(),
-                "latest" => request.Flights.OrderByDescending(f => f.DepartureTime).ToList(),
-                "shortest" or "duration" => request.Flights
-                    .OrderBy(f => f.DurationHours * 60 + f.DurationMinutes).ToList(),
-                _ => request.Flights
-            };
-
-            return Ok(sorted);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = ex.Message });
-        }
-    }
-
-    [HttpPost("search/filter")]
-    public IActionResult Filter([FromBody] FlightFilterRequest request)
-    {
-        try
-        {
-            if (request.Flights == null || request.Flights.Count == 0)
-                return BadRequest(new { error = "Filtrelenecek uçuş listesi boş." });
-
-            var filtered = request.Flights.AsEnumerable();
-
-            if (request.DirectOnly == true)
-                filtered = filtered.Where(f => f.IsDirect);
-
-            if (request.RefundableOnly == true)
-                filtered = filtered.Where(f => f.IsRefundable);
-
-            if (request.MinPrice.HasValue)
-                filtered = filtered.Where(f => f.TotalFare >= request.MinPrice.Value);
-
-            if (request.MaxPrice.HasValue)
-                filtered = filtered.Where(f => f.TotalFare <= request.MaxPrice.Value);
-
-            if (request.AirlineCodes is { Count: > 0 })
-                filtered = filtered.Where(f => request.AirlineCodes.Contains(f.AirlineCode, StringComparer.OrdinalIgnoreCase));
-
-            if (!string.IsNullOrEmpty(request.DepartureTimeFrom) && !string.IsNullOrEmpty(request.DepartureTimeTo))
-            {
-                filtered = filtered.Where(f =>
-                    string.Compare(f.DepartureTime, request.DepartureTimeFrom, StringComparison.Ordinal) >= 0 &&
-                    string.Compare(f.DepartureTime, request.DepartureTimeTo, StringComparison.Ordinal) <= 0);
-            }
-
-            var result = filtered.ToList();
-            var filterOptions = FlightSearchMapper.BuildFilterOptions(result);
-
-            return Ok(new { flights = result, filterOptions });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = ex.Message });
-        }
-    }
-
     [HttpGet("session/{searchId}")]
     public IActionResult GetSession(string searchId)
     {
@@ -808,7 +739,7 @@ public class FlightController : ControllerBase
                 isGuest = booking.UserId == null,
                 passengers = booking.Passengers.Select(p => new
                 {
-                    p.SequenceNo,
+                    p.SequenceNo, 
                     p.Type,
                     p.FirstName,
                     p.LastName,
