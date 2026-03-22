@@ -1779,7 +1779,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
+xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 <soap:Body>
    <tem:FinalizeShopping>
       <tem:request>
@@ -1794,9 +1794,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:Form>
-            <trev1:ProductIds>
-               <arr:guid>{productId}</arr:guid>
-            </trev1:ProductIds>
+            <trev1:BillingInfo i:nil=""true""/>
+            <trev1:CorporatePin i:nil=""true""/>
+            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:Form>
       </tem:request>
    </tem:FinalizeShopping>
