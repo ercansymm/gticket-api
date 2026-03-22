@@ -1655,7 +1655,15 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
     public async Task<MakePaymentResponse> MakePaymentAsync(MakePaymentRequest request)
     {
-        var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+        try
+        {
+            var amount = request.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var currency = request.Currency ?? "TRY";
+            var sessionId = request.SessionId ?? "";
+            var sessionToken = request.SessionToken ?? "";
+            var shoppingFileId = request.ShoppingFileId ?? "";
+
+            var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
@@ -1665,30 +1673,28 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
    <tem:MakePayment_FromRunningAccount>
       <tem:request>
          <trev:AuthenticationHeader>
-            <trev:SessionId>{request.SessionId}</trev:SessionId>
-            <trev:SessionToken>{request.SessionToken}</trev:SessionToken>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev:ExtraParamList>
             <trev:ExtendedData>
                <trev:Name>IntendedShoppingFileId</trev:Name>
-               <trev:Value>{request.ShoppingFileId}</trev:Value>
+               <trev:Value>{shoppingFileId}</trev:Value>
             </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
-            <trev1:Amount>{request.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
-            <trev1:Currency>{request.Currency ?? "TRY"}</trev1:Currency>
+            <trev1:Amount>{amount}</trev1:Amount>
+            <trev1:Currency>{currency}</trev1:Currency>
             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
             <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
-            <trev1:ShoppingFileId>{request.ShoppingFileId}</trev1:ShoppingFileId>
+            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:PaymentForm>
       </tem:request>
    </tem:MakePayment_FromRunningAccount>
 </soap:Body>
 </soap:Envelope>";
 
-        try
-        {
             _logger.LogInformation("[MakePayment] SOAP Request (card masked)");
 
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
@@ -1709,6 +1715,15 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 };
             }
 
+            if (string.IsNullOrWhiteSpace(responseText))
+            {
+                return new MakePaymentResponse
+                {
+                    HasError = true,
+                    ErrorMessage = "MakePayment: Bos response alindi."
+                };
+            }
+
             var doc = XDocument.Parse(responseText);
 
             var hasErrorVal = doc.GetValue("HasError");
@@ -1721,17 +1736,17 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 };
             }
 
-            var shoppingFile = doc.GetDescendants("ShoppingFile").FirstOrDefault();
+            var shoppingFileEl = doc.GetDescendants("ShoppingFile").FirstOrDefault();
             var paymentId = doc.GetValue("PaymentId");
 
             return new MakePaymentResponse
             {
                 HasError = false,
                 IsPaymentSuccessful = true,
-                Status = shoppingFile?.GetValue("Status") ?? "Paid",
-                ShoppingFileId = shoppingFile?.GetValue("Id"),
-                RemainingSum = shoppingFile != null ? shoppingFile.GetDecimalValue("RemainingSum") : 0,
-                Currency = shoppingFile?.GetValue("Currency"),
+                Status = shoppingFileEl?.GetValue("Status") ?? "Paid",
+                ShoppingFileId = shoppingFileEl?.GetValue("Id"),
+                RemainingSum = shoppingFileEl != null ? shoppingFileEl.GetDecimalValue("RemainingSum") : 0,
+                Currency = shoppingFileEl?.GetValue("Currency") ?? currency,
                 PaymentReferenceId = paymentId
             };
         }

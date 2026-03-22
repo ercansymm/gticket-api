@@ -452,6 +452,11 @@ public class FlightController : ControllerBase
 
             var result = await _flightService.MakePaymentAsync(request);
 
+            if (result == null)
+            {
+                return StatusCode(500, new { error = "MakePayment servisten null response dondu." });
+            }
+
             // Odeme basariliysa DB'deki booking durumunu guncelle
             if (!result.HasError && result.IsPaymentSuccessful && request.BookingId.HasValue)
             {
@@ -462,8 +467,8 @@ public class FlightController : ControllerBase
                     {
                         Id = Guid.NewGuid(),
                         BookingId = request.BookingId.Value,
-                        SessionId = request.SessionId,
-                        SessionToken = request.SessionToken,
+                        SessionId = request.SessionId ?? "",
+                        SessionToken = request.SessionToken ?? "",
                         Operation = "MakePayment",
                         IsSuccess = true,
                         CreatedAt = DateTime.UtcNow
