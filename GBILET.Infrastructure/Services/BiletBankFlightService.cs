@@ -1655,26 +1655,13 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
     public async Task<MakePaymentResponse> MakePaymentAsync(MakePaymentRequest request)
     {
-        var cardXml = string.Empty;
-        if (request.CreditCard != null)
-        {
-            cardXml = $@"
-            <trev1:CreditCard>
-               <trev1:CardHolderName>{request.CreditCard.CardHolderName}</trev1:CardHolderName>
-               <trev1:CardNumber>{request.CreditCard.CardNumber}</trev1:CardNumber>
-               <trev1:Cvv>{request.CreditCard.Cvv}</trev1:Cvv>
-               <trev1:ExpirationMonth>{request.CreditCard.ExpiryMonth}</trev1:ExpirationMonth>
-               <trev1:ExpirationYear>{request.CreditCard.ExpiryYear}</trev1:ExpirationYear>
-            </trev1:CreditCard>";
-        }
-
         var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
-<soap:Body xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
+xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
+<soap:Body>
    <tem:MakePayment_FromRunningAccount>
       <tem:request>
          <trev:AuthenticationHeader>
@@ -1687,14 +1674,14 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                <trev:Value>{request.ShoppingFileId}</trev:Value>
             </trev:ExtendedData>
          </trev:ExtraParamList>
-         <trev1:Form>
+         <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
+         <trev1:PaymentForm>
             <trev1:Amount>{request.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
-            <trev1:Currency>{request.Currency}</trev1:Currency>{cardXml}
-            <trev1:PaymentType>{request.PaymentType}</trev1:PaymentType>
-            <trev1:ProductIds>
-               <arr:guid>{request.ProductId}</arr:guid>
-            </trev1:ProductIds>
-         </trev1:Form>
+            <trev1:Currency>{request.Currency ?? "TRY"}</trev1:Currency>
+            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
+            <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
+            <trev1:ShoppingFileId>{request.ShoppingFileId}</trev1:ShoppingFileId>
+         </trev1:PaymentForm>
       </tem:request>
    </tem:MakePayment_FromRunningAccount>
 </soap:Body>
@@ -1723,8 +1710,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             }
 
             var doc = XDocument.Parse(responseText);
-            var hasError = doc.GetValue("HasError");
-            if (hasError == "true")
+
+            var hasErrorVal = doc.GetValue("HasError");
+            if (hasErrorVal == "true")
             {
                 return new MakePaymentResponse
                 {
@@ -1734,7 +1722,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             }
 
             var shoppingFile = doc.GetDescendants("ShoppingFile").FirstOrDefault();
-            var paymentResult = doc.GetDescendants("PaymentResult").FirstOrDefault();
+            var paymentId = doc.GetValue("PaymentId");
 
             return new MakePaymentResponse
             {
@@ -1744,9 +1732,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 ShoppingFileId = shoppingFile?.GetValue("Id"),
                 RemainingSum = shoppingFile != null ? shoppingFile.GetDecimalValue("RemainingSum") : 0,
                 Currency = shoppingFile?.GetValue("Currency"),
-                PaymentReferenceId = paymentResult?.GetValue("ReferenceId"),
-                ThreeDSecureUrl = paymentResult?.GetValue("ThreeDSecureUrl"),
-                Is3DSecureRequired = !string.IsNullOrEmpty(paymentResult?.GetValue("ThreeDSecureUrl"))
+                PaymentReferenceId = paymentId
             };
         }
         catch (Exception ex)
