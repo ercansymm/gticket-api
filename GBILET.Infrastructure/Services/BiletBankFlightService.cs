@@ -1675,7 +1675,7 @@ xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
 xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 <soap:Body xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
-   <tem:MakePayment>
+   <tem:MakePayment_FromRunningAccount>
       <tem:request>
          <trev:AuthenticationHeader>
             <trev:SessionId>{request.SessionId}</trev:SessionId>
@@ -1696,7 +1696,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             </trev1:ProductIds>
          </trev1:Form>
       </tem:request>
-   </tem:MakePayment>
+   </tem:MakePayment_FromRunningAccount>
 </soap:Body>
 </soap:Envelope>";
 
@@ -1705,7 +1705,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             _logger.LogInformation("[MakePayment] SOAP Request (card masked)");
 
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePayment");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
