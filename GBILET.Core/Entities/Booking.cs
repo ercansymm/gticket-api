@@ -55,8 +55,15 @@ public class Booking
     public int ChildCount { get; set; } = 0;
     public int InfantCount { get; set; } = 0;
 
+    /// <summary>
+    /// Üye olmadan bilet alan misafir kullanıcının oturum ID'si.
+    /// UserId null ise bu alan dolu olur.
+    /// </summary>
+    public Guid? GuestSessionId { get; set; }
+
     // Navigation properties
     public User? User { get; set; }
+    public GuestSession? GuestSession { get; set; }
     public List<Passenger> Passengers { get; set; } = new();
     public List<FlightSegment> FlightSegments { get; set; } = new();
     public List<Payment> Payments { get; set; } = new();

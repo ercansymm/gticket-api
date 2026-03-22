@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using GBILET.Core.Entities;
 
 namespace GBILET.Infrastructure.Data;
@@ -39,6 +40,7 @@ public class GTicketDbContext : DbContext
     }
 
     public DbSet<User> Users { get; set; }
+    public DbSet<GuestSession> GuestSessions { get; set; }
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<Passenger> Passengers { get; set; }
     public DbSet<FlightSegment> FlightSegments { get; set; }
@@ -69,6 +71,7 @@ public class GTicketDbContext : DbContext
             e.HasIndex(b => b.PNR);
             e.HasIndex(b => b.Status);
             e.HasOne(b => b.User).WithMany().HasForeignKey(b => b.UserId).IsRequired(false);
+            e.HasOne(b => b.GuestSession).WithMany(g => g.Bookings).HasForeignKey(b => b.GuestSessionId).IsRequired(false);
             e.HasMany(b => b.Passengers).WithOne(p => p.Booking).HasForeignKey(p => p.BookingId);
             e.HasMany(b => b.FlightSegments).WithOne(s => s.Booking).HasForeignKey(s => s.BookingId);
             e.HasMany(b => b.Payments).WithOne(p => p.Booking).HasForeignKey(p => p.BookingId);
@@ -117,6 +120,13 @@ public class GTicketDbContext : DbContext
             e.HasOne(l => l.User).WithMany().HasForeignKey(l => l.UserId);
         });
 
+        // GuestSession
+        modelBuilder.Entity<GuestSession>(e =>
+        {
+            e.HasKey(g => g.Id);
+            e.HasIndex(g => g.Email);
+        });
+
         // User
         modelBuilder.Entity<User>(e =>
         {
@@ -139,7 +149,13 @@ public class GTicketDbContext : DbContext
             e.Property(a => a.CountryEn).HasMaxLength(50).IsRequired();
             e.Property(a => a.CountryCode).HasMaxLength(2).IsRequired();
             e.Property(a => a.Timezone).HasMaxLength(50);
+            e.Property(a => a.CityCode).HasMaxLength(5);
+            e.Property(a => a.Type).HasMaxLength(20);
+            e.Property(a => a.Region).HasMaxLength(50);
             e.HasIndex(a => a.IataCode).IsUnique();
+            e.HasIndex(a => a.CountryCode);
+            e.HasIndex(a => a.IsDomestic);
+            e.HasIndex(a => a.IsPopular);
         });
 
         // Airline

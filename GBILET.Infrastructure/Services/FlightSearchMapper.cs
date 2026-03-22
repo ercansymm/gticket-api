@@ -93,6 +93,10 @@ public static class FlightSearchMapper
         // Fiyat doğrulama (loglama)
         ValidatePricing(option, logger);
 
+        // Kabin sınıfı belirleme
+        var cabinClass = DetermineCabinClass(firstSegment?.BookingClass, firstSegment?.FareType);
+        var cabinClassName = FlightMappings.GetFareTypeName(cabinClass);
+
         var result = new FlightResultDto
         {
             // Kimlik
@@ -140,6 +144,8 @@ public static class FlightSearchMapper
             FareType = FlightMappings.GetFareTypeName(firstSegment?.FareType),
             BookingClass = firstSegment?.BookingClass,
             BookingClassName = FlightMappings.GetBookingClassName(firstSegment?.BookingClass),
+            CabinClass = cabinClass,
+            CabinClassName = cabinClassName,
 
             // Kapasite
             AvailableSeats = availableSeats,
@@ -158,9 +164,15 @@ public static class FlightSearchMapper
             CustomerCommissionMax = commMax,
             CustomerCommissionValue = commVal,
 
-            // Branded / baggage (ileride dolabilir)
+            // Branded / baggage (ham veri)
             BrandedFareItems = option.BrandedFareItems,
-            FreeBaggageAllowances = option.FreeBaggageAllowances
+            FreeBaggageAllowances = option.FreeBaggageAllowances,
+
+            // Paketler (düzleştirilmiş)
+            FarePackages = MapBrandedFarePackages(option),
+
+            // Bagaj özeti
+            BaggageInfo = MapBaggageInfo(option.FreeBaggageAllowances)
         };
 
         return result;
@@ -363,7 +375,108 @@ public static class FlightSearchMapper
             HasDirectFlights = flights.Any(f => f.IsDirect),
             HasRefundableFlights = flights.Any(f => f.IsRefundable),
             EarliestDeparture = departureTimes.FirstOrDefault(),
-            LatestDeparture = departureTimes.LastOrDefault()
+            LatestDeparture = departureTimes.LastOrDefault(),
+            CabinClasses = flights
+                .Where(f => !string.IsNullOrEmpty(f.CabinClassName))
+                .Select(f => f.CabinClassName!)
+                .Distinct()
+                .ToList(),
+            FarePackages = flights
+                .SelectMany(f => f.FarePackages)
+                .Where(p => !string.IsNullOrEmpty(p.BrandName))
+                .Select(p => p.BrandName!)
+                .Distinct()
+                .ToList()
+        };
+    }
+
+    private static string DetermineCabinClass(string? bookingClass, string? fareType)
+    {
+        if (!string.IsNullOrEmpty(fareType))
+        {
+            var ft = fareType.ToUpperInvariant();
+            if (ft is "ECO" or "ECONOMY") return "Economy";
+            if (ft is "BUS" or "BUSINESS") return "Business";
+            if (ft is "FIR" or "FIRST") return "First";
+            if (ft is "PEF" or "PREMIUMECONOMY") return "PremiumEconomy";
+        }
+
+        if (string.IsNullOrEmpty(bookingClass)) return "Economy";
+
+        return bookingClass.ToUpperInvariant() switch
+        {
+            "F" or "A" or "P" => "First",
+            "C" or "D" or "J" or "Z" or "I" => "Business",
+            "R" => "PremiumEconomy",
+            _ => "Economy"
+        };
+    }
+
+    private static List<BrandedFareOptionDto> MapBrandedFarePackages(FlightOption option)
+    {
+        var packages = new List<BrandedFareOptionDto>();
+
+        foreach (var bfi in option.BrandedFareItems)
+        {
+            var firstPax = bfi.BrandedFarePassengers.FirstOrDefault();
+            var firstComponent = firstPax?.FareComponents.FirstOrDefault();
+
+            var package = new BrandedFareOptionDto
+            {
+                BrandedFareItemId = bfi.BrandedFareItemId,
+                TotalFare = bfi.TotalFareInfo?.TotalFare ?? 0,
+                TotalTaxes = bfi.TotalFareInfo?.TotalTaxes ?? 0,
+                CabinClass = firstComponent?.CabinClass,
+                BookingClass = firstComponent?.BookingClass
+            };
+
+            foreach (var brandedItem in bfi.BrandedItems)
+            {
+                package.BrandCode = brandedItem.BrandCode;
+                package.BrandName = brandedItem.BrandName;
+
+                package.Rules = brandedItem.BrandedRules.Select(r => new BrandedRuleDto
+                {
+                    Description = r.RuleDescription,
+                    IsIncluded = r.Application is "F" or "C",
+                    IsChargeable = r.Application == "C",
+                    ServiceGroup = r.ServiceGroup,
+                    Application = r.Application
+                }).ToList();
+            }
+
+            var currency = firstPax?.PassengerFareInfo?.Currency ?? option.Currency ?? "TRY";
+            package.Currency = currency;
+            package.TotalFareFormatted = FormatPrice(package.TotalFare, currency);
+
+            packages.Add(package);
+        }
+
+        return packages;
+    }
+
+    private static BaggageInfoDto? MapBaggageInfo(List<FreeBaggageAllowance> allowances)
+    {
+        var baggage = allowances
+            .Where(b => b.PaxType is null or "ADT")
+            .FirstOrDefault(b => b.Category == "Checked")
+            ?? allowances.FirstOrDefault();
+
+        if (baggage == null) return null;
+
+        var unit = baggage.Unit switch
+        {
+            "K" => "kg",
+            "N" => "Parça",
+            _ => baggage.Unit ?? ""
+        };
+
+        return new BaggageInfoDto
+        {
+            Allowance = baggage.Allowance,
+            Unit = unit,
+            Category = baggage.Category,
+            DisplayText = $"{baggage.Allowance} {unit}"
         };
     }
 }

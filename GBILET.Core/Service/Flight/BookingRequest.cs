@@ -3,9 +3,9 @@
 public class BookingRequest
 {
     /// <summary>
-    /// Islemi yapan kullanicinin ID'si (GUID)
+    /// Islemi yapan kullanicinin ID'si (GUID) - Opsiyonel
     /// </summary>
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
 
     /// <summary>
     /// Allocate response'tan alinan SessionId

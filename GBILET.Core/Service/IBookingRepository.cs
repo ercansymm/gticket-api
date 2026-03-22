@@ -9,4 +9,10 @@ public interface IBookingRepository
     Task<Booking?> GetByPnrAsync(string pnr);
     Task UpdateStatusAsync(Guid bookingId, string status);
     Task AddLogAsync(BookingLog log);
+
+    // Admin takibi
+    Task<List<Booking>> GetByUserIdAsync(Guid userId);
+    Task<List<Booking>> GetByGuestSessionIdAsync(Guid guestSessionId);
+    Task<GuestSession> CreateGuestSessionAsync(GuestSession guestSession);
+    Task<GuestSession?> GetGuestSessionByEmailAsync(string email);
 }

@@ -55,4 +55,37 @@ public class BookingRepository : IBookingRepository
         _db.BookingLogs.Add(log);
         await _db.SaveChangesAsync();
     }
+
+    public async Task<List<Booking>> GetByUserIdAsync(Guid userId)
+    {
+        return await _db.Bookings
+            .Include(b => b.Passengers)
+            .Include(b => b.FlightSegments)
+            .Where(b => b.UserId == userId)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<List<Booking>> GetByGuestSessionIdAsync(Guid guestSessionId)
+    {
+        return await _db.Bookings
+            .Include(b => b.Passengers)
+            .Include(b => b.FlightSegments)
+            .Where(b => b.GuestSessionId == guestSessionId)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<GuestSession> CreateGuestSessionAsync(GuestSession guestSession)
+    {
+        _db.GuestSessions.Add(guestSession);
+        await _db.SaveChangesAsync();
+        return guestSession;
+    }
+
+    public async Task<GuestSession?> GetGuestSessionByEmailAsync(string email)
+    {
+        return await _db.GuestSessions
+            .FirstOrDefaultAsync(g => g.Email == email);
+    }
 }

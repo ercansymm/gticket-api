@@ -8,5 +8,12 @@ public interface IFlightService
     Task<AirSearchResponse> SearchFlightAsync(SearchRequest request);
     Task<FlightSearchResponseDto> SearchFlightDtoAsync(SearchRequest request);
     Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request);
-    Task<BookingResponse> BookFlightAsync(BookingRequest request);
+    Task<UpdatePassengersResponse> UpdatePassengersAsync(UpdatePassengersRequest request);
+    Task<MakePreBookingResponse> MakePreBookingAsync(MakePreBookingRequest request);
+    Task<RemoveProductResponse> RemoveProductAsync(RemoveProductRequest request);
+    Task<MakePaymentResponse> MakePaymentAsync(MakePaymentRequest request);
+    Task<FinalizeShoppingResponse> FinalizeShoppingAsync(FinalizeShoppingRequest request);
+    Task<PokeShoppingFileResponse> PokeShoppingFileAsync(PokeShoppingFileRequest request);
+    Task<ReadShoppingFileResponse> ReadShoppingFileAsync(ReadShoppingFileRequest request);
+    Task<LogoutResponse> LogoutAsync(LogoutRequest request);
 }
