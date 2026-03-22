@@ -403,8 +403,14 @@ public class FlightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.ProductId))
                 return BadRequest(new { error = "ProductId alani zorunludur." });
 
+            if (!Guid.TryParse(request.ProductId, out var productGuid) || productGuid == Guid.Empty)
+                return BadRequest(new { error = "ProductId gecerli ve bos olmayan bir GUID olmalidir.", receivedValue = request.ProductId });
+
             if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
                 return BadRequest(new { error = "ShoppingFileId alani zorunludur (Allocate response'taki ShoppingFileId)." });
+
+            if (!Guid.TryParse(request.ShoppingFileId, out var shoppingGuid) || shoppingGuid == Guid.Empty)
+                return BadRequest(new { error = "ShoppingFileId gecerli ve bos olmayan bir GUID olmalidir.", receivedValue = request.ShoppingFileId });
 
             var result = await _flightService.RemoveProductAsync(request);
             return Ok(result);

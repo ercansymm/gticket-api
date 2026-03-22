@@ -1575,6 +1575,27 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 
     public async Task<RemoveProductResponse> RemoveProductAsync(RemoveProductRequest request)
     {
+        // GUID validasyonu — bos GUID gonderimini engelle
+        if (!Guid.TryParse(request.ProductId, out var productGuid) || productGuid == Guid.Empty)
+        {
+            _logger.LogWarning("[RemoveProduct] ProductId bos veya gecersiz GUID: '{ProductId}'", request.ProductId);
+            return new RemoveProductResponse
+            {
+                HasError = true,
+                ErrorMessage = $"ProductId gecerli bir GUID olmali. Gelen deger: '{request.ProductId}'"
+            };
+        }
+
+        if (!Guid.TryParse(request.ShoppingFileId, out var shoppingGuid) || shoppingGuid == Guid.Empty)
+        {
+            _logger.LogWarning("[RemoveProduct] ShoppingFileId bos veya gecersiz GUID: '{ShoppingFileId}'", request.ShoppingFileId);
+            return new RemoveProductResponse
+            {
+                HasError = true,
+                ErrorMessage = $"ShoppingFileId gecerli bir GUID olmali. Gelen deger: '{request.ShoppingFileId}'"
+            };
+        }
+
         var shoppingFileId = request.ShoppingFileId ?? "";
 
         var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
