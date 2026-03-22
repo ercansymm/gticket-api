@@ -462,7 +462,15 @@ public class FlightController : ControllerBase
             {
                 try
                 {
-                    await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, "Paid");
+                    var booking = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
+                    if (booking != null)
+                    {
+                        booking.Status = "Paid";
+                        booking.PaidAt = DateTime.UtcNow;
+                        booking.UpdatedAt = DateTime.UtcNow;
+                        await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, "Paid");
+                    }
+
                     await _bookingRepository.AddLogAsync(new BookingLog
                     {
                         Id = Guid.NewGuid(),
@@ -769,4 +777,225 @@ public class FlightController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    [HttpPost("cancel-booking")]
+    public async Task<IActionResult> CancelBooking([FromBody] CancelBookingRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ProductId))
+                return BadRequest(new { error = "ProductId zorunludur." });
+
+            // BiletBank'ta ürünü kaldır
+            var removeResult = await _flightService.RemoveProductAsync(new RemoveProductRequest
+            {
+                SessionId = request.SessionId,
+                SessionToken = request.SessionToken,
+                ProductId = request.ProductId
+            });
+
+            // DB'deki booking durumunu güncelle
+            if (!removeResult.HasError && request.BookingId.HasValue)
+            {
+                try
+                {
+                    var booking = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
+                    if (booking != null)
+                    {
+                        booking.Status = "Cancelled";
+                        booking.CancelledAt = DateTime.UtcNow;
+                        booking.UpdatedAt = DateTime.UtcNow;
+                        await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, "Cancelled");
+                    }
+
+                    await _bookingRepository.AddLogAsync(new BookingLog
+                    {
+                        Id = Guid.NewGuid(),
+                        BookingId = request.BookingId.Value,
+                        SessionId = request.SessionId ?? "",
+                        SessionToken = request.SessionToken ?? "",
+                        Operation = "CancelBooking",
+                        IsSuccess = !removeResult.HasError,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[CancelBooking] DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
+                }
+            }
+
+            return Ok(new
+            {
+                removeResult.HasError,
+                removeResult.ErrorMessage,
+                status = removeResult.HasError ? "CancelFailed" : "Cancelled",
+                request.BookingId
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
+        }
+    }
+
+    [HttpGet("my-bookings/user/{userId}")]
+    public async Task<IActionResult> GetBookingsByUser(Guid userId)
+    {
+        try
+        {
+            var bookings = await _bookingRepository.GetByUserIdAsync(userId);
+            return Ok(bookings.Select(MapBookingSummary));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("my-bookings/guest/{guestSessionId}")]
+    public async Task<IActionResult> GetBookingsByGuest(Guid guestSessionId)
+    {
+        try
+        {
+            var bookings = await _bookingRepository.GetByGuestSessionIdAsync(guestSessionId);
+            return Ok(bookings.Select(MapBookingSummary));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("my-bookings/email/{email}")]
+    public async Task<IActionResult> GetBookingsByEmail(string email)
+    {
+        try
+        {
+            var guest = await _bookingRepository.GetGuestSessionByEmailAsync(email);
+            if (guest == null)
+                return Ok(Array.Empty<object>());
+
+            var bookings = await _bookingRepository.GetByGuestSessionIdAsync(guest.Id);
+            return Ok(bookings.Select(MapBookingSummary));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("booking-status")]
+    public async Task<IActionResult> GetBookingStatus([FromBody] BookingStatusRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi." });
+
+            // DB'den booking bilgisi
+            Booking? booking = null;
+            if (request.BookingId.HasValue)
+                booking = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
+            else if (!string.IsNullOrWhiteSpace(request.PNR))
+                booking = await _bookingRepository.GetByPnrAsync(request.PNR);
+
+            if (booking == null)
+                return NotFound(new { error = "Booking bulunamadi." });
+
+            // BiletBank'tan güncel durum (opsiyonel)
+            PokeShoppingFileResponse? liveStatus = null;
+            if (!string.IsNullOrWhiteSpace(request.SessionId) &&
+                !string.IsNullOrWhiteSpace(request.SessionToken) &&
+                booking.BiletBankFileId.HasValue)
+            {
+                try
+                {
+                    liveStatus = await _flightService.PokeShoppingFileAsync(new PokeShoppingFileRequest
+                    {
+                        SessionId = request.SessionId,
+                        SessionToken = request.SessionToken,
+                        ShoppingFileId = booking.BiletBankFileId.Value.ToString()
+                    });
+                }
+                catch (Exception pokeEx)
+                {
+                    _logger.LogWarning(pokeEx, "[BookingStatus] PokeShoppingFile basarisiz, sadece DB durumu donuluyor.");
+                }
+            }
+
+            return Ok(new
+            {
+                booking.Id,
+                booking.PNR,
+                dbStatus = booking.Status,
+                liveStatus = liveStatus?.Status,
+                booking.GrandTotal,
+                booking.Currency,
+                booking.IsFinalized,
+                booking.PaidAt,
+                booking.TicketedAt,
+                booking.CancelledAt,
+                isReservationCancelled = liveStatus?.IsReservationCancelled ?? false,
+                isPriceChanged = liveStatus?.IsPriceChanged ?? false,
+                remainingSum = liveStatus?.RemainingSum ?? 0,
+                passengers = booking.Passengers.Select(p => new
+                {
+                    p.FirstName,
+                    p.LastName,
+                    p.Type,
+                    p.TicketNumber
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
+        }
+    }
+
+    private static object MapBookingSummary(Booking b) => new
+    {
+        b.Id,
+        b.PNR,
+        b.Status,
+        b.GrandTotal,
+        b.Currency,
+        b.Origin,
+        b.Destination,
+        b.AirlineCode,
+        b.FlightNumber,
+        b.IsFinalized,
+        b.AdultCount,
+        b.ChildCount,
+        b.InfantCount,
+        b.CreatedAt,
+        b.BookedAt,
+        b.PaidAt,
+        b.TicketedAt,
+        b.CancelledAt,
+        isGuest = b.UserId == null,
+        passengerCount = b.Passengers.Count,
+        firstPassenger = b.Passengers.OrderBy(p => p.SequenceNo).Select(p => new
+        {
+            p.FirstName,
+            p.LastName,
+            p.TicketNumber
+        }).FirstOrDefault(),
+        segments = b.FlightSegments.Select(s => new
+        {
+            s.MarketingAirline,
+            s.FlightNumber,
+            s.OriginCode,
+            s.DestinationCode,
+            s.DepartureDate,
+            s.DepartureTime
+        })
+    };
 }

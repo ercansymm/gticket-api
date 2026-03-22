@@ -149,7 +149,13 @@ public class GTicketDbContext : DbContext
             e.Property(a => a.CountryEn).HasMaxLength(50).IsRequired();
             e.Property(a => a.CountryCode).HasMaxLength(2).IsRequired();
             e.Property(a => a.Timezone).HasMaxLength(50);
+            e.Property(a => a.CityCode).HasMaxLength(5);
+            e.Property(a => a.Type).HasMaxLength(20);
+            e.Property(a => a.Region).HasMaxLength(50);
             e.HasIndex(a => a.IataCode).IsUnique();
+            e.HasIndex(a => a.CountryCode);
+            e.HasIndex(a => a.IsDomestic);
+            e.HasIndex(a => a.IsPopular);
         });
 
         // Airline

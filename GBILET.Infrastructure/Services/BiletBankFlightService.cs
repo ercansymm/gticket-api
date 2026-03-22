@@ -1767,7 +1767,14 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 
     public async Task<FinalizeShoppingResponse> FinalizeShoppingAsync(FinalizeShoppingRequest request)
     {
-        var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+        try
+        {
+            var sessionId = request.SessionId ?? "";
+            var sessionToken = request.SessionToken ?? "";
+            var shoppingFileId = request.ShoppingFileId ?? "";
+            var productId = request.ProductId ?? "";
+
+            var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
@@ -1777,27 +1784,24 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
    <tem:FinalizeShopping>
       <tem:request>
          <trev:AuthenticationHeader>
-            <trev:SessionId>{request.SessionId}</trev:SessionId>
-            <trev:SessionToken>{request.SessionToken}</trev:SessionToken>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev:ExtraParamList>
             <trev:ExtendedData>
                <trev:Name>IntendedShoppingFileId</trev:Name>
-               <trev:Value>{request.ShoppingFileId}</trev:Value>
+               <trev:Value>{shoppingFileId}</trev:Value>
             </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:Form>
             <trev1:ProductIds>
-               <arr:guid>{request.ProductId}</arr:guid>
+               <arr:guid>{productId}</arr:guid>
             </trev1:ProductIds>
          </trev1:Form>
       </tem:request>
    </tem:FinalizeShopping>
 </soap:Body>
 </soap:Envelope>";
-
-        try
-        {
             _logger.LogInformation("[FinalizeShopping] SOAP Request:\n{SoapRequest}", soapRequest);
 
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");

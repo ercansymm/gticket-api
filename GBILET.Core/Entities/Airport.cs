@@ -1,11 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace GBILET.Core.Entities;
-
 public class Airport
 {
     public int Id { get; set; }
@@ -19,8 +12,14 @@ public class Airport
     public string CountryEn { get; set; } = string.Empty;
     public string CountryCode { get; set; } = string.Empty;
     public string? Timezone { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? CityCode { get; set; }
+    public string? Type { get; set; }
+    public string? Region { get; set; }
     public bool IsCity { get; set; } = false;
     public bool IsDomestic { get; set; } = true;
+    public bool IsPopular { get; set; } = false;
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; } = 0;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
