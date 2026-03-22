@@ -16,4 +16,9 @@ public class RemoveProductRequest
     /// Kaldirmak istenen ProductId (AirBookings[0].ProductId).
     /// </summary>
     public string ProductId { get; set; } = null!;
+
+    /// <summary>
+    /// Allocate/MakePreBooking adimindan alinan ShoppingFileId.
+    /// </summary>
+    public string ShoppingFileId { get; set; } = null!;
 }

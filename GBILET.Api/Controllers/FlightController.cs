@@ -399,6 +399,9 @@ public class FlightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.ProductId))
                 return BadRequest(new { error = "ProductId alani zorunludur." });
 
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId alani zorunludur (Allocate response'taki ShoppingFileId)." });
+
             var result = await _flightService.RemoveProductAsync(request);
             return Ok(result);
         }
@@ -792,12 +795,16 @@ public class FlightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.ProductId))
                 return BadRequest(new { error = "ProductId zorunludur." });
 
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId zorunludur." });
+
             // BiletBank'ta ürünü kaldır
             var removeResult = await _flightService.RemoveProductAsync(new RemoveProductRequest
             {
                 SessionId = request.SessionId,
                 SessionToken = request.SessionToken,
-                ProductId = request.ProductId
+                ProductId = request.ProductId,
+                ShoppingFileId = request.ShoppingFileId
             });
 
             // DB'deki booking durumunu güncelle

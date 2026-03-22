@@ -1575,6 +1575,8 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 
     public async Task<RemoveProductResponse> RemoveProductAsync(RemoveProductRequest request)
     {
+        var shoppingFileId = request.ShoppingFileId ?? "";
+
         var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
@@ -1588,10 +1590,17 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             <trev:SessionId>{request.SessionId}</trev:SessionId>
             <trev:SessionToken>{request.SessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
+         <trev:ExtraParamList>
+            <trev:ExtendedData>
+               <trev:Name>IntendedShoppingFileId</trev:Name>
+               <trev:Value>{shoppingFileId}</trev:Value>
+            </trev:ExtendedData>
+         </trev:ExtraParamList>
          <trev1:Form>
             <trev1:ProductIds>
                <arr:guid>{request.ProductId}</arr:guid>
             </trev1:ProductIds>
+            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:Form>
       </tem:request>
    </tem:RemoveProduct>

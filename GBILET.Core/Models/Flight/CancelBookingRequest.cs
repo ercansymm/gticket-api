@@ -18,6 +18,11 @@ public class CancelBookingRequest
     public string ProductId { get; set; } = null!;
 
     /// <summary>
+    /// Allocate/MakePreBooking adimindan alinan ShoppingFileId.
+    /// </summary>
+    public string ShoppingFileId { get; set; } = null!;
+
+    /// <summary>
     /// DB'deki booking ID'si (durum guncelleme icin).
     /// </summary>
     public Guid? BookingId { get; set; }
