@@ -1653,9 +1653,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:Form>
-            <trev1:ProductIds>
-               <arr:guid>{request.ProductId}</arr:guid>
-            </trev1:ProductIds>
+            <trev1:ProductId>{request.ProductId}</trev1:ProductId>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:Form>
       </tem:request>
@@ -1818,7 +1816,8 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var responseText = await response.Content.ReadAsStringAsync();
 
             _logger.LogInformation("[MakePayment] HTTP Status: {StatusCode}", (int)response.StatusCode);
-            _logger.LogInformation("[MakePayment] SOAP Response:\n{SoapResponse}", responseText);
+            _logger.LogInformation("[MakePayment] SOAP Response (len={Length}):\n{SoapResponse}",
+                responseText?.Length ?? 0, responseText);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1838,15 +1837,49 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            // Init3DPayment response'u HTML (3D Secure redirect sayfasi) donebilir
+            var trimmed = responseText.TrimStart();
+            if (trimmed.StartsWith("<html", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase))
+            {
+                return new MakePaymentResponse
+                {
+                    HasError = false,
+                    IsPaymentSuccessful = false,
+                    Is3DSecureRequired = true,
+                    ThreeDSecureUrl = null,
+                    Status = "Awaiting3DSecure",
+                    ErrorMessage = "3D Secure dogrulama sayfasi HTML olarak dondu. Response icerigini ThreeDSecureHtml alaninda inceleyin.",
+                    ThreeDSecureHtml = responseText
+                };
+            }
+
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception parseEx)
+            {
+                _logger.LogError(parseEx, "[MakePayment] XML parse hatasi. Response XML degil.");
+                return new MakePaymentResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"MakePayment: Response XML olarak parse edilemedi. İlk 500 karakter: {responseText[..Math.Min(500, responseText.Length)]}"
+                };
+            }
 
             var hasErrorVal = doc.GetValue("HasError");
             if (hasErrorVal == "true")
             {
+                var errMsg = doc.GetValue("ErrorMessage")
+                    ?? doc.GetValue("DebugMessage")
+                    ?? doc.GetValue("Message")
+                    ?? doc.GetValue("ServiceError");
                 return new MakePaymentResponse
                 {
                     HasError = true,
-                    ErrorMessage = doc.GetValue("ErrorMessage") ?? doc.GetValue("Message") ?? doc.GetValue("ServiceError")
+                    ErrorMessage = errMsg
                 };
             }
 
@@ -1854,8 +1887,19 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var paymentId = doc.GetValue("PaymentId");
 
             // 3D Secure yonlendirme URL'i (Init3DPayment response'unda donebilir)
-            var threeDUrl = doc.GetValue("RedirectUrl") ?? doc.GetValue("ThreeDSecureUrl");
+            var threeDUrl = doc.GetValue("RedirectUrl")
+                ?? doc.GetValue("ThreeDSecureUrl")
+                ?? doc.GetValue("PaymentUrl")
+                ?? doc.GetValue("ACSUrl");
             var is3DRequired = !string.IsNullOrEmpty(threeDUrl);
+
+            // 3D HTML content XML icinde de gelebilir
+            var threeDHtml = doc.GetValue("ThreeDHtml")
+                ?? doc.GetValue("HtmlContent")
+                ?? doc.GetValue("PaymentHtml");
+
+            if (!is3DRequired && !string.IsNullOrEmpty(threeDHtml))
+                is3DRequired = true;
 
             return new MakePaymentResponse
             {
@@ -1867,7 +1911,8 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 Currency = shoppingFileEl?.GetValue("Currency") ?? currency,
                 PaymentReferenceId = paymentId,
                 ThreeDSecureUrl = threeDUrl,
-                Is3DSecureRequired = is3DRequired
+                Is3DSecureRequired = is3DRequired,
+                ThreeDSecureHtml = threeDHtml
             };
         }
         catch (Exception ex)

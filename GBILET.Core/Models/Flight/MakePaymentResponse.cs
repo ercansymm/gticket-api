@@ -44,4 +44,10 @@ public class MakePaymentResponse
     /// 3D Secure gerekli mi?
     /// </summary>
     public bool Is3DSecureRequired { get; set; }
+
+    /// <summary>
+    /// 3D Secure HTML icerik (banka 3D dogrulama formu).
+    /// Bu HTML'i kullaniciya iframe veya yeni pencerede gosterin.
+    /// </summary>
+    public string? ThreeDSecureHtml { get; set; }
 }
