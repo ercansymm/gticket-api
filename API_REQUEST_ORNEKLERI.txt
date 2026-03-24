@@ -9,6 +9,11 @@ AKIÞ SIRASI:
 Her adýmýn response'undan bir sonraki adýma
 gerekli bilgiler (sessionId, productId vs.) aktarýlýr.
 
+? YENÝ: book-flight endpoint'i ile tüm adýmlar
+  TEK REQUEST ile otomatik çalýþýr! (en altta)
+
+
+
 =====================================================
 1. UÇUÞ ARA (Tek Yön)
    POST /api/flight/search
@@ -295,3 +300,104 @@ veya PNR ile:
 =====================================================
 Örnek: GET /api/flight/my-bookings/email/aydin@gmail.com
 (Body yok)
+
+
+=====================================================
+??? 19. OTOMATÝK UÇUÞ REZERVASYON (TEK REQUEST!)
+    POST /api/flight/book-flight
+=====================================================
+
+Tüm adýmlarý (Search ? Allocate ? UpdatePassengers
+? PreBooking ? Payment ? Finalize) TEK SEFERDE yapar.
+SessionId, ProductId vs. kopyalamana GEREK YOK!
+
+a) Cari hesap ile tam akýþ:
+{
+  "origin": "IST",
+  "destination": "ADB",
+  "departureDate": "2025-03-15",
+  "flightType": "OW",
+  "flightClass": "Economy",
+  "adultCount": 1,
+  "childCount": 0,
+  "infantCount": 0,
+  "flightIndex": 0,
+  "brandedFareIndex": 0,
+  "passengers": [
+    {
+      "paxType": "ADT",
+      "firstName": "AYDIN",
+      "lastName": "DENIZ",
+      "gender": "M",
+      "birthDate": "1990-01-15",
+      "citizenNo": "12345678901",
+      "nationality": "TR"
+    }
+  ],
+  "contactEmail": "aydin@gmail.com",
+  "contactPhone": "+90-5351234567",
+  "paymentType": "RunningAccount",
+  "autoPayAndFinalize": true
+}
+
+b) Kredi kartý ile tam akýþ:
+{
+  "origin": "IST",
+  "destination": "ADB",
+  "departureDate": "2025-03-15",
+  "flightType": "OW",
+  "flightClass": "Economy",
+  "adultCount": 1,
+  "passengers": [
+    {
+      "paxType": "ADT",
+      "firstName": "AYDIN",
+      "lastName": "DENIZ",
+      "gender": "M",
+      "birthDate": "1990-01-15",
+      "citizenNo": "12345678901",
+      "nationality": "TR"
+    }
+  ],
+  "contactEmail": "aydin@gmail.com",
+  "contactPhone": "+90-5351234567",
+  "paymentType": "CreditCard",
+  "creditCard": {
+    "cardHolderName": "AYDIN DENIZ",
+    "cardNumber": "4546711234567894",
+    "expiryMonth": "12",
+    "expiryYear": "2026",
+    "cvv": "000"
+  },
+  "autoPayAndFinalize": true
+}
+
+c) Sadece PreBooking'e kadar (ödeme yapma):
+{
+  "origin": "IST",
+  "destination": "ADB",
+  "departureDate": "2025-03-15",
+  "flightType": "OW",
+  "adultCount": 1,
+  "passengers": [
+    {
+      "paxType": "ADT",
+      "firstName": "AYDIN",
+      "lastName": "DENIZ",
+      "gender": "M",
+      "birthDate": "1990-01-15",
+      "nationality": "TR"
+    }
+  ],
+  "contactEmail": "aydin@gmail.com",
+  "contactPhone": "+90-5351234567",
+  "paymentType": "RunningAccount",
+  "autoPayAndFinalize": false
+}
+
+NOTLAR:
+- flightIndex: Kaçýncý uçuþu seçmek istiyorsun (0=en ucuz)
+- brandedFareIndex: Hangi paket (0=EcoFly, 1=ExtraFly, 2=PrimeFly...)
+- autoPayAndFinalize: false yaparsan sadece PreBooking yapar, ödeme yapmaz
+- Response'taki "steps" dizisi hangi adýmýn ne yaptýðýný gösterir
+- Hata olursa "completedStep" hangi adýmda kaldýðýný söyler

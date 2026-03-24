@@ -154,6 +154,9 @@ public class FlightController : ControllerBase
             if (request.Contact == null || string.IsNullOrWhiteSpace(request.Contact.Email) || string.IsNullOrWhiteSpace(request.Contact.Phone))
                 return BadRequest(new { error = "Iletisim bilgileri (Email ve Phone) zorunludur." });
 
+            // Telefon numarasini normalize et (ornek: 5351234567 → +90-5351234567)
+            request.Contact.Phone = NormalizePhoneNumber(request.Contact.Phone);
+
             foreach (var pax in request.Passengers)
             {
                 if (string.IsNullOrWhiteSpace(pax.FirstName) || string.IsNullOrWhiteSpace(pax.LastName))
@@ -210,6 +213,10 @@ public class FlightController : ControllerBase
 
             if (request.Contact == null || string.IsNullOrWhiteSpace(request.Contact.Email))
                 return BadRequest(new { error = "Iletisim bilgisi (Email) zorunludur." });
+
+            // Telefon numarasini normalize et
+            if (request.Contact != null && !string.IsNullOrWhiteSpace(request.Contact.Phone))
+                request.Contact.Phone = NormalizePhoneNumber(request.Contact.Phone);
 
             var result = await _flightService.MakePreBookingAsync(request);
 
@@ -1015,4 +1022,533 @@ public class FlightController : ControllerBase
             s.DepartureTime
         })
     };
+
+    /// <summary>
+    /// Tek request ile uçuş arama, seçim, yolcu bilgisi, ön rezervasyon, ödeme ve biletleme.
+    /// Tüm adımları otomatik sırayla çalıştırır — elle kopyala/yapıştır gerekmez.
+    /// </summary>
+    [HttpPost("book-flight")]
+    public async Task<IActionResult> BookFlight([FromBody] BookFlightRequest? request)
+    {
+        var response = new BookFlightResponse();
+
+        try
+        {
+            // ── Validasyon ──
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi." });
+
+            if (string.IsNullOrWhiteSpace(request.Origin) || string.IsNullOrWhiteSpace(request.Destination))
+                return BadRequest(new { error = "Origin ve Destination zorunludur." });
+
+            if (request.DepartureDate == default)
+                return BadRequest(new { error = "DepartureDate zorunludur." });
+
+            if (request.Passengers == null || request.Passengers.Count == 0)
+                return BadRequest(new { error = "En az bir yolcu bilgisi zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ContactEmail) || string.IsNullOrWhiteSpace(request.ContactPhone))
+                return BadRequest(new { error = "ContactEmail ve ContactPhone zorunludur." });
+
+            // Telefon numarasini normalize et
+            request.ContactPhone = NormalizePhoneNumber(request.ContactPhone);
+
+            if (request.PaymentType == "CreditCard" && request.CreditCard == null && request.AutoPayAndFinalize)
+                return BadRequest(new { error = "Kredi kartı ile ödeme için CreditCard bilgileri zorunludur." });
+
+            // ── ADIM 1: Search ──
+            response.Steps.Add("Search başlatılıyor...");
+
+            var searchRequest = new SearchRequest
+            {
+                Origin = request.Origin,
+                Destination = request.Destination,
+                DepartureDate = request.DepartureDate,
+                ReturnDate = request.ReturnDate,
+                FlightType = request.FlightType,
+                FlightClass = request.FlightClass,
+                AdultCount = request.AdultCount,
+                ChildCount = request.ChildCount,
+                InfantCount = request.InfantCount,
+                SearchReason = "SearchAndBook"
+            };
+
+            var searchResult = await _flightService.SearchFlightDtoAsync(searchRequest);
+            if (searchResult.HasError || searchResult.Flights.Count == 0)
+            {
+                response.HasError = true;
+                response.ErrorMessage = searchResult.ErrorMessage ?? "Uçuş bulunamadı.";
+                response.CompletedStep = "Search";
+                return Ok(response);
+            }
+
+            response.SessionId = searchResult.SessionId;
+            response.SessionToken = searchResult.SessionToken;
+            response.TotalFlightsFound = searchResult.Flights.Count;
+            response.CompletedStep = "Search";
+            response.Steps.Add($"Search tamamlandı. {searchResult.Flights.Count} uçuş bulundu.");
+
+            // Uçuş seçimi (index'e göre, varsayılan 0 = en ucuz)
+            var flightIndex = Math.Clamp(request.FlightIndex, 0, searchResult.Flights.Count - 1);
+            var selectedFlight = searchResult.Flights[flightIndex];
+            var productId = selectedFlight.ProductId!;
+
+            response.Steps.Add($"Uçuş seçildi: {selectedFlight.AirlineCode} {selectedFlight.FlightNumber} — {selectedFlight.TotalFareFormatted}");
+
+            // Branded fare seçimi
+            string? selectedBrandedFareItemId = null;
+            if (selectedFlight.BrandedFareItems.Count > 0)
+            {
+                var brandIndex = Math.Clamp(request.BrandedFareIndex, 0, selectedFlight.BrandedFareItems.Count - 1);
+                selectedBrandedFareItemId = selectedFlight.BrandedFareItems[brandIndex].BrandedFareItemId;
+                response.Steps.Add($"Branded fare seçildi: index={brandIndex}, id={selectedBrandedFareItemId}");
+            }
+
+            // ── ADIM 2: Allocate ──
+            response.Steps.Add("Allocate başlatılıyor...");
+
+            var allocateRequest = new AllocateRequest
+            {
+                SessionId = searchResult.SessionId,
+                SessionToken = searchResult.SessionToken,
+                ProductId = productId,
+                BrandedFareItemId = selectedBrandedFareItemId,
+                SelectedServiceFee = 0
+            };
+
+            var allocateResult = await _flightService.AllocateFlightAsync(allocateRequest);
+            if (allocateResult.HasError)
+            {
+                response.HasError = true;
+                response.ErrorMessage = $"Allocate hatası: {allocateResult.ErrorMessage}";
+                response.CompletedStep = "Allocate";
+                return Ok(response);
+            }
+
+            response.ShoppingFileId = allocateResult.ShoppingFileId;
+            response.SessionId = allocateResult.SessionId;
+            response.SessionToken = allocateResult.SessionToken;
+            response.CompletedStep = "Allocate";
+
+            var airBooking = allocateResult.AirBookings.FirstOrDefault();
+            var bookingItem = airBooking?.BookingItems.FirstOrDefault();
+            response.ProductId = airBooking?.ProductId;
+            response.ProductItemId = bookingItem?.ProductItemId;
+
+            // Allocate'ten gelen branded fare item id'yi kullan
+            var allocBrandedId = airBooking?.BrandedFareItems.FirstOrDefault()?.BrandedFareItemId;
+            response.BrandedFareItemId = allocBrandedId ?? selectedBrandedFareItemId;
+
+            response.TotalFare = airBooking?.TotalFare ?? 0;
+            response.BaseFare = airBooking?.BaseFare ?? 0;
+            response.Taxes = airBooking?.Taxes ?? 0;
+            response.ServiceFee = airBooking?.ServiceFee ?? 0;
+            response.Currency = airBooking?.Currency ?? "TRY";
+
+            response.Steps.Add($"Allocate tamamlandı. ShoppingFileId={allocateResult.ShoppingFileId}, TotalFare={response.TotalFare}");
+
+            // ── ADIM 3: UpdatePassengers ──
+            response.Steps.Add("Yolcu bilgileri güncelleniyor...");
+
+            // Yolcuları allocate response'taki sıraya eşle
+            var passengersForUpdate = new List<UpdatePassengerItem>();
+            for (int i = 0; i < request.Passengers.Count; i++)
+            {
+                var pax = request.Passengers[i];
+                var allocPax = i < allocateResult.Passengers.Count ? allocateResult.Passengers[i] : null;
+
+                passengersForUpdate.Add(new UpdatePassengerItem
+                {
+                    PaxType = pax.PaxType,
+                    SequenceNo = allocPax?.SequenceNo ?? (i + 1),
+                    FirstName = pax.FirstName,
+                    LastName = pax.LastName,
+                    Gender = pax.Gender,
+                    BirthDate = pax.BirthDate,
+                    CitizenNo = pax.CitizenNo,
+                    PassportNo = pax.PassportNo,
+                    PassportCountry = pax.PassportCountry,
+                    Nationality = pax.Nationality,
+                    PaxReferenceId = allocPax?.PaxReferenceId,
+                    TempTag = allocPax?.TempTag ?? allocPax?.PaxReferenceId
+                });
+            }
+
+            var updateRequest = new UpdatePassengersRequest
+            {
+                SessionId = allocateResult.SessionId!,
+                SessionToken = allocateResult.SessionToken!,
+                ShoppingFileId = allocateResult.ShoppingFileId!,
+                ProductId = airBooking?.ProductId!,
+                ProductItemId = bookingItem?.ProductItemId!,
+                Passengers = passengersForUpdate,
+                Contact = new UpdatePassengerContact
+                {
+                    Email = request.ContactEmail,
+                    Phone = request.ContactPhone
+                }
+            };
+
+            var updateResult = await _flightService.UpdatePassengersAsync(updateRequest);
+            if (updateResult.HasError)
+            {
+                response.HasError = true;
+                response.ErrorMessage = $"UpdatePassengers hatası: {updateResult.ErrorMessage}";
+                response.CompletedStep = "UpdatePassengers";
+                return Ok(response);
+            }
+
+            response.CompletedStep = "UpdatePassengers";
+            response.Steps.Add("Yolcu bilgileri güncellendi.");
+
+            // ── ADIM 4: MakePreBooking ──
+            response.Steps.Add("Ön rezervasyon yapılıyor...");
+
+            var preBookingRequest = new MakePreBookingRequest
+            {
+                SessionId = allocateResult.SessionId!,
+                SessionToken = allocateResult.SessionToken!,
+                ProductId = airBooking?.ProductId!,
+                BrandedFareItemId = response.BrandedFareItemId!,
+                ShoppingFileId = allocateResult.ShoppingFileId!,
+                UserId = request.UserId,
+                Passengers = passengersForUpdate,
+                Contact = new UpdatePassengerContact
+                {
+                    Email = request.ContactEmail,
+                    Phone = request.ContactPhone
+                }
+            };
+
+            var preBookResult = await _flightService.MakePreBookingAsync(preBookingRequest);
+            if (preBookResult.HasError)
+            {
+                response.HasError = true;
+                response.ErrorMessage = $"PreBooking hatası: {preBookResult.ErrorMessage}";
+                response.CompletedStep = "PreBooking";
+                return Ok(response);
+            }
+
+            response.PNR = preBookResult.BookingCode;
+            response.Status = preBookResult.Status;
+            response.TotalFare = preBookResult.TotalFare;
+            response.BaseFare = preBookResult.BaseFare;
+            response.Taxes = preBookResult.Taxes;
+            response.ServiceFee = preBookResult.ServiceFee;
+            response.Currency = preBookResult.Currency;
+            response.ShoppingFileId = preBookResult.ShoppingFileId;
+            response.PrebookingExpiresAt = preBookResult.PrebookingExpiresAt;
+            response.ReservationExpiresAt = preBookResult.ReservationExpiresAt;
+            response.CompletedStep = "PreBooking";
+
+            var firstSeg = preBookResult.Segments.FirstOrDefault();
+            response.FlightNumber = firstSeg?.FlightNumber;
+            response.MarketingAirline = firstSeg?.MarketingAirline;
+            response.Origin = firstSeg?.OriginCode;
+            response.Destination = firstSeg?.DestinationCode;
+            response.DepartureDay = firstSeg?.DepartureDay;
+            response.DepartureTime = firstSeg?.DepartureTime;
+
+            response.Steps.Add($"Ön rezervasyon tamamlandı. PNR={preBookResult.BookingCode}, TotalFare={preBookResult.TotalFare}");
+
+            // DB'ye booking kaydet (mevcut MakePreBooking logic'ini tekrar kullan)
+            Guid? savedBookingId = null;
+            try
+            {
+                Guid? resolvedUserId = null;
+                Guid? resolvedGuestSessionId = null;
+
+                if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
+                {
+                    resolvedUserId = request.UserId.Value;
+                }
+                else
+                {
+                    var existingGuest = await _bookingRepository.GetGuestSessionByEmailAsync(request.ContactEmail);
+                    if (existingGuest != null)
+                    {
+                        resolvedGuestSessionId = existingGuest.Id;
+                    }
+                    else
+                    {
+                        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                        var newGuest = await _bookingRepository.CreateGuestSessionAsync(new GuestSession
+                        {
+                            Id = Guid.NewGuid(),
+                            Email = request.ContactEmail,
+                            Phone = request.ContactPhone,
+                            IpAddress = ipAddress,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                        resolvedGuestSessionId = newGuest.Id;
+                    }
+                }
+
+                int adtCount = request.Passengers.Count(p => p.PaxType == "ADT");
+                int chdCount = request.Passengers.Count(p => p.PaxType == "CHD");
+                int infCount = request.Passengers.Count(p => p.PaxType == "INF");
+
+                var bookingEntity = new Booking
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = resolvedUserId,
+                    GuestSessionId = resolvedGuestSessionId,
+                    BiletBankFileId = Guid.TryParse(preBookResult.ShoppingFileId, out var fId) ? fId : null,
+                    PNR = preBookResult.BookingCode,
+                    Status = preBookResult.Status ?? "PreBooked",
+                    GrandTotal = preBookResult.TotalFare,
+                    Currency = preBookResult.Currency ?? "TRY",
+                    ServiceFee = preBookResult.ServiceFee,
+                    IsFinalized = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    TransactionId = Guid.NewGuid().ToString(),
+                    SessionId = allocateResult.SessionId,
+                    SessionToken = allocateResult.SessionToken,
+                    Origin = firstSeg?.OriginCode,
+                    Destination = firstSeg?.DestinationCode,
+                    AirlineCode = firstSeg?.MarketingAirline,
+                    FlightNumber = firstSeg?.FlightNumber,
+                    BookedAt = DateTime.UtcNow,
+                    AdultCount = adtCount > 0 ? adtCount : 1,
+                    ChildCount = chdCount,
+                    InfantCount = infCount
+                };
+
+                foreach (var pax in passengersForUpdate)
+                {
+                    bookingEntity.Passengers.Add(new Passenger
+                    {
+                        Id = Guid.NewGuid(),
+                        BookingId = bookingEntity.Id,
+                        SequenceNo = pax.SequenceNo,
+                        Type = pax.PaxType,
+                        FirstName = pax.FirstName,
+                        LastName = pax.LastName,
+                        Gender = pax.Gender,
+                        BirthDate = pax.BirthDate,
+                        CitizenNo = pax.CitizenNo,
+                        PassportNo = pax.PassportNo,
+                        PassportCountry = pax.PassportCountry,
+                        Nationality = pax.Nationality,
+                        Email = pax.SequenceNo == 1 ? request.ContactEmail : null,
+                        Phone = pax.SequenceNo == 1 ? request.ContactPhone : null,
+                        TempTag = pax.TempTag,
+                        PaxReferenceId = pax.PaxReferenceId
+                    });
+                }
+
+                foreach (var seg in preBookResult.Segments)
+                {
+                    bookingEntity.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
+                    {
+                        Id = Guid.NewGuid(),
+                        BookingId = bookingEntity.Id,
+                        SequenceNo = 0,
+                        MarketingAirline = seg.MarketingAirline ?? "",
+                        FlightNumber = seg.FlightNumber ?? "",
+                        OriginCode = seg.OriginCode ?? "",
+                        DestinationCode = seg.DestinationCode ?? "",
+                        DepartureDate = DateTime.TryParse(seg.DepartureDay, out var depDt) ? depDt : DateTime.MinValue,
+                        DepartureTime = seg.DepartureTime,
+                        ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var arrDt) ? arrDt : null,
+                        ArrivalTime = seg.ArrivalTime,
+                        BookingClass = seg.BookingClass
+                    });
+                }
+
+                bookingEntity.BookingLogs.Add(new BookingLog
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = bookingEntity.Id,
+                    SessionId = allocateResult.SessionId ?? "",
+                    SessionToken = allocateResult.SessionToken ?? "",
+                    Operation = "BookFlight_PreBooking",
+                    IsSuccess = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                await _bookingRepository.CreateBookingAsync(bookingEntity);
+                savedBookingId = bookingEntity.Id;
+                response.BookingId = savedBookingId;
+                response.Steps.Add($"DB kaydı oluşturuldu. BookingId={savedBookingId}");
+            }
+            catch (Exception dbEx)
+            {
+                _logger.LogError(dbEx, "[BookFlight] DB kaydı başarısız ama akış devam ediyor.");
+                response.Steps.Add($"DB kaydı başarısız: {dbEx.Message}");
+            }
+
+            // AutoPayAndFinalize = false ise burada dur
+            if (!request.AutoPayAndFinalize)
+            {
+                response.Steps.Add("AutoPayAndFinalize=false — akış PreBooking'de durdu.");
+                return Ok(response);
+            }
+
+            // ── ADIM 5: MakePayment ──
+            response.Steps.Add($"Ödeme yapılıyor ({request.PaymentType})...");
+
+            var paymentRequest = new MakePaymentRequest
+            {
+                SessionId = allocateResult.SessionId!,
+                SessionToken = allocateResult.SessionToken!,
+                ShoppingFileId = preBookResult.ShoppingFileId!,
+                ProductId = airBooking?.ProductId!,
+                Amount = preBookResult.TotalFare,
+                Currency = preBookResult.Currency ?? "TRY",
+                PaymentType = request.PaymentType,
+                CreditCard = request.CreditCard,
+                BookingId = savedBookingId
+            };
+
+            var paymentResult = await _flightService.MakePaymentAsync(paymentRequest);
+            if (paymentResult.HasError)
+            {
+                response.HasError = true;
+                response.ErrorMessage = $"Payment hatası: {paymentResult.ErrorMessage}";
+                response.CompletedStep = "Payment";
+                return Ok(response);
+            }
+
+            response.IsPaymentSuccessful = paymentResult.IsPaymentSuccessful;
+            response.PaymentReferenceId = paymentResult.PaymentReferenceId;
+            response.ThreeDSecureUrl = paymentResult.ThreeDSecureUrl;
+            response.Is3DSecureRequired = paymentResult.Is3DSecureRequired;
+            response.CompletedStep = "Payment";
+
+            response.Steps.Add($"Ödeme tamamlandı. PaymentId={paymentResult.PaymentReferenceId}");
+
+            // 3D Secure gerekiyorsa burada dur
+            if (paymentResult.Is3DSecureRequired)
+            {
+                response.Steps.Add("3D Secure doğrulaması gerekiyor — akış durdu. ThreeDSecureUrl'e yönlendirin.");
+                response.Status = "Awaiting3DSecure";
+                return Ok(response);
+            }
+
+            // DB güncelle
+            if (savedBookingId.HasValue)
+            {
+                try
+                {
+                    await _bookingRepository.UpdateStatusAsync(savedBookingId.Value, "Paid");
+                    await _bookingRepository.AddLogAsync(new BookingLog
+                    {
+                        Id = Guid.NewGuid(),
+                        BookingId = savedBookingId.Value,
+                        SessionId = allocateResult.SessionId ?? "",
+                        SessionToken = allocateResult.SessionToken ?? "",
+                        Operation = "BookFlight_Payment",
+                        IsSuccess = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[BookFlight] Payment DB güncelleme başarısız.");
+                }
+            }
+
+            // ── ADIM 6: FinalizeShopping ──
+            response.Steps.Add("Biletleme yapılıyor...");
+
+            var finalizeRequest = new FinalizeShoppingRequest
+            {
+                SessionId = allocateResult.SessionId!,
+                SessionToken = allocateResult.SessionToken!,
+                ShoppingFileId = preBookResult.ShoppingFileId!,
+                ProductId = airBooking?.ProductId!,
+                BookingId = savedBookingId
+            };
+
+            var finalizeResult = await _flightService.FinalizeShoppingAsync(finalizeRequest);
+            if (finalizeResult.HasError)
+            {
+                response.HasError = true;
+                response.ErrorMessage = $"Finalize hatası: {finalizeResult.ErrorMessage}";
+                response.CompletedStep = "Finalize";
+                return Ok(response);
+            }
+
+            response.IsFinalized = true;
+            response.PNR = finalizeResult.BookingCode ?? response.PNR;
+            response.Status = finalizeResult.Status ?? "Ticketed";
+            response.Tickets = finalizeResult.Tickets;
+            response.CompletedStep = "Finalize";
+
+            response.Steps.Add($"Biletleme tamamlandı! PNR={response.PNR}, Bilet sayısı={finalizeResult.Tickets.Count}");
+
+            // DB güncelle
+            if (savedBookingId.HasValue)
+            {
+                try
+                {
+                    var booking = await _bookingRepository.GetByIdAsync(savedBookingId.Value);
+                    if (booking != null)
+                    {
+                        foreach (var ticket in finalizeResult.Tickets)
+                        {
+                            var pax = booking.Passengers.FirstOrDefault(p =>
+                                string.Equals(p.FirstName, ticket.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(p.LastName, ticket.LastName, StringComparison.OrdinalIgnoreCase));
+                            if (pax != null)
+                                pax.TicketNumber = ticket.TicketNumber;
+                        }
+
+                        await _bookingRepository.UpdateStatusAsync(savedBookingId.Value, response.Status!);
+                        await _bookingRepository.AddLogAsync(new BookingLog
+                        {
+                            Id = Guid.NewGuid(),
+                            BookingId = savedBookingId.Value,
+                            SessionId = allocateResult.SessionId ?? "",
+                            SessionToken = allocateResult.SessionToken ?? "",
+                            Operation = "BookFlight_Finalize",
+                            IsSuccess = true,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[BookFlight] Finalize DB güncelleme başarısız.");
+                }
+            }
+
+            response.Steps.Add("✅ Tüm adımlar başarıyla tamamlandı!");
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            response.HasError = true;
+            response.ErrorMessage = $"Beklenmeyen hata: {ex.Message}";
+            response.Steps.Add($"HATA: {ex.Message}");
+            return StatusCode(500, response);
+        }
+    }
+
+    /// <summary>
+    /// Telefon numarasını BiletBank'ın beklediği +90-XXXXXXXXXX formatına dönüştürür.
+    /// </summary>
+    private static string NormalizePhoneNumber(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return "+90-5000000000";
+
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+
+        // 905351234567 (12 hane) → 5351234567
+        if (digits.Length == 12 && digits.StartsWith("90"))
+            digits = digits[2..];
+
+        // 05351234567 (11 hane) → 5351234567
+        if (digits.Length == 11 && digits.StartsWith("0"))
+            digits = digits[1..];
+
+        // 5351234567 (10 hane) → +90-5351234567
+        if (digits.Length == 10)
+            return $"+90-{digits}";
+
+        return phone.StartsWith("+") ? phone : $"+{phone}";
+    }
 }

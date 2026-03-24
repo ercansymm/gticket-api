@@ -147,8 +147,40 @@ public class BiletBankFlightService : IFlightService
                 pax.TempTag = pax.PaxReferenceId;
         }
 
+        // Telefon numarasını BiletBank formatına normalize et
+        if (request.Contact != null)
+            request.Contact.Phone = NormalizePhone(request.Contact.Phone);
+
         var inner = await UpdatePassengersInternalAsync(request.SessionId, request.SessionToken, request);
         return inner;
+    }
+
+    /// <summary>
+    /// Telefon numarasını BiletBank'ın beklediği +90-XXXXXXXXXX formatına dönüştürür.
+    /// Kabul edilen girişler: 5351234567, 05351234567, 905351234567, 90-5351234567, +90-5351234567, +905351234567
+    /// </summary>
+    private static string NormalizePhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return "+90-5000000000";
+
+        // Sadece rakamları al
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+
+        // 905351234567 (12 hane) → 5351234567
+        if (digits.Length == 12 && digits.StartsWith("90"))
+            digits = digits[2..];
+
+        // 05351234567 (11 hane, 0 ile başlıyor) → 5351234567
+        if (digits.Length == 11 && digits.StartsWith("0"))
+            digits = digits[1..];
+
+        // 5351234567 (10 hane) → +90-5351234567
+        if (digits.Length == 10)
+            return $"+90-{digits}";
+
+        // Diğer durumlarda orijinal değeri + ile başlat
+        return phone.StartsWith("+") ? phone : $"+{phone}";
     }
 
     private async Task<LoginResponse> LoginAsync()
