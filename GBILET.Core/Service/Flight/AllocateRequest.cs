@@ -29,4 +29,10 @@ public class AllocateRequest
     /// Response'ta LastSellerCommission olarak yansir.
     /// </summary>
     public decimal SelectedServiceFee { get; set; } = 0;
+
+    /// <summary>
+    /// AirSearch response'undaki brandedFareItems listesinden secilen paketin ID'si.
+    /// Gonderilmezse sistem otomatik en dusuk paketi secer.
+    /// </summary>
+    public string? BrandedFareItemId { get; set; }
 }

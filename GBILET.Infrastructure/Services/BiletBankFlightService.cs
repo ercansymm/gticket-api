@@ -886,15 +886,18 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev1:Form>
-            <trev1:SelectedItems>
-               <trev1:IO_AllocationItem>
-                  <trev1:ProductId>{request.ProductId}</trev1:ProductId>
-                  <trev1:SelectedServiceFee>
-                     <trev1:Amount>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
-                  </trev1:SelectedServiceFee>
-               </trev1:IO_AllocationItem>
-            </trev1:SelectedItems>
-         </trev1:Form>
+             <trev1:SelectedItems>
+                <trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(request.BrandedFareItemId) ? $@"
+                   <trev1:BrandedFareItemId>{request.BrandedFareItemId}</trev1:BrandedFareItemId>" : "")}
+                   <trev1:ProductId>{request.ProductId}</trev1:ProductId>
+                   <trev1:SelectedServiceFee>
+                      <trev1:Amount>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
+                      <trev1:ProductItemServiceFee i:nil=""true""/>
+                   </trev1:SelectedServiceFee>
+                   <trev1:SubOptions i:nil=""true""/>
+                </trev1:IO_AllocationItem>
+             </trev1:SelectedItems>
+          </trev1:Form>
       </tem:request>
    </tem:Allocate>
 </soapenv:Body>
@@ -1693,7 +1696,55 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var sessionToken = request.SessionToken ?? "";
             var shoppingFileId = request.ShoppingFileId ?? "";
 
-            var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+            string soapRequest;
+            string soapAction;
+
+            if (request.PaymentType == "CreditCard" && request.CreditCard != null)
+            {
+                soapAction = "http://tempuri.org/I_Shopping/MakePayment_Init3DPayment";
+                soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
+xmlns:tem=""http://tempuri.org/""
+xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
+<soap:Body>
+   <tem:MakePayment_Init3DPayment>
+      <tem:request>
+         <trev:AuthenticationHeader>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
+         </trev:AuthenticationHeader>
+         <trev:ExtraParamList>
+            <trev:ExtendedData>
+               <trev:Name>IntendedShoppingFileId</trev:Name>
+               <trev:Value>{shoppingFileId}</trev:Value>
+            </trev:ExtendedData>
+         </trev:ExtraParamList>
+         <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
+         <trev1:PaymentForm>
+            <trev1:Amount>{amount}</trev1:Amount>
+            <trev1:CreditCard>
+               <trev1:CardHolderName>{request.CreditCard.CardHolderName}</trev1:CardHolderName>
+               <trev1:CardNumber>{request.CreditCard.CardNumber}</trev1:CardNumber>
+               <trev1:Cvv>{request.CreditCard.Cvv}</trev1:Cvv>
+               <trev1:ExpiryMonth>{request.CreditCard.ExpiryMonth}</trev1:ExpiryMonth>
+               <trev1:ExpiryYear>{request.CreditCard.ExpiryYear}</trev1:ExpiryYear>
+            </trev1:CreditCard>
+            <trev1:Currency>{currency}</trev1:Currency>
+            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
+            <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
+            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
+         </trev1:PaymentForm>
+      </tem:request>
+   </tem:MakePayment_Init3DPayment>
+</soap:Body>
+</soap:Envelope>";
+            }
+            else
+            {
+                soapAction = "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount";
+                soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
@@ -1724,11 +1775,12 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
    </tem:MakePayment_FromRunningAccount>
 </soap:Body>
 </soap:Envelope>";
+            }
 
             _logger.LogInformation("[MakePayment] SOAP Request (card masked)");
 
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount");
+            content.Headers.Add("SOAPAction", soapAction);
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -1769,15 +1821,21 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var shoppingFileEl = doc.GetDescendants("ShoppingFile").FirstOrDefault();
             var paymentId = doc.GetValue("PaymentId");
 
+            // 3D Secure yonlendirme URL'i (Init3DPayment response'unda donebilir)
+            var threeDUrl = doc.GetValue("RedirectUrl") ?? doc.GetValue("ThreeDSecureUrl");
+            var is3DRequired = !string.IsNullOrEmpty(threeDUrl);
+
             return new MakePaymentResponse
             {
                 HasError = false,
-                IsPaymentSuccessful = true,
-                Status = shoppingFileEl?.GetValue("Status") ?? "Paid",
+                IsPaymentSuccessful = !is3DRequired,
+                Status = is3DRequired ? "Awaiting3DSecure" : (shoppingFileEl?.GetValue("Status") ?? "Paid"),
                 ShoppingFileId = shoppingFileEl?.GetValue("Id"),
                 RemainingSum = shoppingFileEl != null ? shoppingFileEl.GetDecimalValue("RemainingSum") : 0,
                 Currency = shoppingFileEl?.GetValue("Currency") ?? currency,
-                PaymentReferenceId = paymentId
+                PaymentReferenceId = paymentId,
+                ThreeDSecureUrl = threeDUrl,
+                Is3DSecureRequired = is3DRequired
             };
         }
         catch (Exception ex)
