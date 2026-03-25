@@ -156,13 +156,13 @@ public class BiletBankFlightService : IFlightService
     }
 
     /// <summary>
-    /// Telefon numarasını BiletBank'ın beklediği +90-XXXXXXXXXX formatına dönüştürür.
+    /// Telefon numarasını BiletBank'ın beklediği +90XXXXXXXXXX formatına dönüştürür.
     /// Kabul edilen girişler: 5351234567, 05351234567, 905351234567, 90-5351234567, +90-5351234567, +905351234567
     /// </summary>
     private static string NormalizePhone(string? phone)
     {
         if (string.IsNullOrWhiteSpace(phone))
-            return "+90-5000000000";
+            return "+905000000000";
 
         // Sadece rakamları al
         var digits = new string(phone.Where(char.IsDigit).ToArray());
@@ -175,9 +175,9 @@ public class BiletBankFlightService : IFlightService
         if (digits.Length == 11 && digits.StartsWith("0"))
             digits = digits[1..];
 
-        // 5351234567 (10 hane) → +90-5351234567
+        // 5351234567 (10 hane) → +905351234567
         if (digits.Length == 10)
-            return $"+90-{digits}";
+            return $"+90{digits}";
 
         // Diğer durumlarda orijinal değeri + ile başlat
         return phone.StartsWith("+") ? phone : $"+{phone}";
@@ -1372,7 +1372,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                   <trev:SequenceNo>{i + 1}</trev:SequenceNo>
                 </trev:T_ForwardPaxReference>
               </trev2:PaxReferences>
-              <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
+              {(isContact ? $"<trev2:Phone>{request.Contact.Phone}</trev2:Phone>" : "<trev2:Phone i:nil=\"true\"/>")}
               <trev2:SecondaryPhoneNumber i:nil=""true""/>
               <trev2:SequenceNo>{i + 1}</trev2:SequenceNo>
               <trev2:TempTag>{tempTag}</trev2:TempTag>

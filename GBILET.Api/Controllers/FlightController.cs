@@ -1532,7 +1532,7 @@ public class FlightController : ControllerBase
     private static string NormalizePhoneNumber(string? phone)
     {
         if (string.IsNullOrWhiteSpace(phone))
-            return "+90-5000000000";
+            return "+905000000000";
 
         var digits = new string(phone.Where(char.IsDigit).ToArray());
 
@@ -1544,9 +1544,9 @@ public class FlightController : ControllerBase
         if (digits.Length == 11 && digits.StartsWith("0"))
             digits = digits[1..];
 
-        // 5351234567 (10 hane) → +90-5351234567
+        // 5351234567 (10 hane) → +905351234567
         if (digits.Length == 10)
-            return $"+90-{digits}";
+            return $"+90{digits}";
 
         return phone.StartsWith("+") ? phone : $"+{phone}";
     }
