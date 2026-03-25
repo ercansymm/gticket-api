@@ -1779,6 +1779,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
          <trev:ExtraParamList>
             <trev:ExtendedData></trev:ExtendedData>
          </trev:ExtraParamList>
+         <trev1:ContinueUrl>http://37.148.212.253:5000/api/Flight/3d-callback</trev1:ContinueUrl>
          <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
             <trev1:Amount>{amount}</trev1:Amount>
