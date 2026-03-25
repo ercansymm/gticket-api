@@ -1591,10 +1591,10 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                 SegmentId = seg.GetValue("Id"),
                 OriginCode = seg.GetValue("OriginCode"),
                 DestinationCode = seg.GetValue("DestinationCode"),
-                DepartureDay = seg.GetValue("DepartureDay"),
-                DepartureTime = seg.GetValue("DepartureTime"),
-                ArrivalDay = seg.GetValue("ArrivalDay"),
-                ArrivalTime = seg.GetValue("ArrivalTime"),
+                DepartureDay = FormatDay(seg.GetValue("DepartureDay")),
+                DepartureTime = FormatIso8601DurationAsTime(seg.GetValue("DepartureTime")),
+                ArrivalDay = FormatDay(seg.GetValue("ArrivalDay")),
+                ArrivalTime = FormatIso8601DurationAsTime(seg.GetValue("ArrivalTime")),
                 FlightNumber = seg.GetValue("FlightNumber"),
                 MarketingAirline = seg.GetValue("MarketingAirline"),
                 BookingClass = seg.GetValue("BookingClass")
@@ -1726,11 +1726,53 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var sessionToken = request.SessionToken ?? "";
             var shoppingFileId = request.ShoppingFileId ?? "";
 
+            // Temel validasyonlar — BiletBank'a gondermeden once kontrol et
+            if (string.IsNullOrWhiteSpace(sessionId) || string.IsNullOrWhiteSpace(sessionToken))
+            {
+                return new MakePaymentResponse
+                {
+                    HasError = true,
+                    ErrorMessage = "SessionId ve SessionToken bos olamaz."
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(shoppingFileId))
+            {
+                return new MakePaymentResponse
+                {
+                    HasError = true,
+                    ErrorMessage = "ShoppingFileId bos olamaz. MakePreBooking adiminda alinan ShoppingFileId degerini gonderin."
+                };
+            }
+
+            if (request.Amount <= 0)
+            {
+                return new MakePaymentResponse
+                {
+                    HasError = true,
+                    ErrorMessage = "Amount sifirdan buyuk olmalidir."
+                };
+            }
+
             string soapRequest;
             string soapAction;
 
             if (request.PaymentType == "CreditCard" && request.CreditCard != null)
             {
+                // CreditCard null kontrolu
+                if (string.IsNullOrWhiteSpace(request.CreditCard.CardNumber) ||
+                    string.IsNullOrWhiteSpace(request.CreditCard.CardHolderName) ||
+                    string.IsNullOrWhiteSpace(request.CreditCard.ExpiryMonth) ||
+                    string.IsNullOrWhiteSpace(request.CreditCard.ExpiryYear) ||
+                    string.IsNullOrWhiteSpace(request.CreditCard.Cvv))
+                {
+                    return new MakePaymentResponse
+                    {
+                        HasError = true,
+                        ErrorMessage = "Kredi karti bilgileri eksik: CardNumber, CardHolderName, ExpiryMonth, ExpiryYear ve Cvv alanlari zorunludur."
+                    };
+                }
+
                 soapAction = "http://tempuri.org/I_Shopping/MakePayment_Init3DPayment";
                 soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
@@ -1761,14 +1803,13 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                <trev1:ExpiryMonth>{request.CreditCard.ExpiryMonth}</trev1:ExpiryMonth>
                <trev1:ExpiryYear>{request.CreditCard.ExpiryYear}</trev1:ExpiryYear>
             </trev1:CreditCard>
-             <trev1:Currency>{currency}</trev1:Currency>
-             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
-             <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
-             <trev1:ProductId>{request.ProductId}</trev1:ProductId>
-             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
-          </trev1:PaymentForm>
-       </tem:request>
-    </tem:MakePayment_Init3DPayment>
+            <trev1:Currency>{currency}</trev1:Currency>
+            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
+            <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
+            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
+         </trev1:PaymentForm>
+      </tem:request>
+   </tem:MakePayment_Init3DPayment>
 </soap:Body>
 </soap:Envelope>";
             }
@@ -1797,19 +1838,20 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
          <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
             <trev1:Amount>{amount}</trev1:Amount>
-             <trev1:Currency>{currency}</trev1:Currency>
-             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
-             <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
-             <trev1:ProductId>{request.ProductId}</trev1:ProductId>
-             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
-          </trev1:PaymentForm>
-       </tem:request>
-    </tem:MakePayment_FromRunningAccount>
+            <trev1:Currency>{currency}</trev1:Currency>
+            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
+            <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
+            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
+         </trev1:PaymentForm>
+      </tem:request>
+   </tem:MakePayment_FromRunningAccount>
 </soap:Body>
 </soap:Envelope>";
             }
 
-            _logger.LogInformation("[MakePayment] SOAP Request (card masked)");
+            // Kart bilgilerini loglamadan sadece islem bilgisini logla
+            _logger.LogInformation("[MakePayment] PaymentType={PaymentType}, Amount={Amount}, Currency={Currency}, ShoppingFileId={ShoppingFileId}",
+                request.PaymentType, amount, currency, shoppingFileId);
 
             var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
             content.Headers.Add("SOAPAction", soapAction);
@@ -1817,9 +1859,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
 
-            _logger.LogInformation("[MakePayment] HTTP Status: {StatusCode}", (int)response.StatusCode);
-            _logger.LogInformation("[MakePayment] SOAP Response (len={Length}):\n{SoapResponse}",
-                responseText?.Length ?? 0, responseText);
+            _logger.LogInformation("[MakePayment] HTTP Status: {StatusCode}, Response Length: {Length}",
+                (int)response.StatusCode, responseText?.Length ?? 0);
+            _logger.LogInformation("[MakePayment] SOAP Response:\n{SoapResponse}", responseText);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1839,11 +1881,12 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 };
             }
 
-            // Init3DPayment response'u HTML (3D Secure redirect sayfasi) donebilir
+            // Init3DPayment response'u dogrudan HTML (3D Secure redirect sayfasi) donebilir
             var trimmed = responseText.TrimStart();
             if (trimmed.StartsWith("<html", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase))
             {
+                _logger.LogInformation("[MakePayment] 3D Secure HTML response algilandi (dogrudan HTML).");
                 return new MakePaymentResponse
                 {
                     HasError = false,
@@ -1851,7 +1894,6 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                     Is3DSecureRequired = true,
                     ThreeDSecureUrl = null,
                     Status = "Awaiting3DSecure",
-                    ErrorMessage = "3D Secure dogrulama sayfasi HTML olarak dondu. Response icerigini ThreeDSecureHtml alaninda inceleyin.",
                     ThreeDSecureHtml = responseText
                 };
             }
@@ -1863,11 +1905,15 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             }
             catch (Exception parseEx)
             {
-                _logger.LogError(parseEx, "[MakePayment] XML parse hatasi. Response XML degil.");
+                // XML parse edilemedi — HTML form olabilir, 3D Secure icerigi olarak dondur
+                _logger.LogWarning(parseEx, "[MakePayment] XML parse hatasi. Response muhtemelen 3D Secure HTML icerigi.");
                 return new MakePaymentResponse
                 {
-                    HasError = true,
-                    ErrorMessage = $"MakePayment: Response XML olarak parse edilemedi. İlk 500 karakter: {responseText[..Math.Min(500, responseText.Length)]}"
+                    HasError = false,
+                    IsPaymentSuccessful = false,
+                    Is3DSecureRequired = true,
+                    Status = "Awaiting3DSecure",
+                    ThreeDSecureHtml = responseText
                 };
             }
 
@@ -1888,20 +1934,44 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var shoppingFileEl = doc.GetDescendants("ShoppingFile").FirstOrDefault();
             var paymentId = doc.GetValue("PaymentId");
 
-            // 3D Secure yonlendirme URL'i (Init3DPayment response'unda donebilir)
+            // 3D Secure — BiletBank farkli alanlarda donebilir
             var threeDUrl = doc.GetValue("RedirectUrl")
                 ?? doc.GetValue("ThreeDSecureUrl")
                 ?? doc.GetValue("PaymentUrl")
-                ?? doc.GetValue("ACSUrl");
-            var is3DRequired = !string.IsNullOrEmpty(threeDUrl);
+                ?? doc.GetValue("ACSUrl")
+                ?? doc.GetValue("Url");
 
-            // 3D HTML content XML icinde de gelebilir
+            // 3D HTML content — XML icinde CDATA veya element value olarak gelebilir
             var threeDHtml = doc.GetValue("ThreeDHtml")
                 ?? doc.GetValue("HtmlContent")
-                ?? doc.GetValue("PaymentHtml");
+                ?? doc.GetValue("PaymentHtml")
+                ?? doc.GetValue("Form")
+                ?? doc.GetValue("Content")
+                ?? doc.GetValue("HTMLContent")
+                ?? doc.GetValue("PaymentPageContent");
 
-            if (!is3DRequired && !string.IsNullOrEmpty(threeDHtml))
-                is3DRequired = true;
+            // Bazi durumlarda 3D HTML icerigi derin bir elementin altinda olabilir
+            if (string.IsNullOrEmpty(threeDHtml))
+            {
+                // Tum descendant'larda HTML form icerigi ara
+                var htmlElement = doc.Descendants()
+                    .FirstOrDefault(x => x.Value.Contains("<form", StringComparison.OrdinalIgnoreCase)
+                        || x.Value.Contains("<FORM", StringComparison.OrdinalIgnoreCase));
+                if (htmlElement != null)
+                {
+                    threeDHtml = htmlElement.Value;
+                    _logger.LogInformation("[MakePayment] 3D Secure HTML '{ElementName}' elementinde bulundu.",
+                        htmlElement.Name.LocalName);
+                }
+            }
+
+            var is3DRequired = !string.IsNullOrEmpty(threeDUrl) || !string.IsNullOrEmpty(threeDHtml);
+
+            if (is3DRequired)
+            {
+                _logger.LogInformation("[MakePayment] 3D Secure algilandi. URL={ThreeDUrl}, HTML uzunluk={HtmlLen}",
+                    threeDUrl, threeDHtml?.Length ?? 0);
+            }
 
             return new MakePaymentResponse
             {
@@ -1928,7 +1998,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
         }
     }
 
-    #endregion
+    #endregion 
 
     #region FinalizeShopping
 
