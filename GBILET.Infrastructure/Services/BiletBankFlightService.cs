@@ -1795,6 +1795,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:Currency>{currency}</trev1:Currency>
             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
             <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
+            <trev1:ProductId>{request.ProductId}</trev1:ProductId>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:PaymentForm>
       </tem:request>
@@ -1830,6 +1831,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:Currency>{currency}</trev1:Currency>
             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
             <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
+            <trev1:ProductId>{request.ProductId}</trev1:ProductId>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:PaymentForm>
       </tem:request>
