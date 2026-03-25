@@ -157,6 +157,8 @@ public class FlightController : ControllerBase
             // Telefon numarasini normalize et (ornek: 5351234567 → +90-5351234567)
             request.Contact.Phone = NormalizePhoneNumber(request.Contact.Phone);
 
+            _logger.LogInformation("[UpdatePassengers] Normalized phone: {Phone}", request.Contact.Phone);
+
             foreach (var pax in request.Passengers)
             {
                 if (string.IsNullOrWhiteSpace(pax.FirstName) || string.IsNullOrWhiteSpace(pax.LastName))
@@ -176,7 +178,7 @@ public class FlightController : ControllerBase
             }
 
             var result = await _flightService.UpdatePassengersAsync(request);
-            return Ok(new { result.HasError, result.ErrorMessage });
+            return Ok(new { result.HasError, result.ErrorMessage, result.RawSoapRequest, result.RawSoapResponse });
         }
         catch (Exception ex)
         {
