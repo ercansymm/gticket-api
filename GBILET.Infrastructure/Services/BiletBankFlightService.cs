@@ -1507,17 +1507,17 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                <trev:Value>true</trev:Value>
             </trev:ExtendedData>
          </trev:ExtraParamList>
-         <trev1:Form>
-            <trev1:Branded>
-               <trev1:IO_Air_Branded_Form>
-                  <trev1:BrandedFareItemId>{brandedFareItemId}</trev1:BrandedFareItemId>
-                  <trev1:ProductId>{productId}</trev1:ProductId>
-               </trev1:IO_Air_Branded_Form>
-            </trev1:Branded>
-            <trev1:ProductIds xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
-               <arr:guid>{productId}</arr:guid>
-            </trev1:ProductIds>
-         </trev1:Form>
+          <trev1:Form>{(!string.IsNullOrEmpty(brandedFareItemId) ? $@"
+             <trev1:Branded>
+                <trev1:IO_Air_Branded_Form>
+                   <trev1:BrandedFareItemId>{brandedFareItemId}</trev1:BrandedFareItemId>
+                   <trev1:ProductId>{productId}</trev1:ProductId>
+                </trev1:IO_Air_Branded_Form>
+             </trev1:Branded>" : "")}
+             <trev1:ProductIds xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
+                <arr:guid>{productId}</arr:guid>
+             </trev1:ProductIds>
+          </trev1:Form>
       </tem:request>
    </tem:MakePrebooking>
 </soap:Body>
@@ -1761,13 +1761,14 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                <trev1:ExpiryMonth>{request.CreditCard.ExpiryMonth}</trev1:ExpiryMonth>
                <trev1:ExpiryYear>{request.CreditCard.ExpiryYear}</trev1:ExpiryYear>
             </trev1:CreditCard>
-            <trev1:Currency>{currency}</trev1:Currency>
-            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
-            <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
-            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
-         </trev1:PaymentForm>
-      </tem:request>
-   </tem:MakePayment_Init3DPayment>
+             <trev1:Currency>{currency}</trev1:Currency>
+             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
+             <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
+             <trev1:ProductId>{request.ProductId}</trev1:ProductId>
+             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
+          </trev1:PaymentForm>
+       </tem:request>
+    </tem:MakePayment_Init3DPayment>
 </soap:Body>
 </soap:Envelope>";
             }
@@ -1796,13 +1797,14 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
          <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
             <trev1:Amount>{amount}</trev1:Amount>
-            <trev1:Currency>{currency}</trev1:Currency>
-            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
-            <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
-            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
-         </trev1:PaymentForm>
-      </tem:request>
-   </tem:MakePayment_FromRunningAccount>
+             <trev1:Currency>{currency}</trev1:Currency>
+             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
+             <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
+             <trev1:ProductId>{request.ProductId}</trev1:ProductId>
+             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
+          </trev1:PaymentForm>
+       </tem:request>
+    </tem:MakePayment_FromRunningAccount>
 </soap:Body>
 </soap:Envelope>";
             }

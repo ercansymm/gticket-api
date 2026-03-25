@@ -202,8 +202,7 @@ public class FlightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.ProductId))
                 return BadRequest(new { error = "ProductId alani zorunludur (Allocate response'taki AirBookings[0].ProductId)." });
 
-            if (string.IsNullOrWhiteSpace(request.BrandedFareItemId))
-                return BadRequest(new { error = "BrandedFareItemId alani zorunludur (Allocate response'taki AirBookings[0].BrandedFareItems[0].BrandedFareItemId)." });
+            // BrandedFareItemId opsiyonel — bazi havayollari (orn. AnadoluJet) branded fare desteklemez
 
             if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
                 return BadRequest(new { error = "ShoppingFileId alani zorunludur (Allocate response'taki ShoppingFileId)." });

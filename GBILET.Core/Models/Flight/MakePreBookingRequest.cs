@@ -19,8 +19,9 @@ public class MakePreBookingRequest
 
     /// <summary>
     /// Allocate response'taki AirBookings[0].BrandedFareItems[0].BrandedFareItemId degeri.
+    /// Opsiyonel — bazi havayollari (orn. AnadoluJet) branded fare desteklemez.
     /// </summary>
-    public string BrandedFareItemId { get; set; } = null!;
+    public string? BrandedFareItemId { get; set; }
 
     /// <summary>
     /// Allocate response'taki ShoppingFileId degeri.

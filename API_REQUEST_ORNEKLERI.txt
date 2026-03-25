@@ -107,7 +107,7 @@ gerekli bilgiler (sessionId, productId vs.) aktarýlýr.
   "sessionId": "<<allocate response'tan>>",
   "sessionToken": "<<allocate response'tan>>",
   "productId": "<<allocate response ? airBookings[0].productId>>",
-  "brandedFareItemId": "<<allocate response ? airBookings[0].brandedFareItems[0].brandedFareItemId>>",
+  "brandedFareItemId": "<<allocate response ? airBookings[0].brandedFareItems[0].brandedFareItemId>> (opsiyonel - bazi havayollari desteklemez, null gonderilebilir)",
   "shoppingFileId": "<<allocate response ? shoppingFileId>>",
   "passengers": [
     {
