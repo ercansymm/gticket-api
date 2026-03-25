@@ -1343,6 +1343,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             // Kural 2: Id = her zaman yeni GUID uretilecek
             var paxId = Guid.NewGuid().ToString();
 
+            // Telefon numarasini BiletBank formatina (+CC-XXXXXXXXXX) cevir
+            var phoneNumber = isContact ? FormatPhoneForBiletBank(request.Contact.Phone) : "";
+
             // BiletBank dokumantasyonundaki element sirasi:
             // BirthDate, CitizenNo, Email, FirstName, Gender, Id, IfContact, LastName,
             // Nationality, PassportCountry, PassportNo, Phone, SequenceNo, TempTag, Type, WheelChairServiceType
@@ -1359,7 +1362,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
               <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
               <trev2:PassportNo>{(string.IsNullOrEmpty(pax.PassportNo) ? "P0000000" : pax.PassportNo)}</trev2:PassportNo>
-              <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
+              <trev2:Phone>{phoneNumber}</trev2:Phone>
               <trev2:SequenceNo>{i}</trev2:SequenceNo>
               <trev2:TempTag>{tempTag}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
@@ -2431,4 +2434,37 @@ xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
     }
 
     #endregion
+
+    /// <summary>
+    /// Telefon numarasini BiletBank'in bekledi +CC-XXXXXXXXXX formatina cevirir.
+    /// Bu metot SOAP XML olusturulmadan hemen once cagrilir — controller'dan
+    /// ne gelirse gelsin burada garanti altina alinir.
+    /// </summary>
+    private static string FormatPhoneForBiletBank(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return "+90-5000000000";
+
+        // Zaten +CC-XXX formatindaysa dokunma
+        if (phone.StartsWith("+") && phone.Contains('-'))
+            return phone;
+
+        // Rakamlari cikar
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+
+        // +905351234567 veya 905351234567 (12 hane, 90 ile basliyor)
+        if (digits.Length == 12 && digits.StartsWith("90"))
+            return $"+90-{digits[2..]}";
+
+        // 05351234567 (11 hane, 0 ile basliyor)
+        if (digits.Length == 11 && digits.StartsWith("0"))
+            return $"+90-{digits[1..]}";
+
+        // 5351234567 (10 hane — TR varsay)
+        if (digits.Length == 10)
+            return $"+90-{digits}";
+
+        // Diger durumlarda olduğu gibi dön
+        return phone.StartsWith("+") ? phone : $"+{phone}";
+    }
 }
