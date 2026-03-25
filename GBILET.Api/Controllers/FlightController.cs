@@ -6,7 +6,6 @@ using GBILET.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using GBILET.Core.Entities;
-using PhoneNumbers;
 
 namespace GBILET.Api.Controllers;
 
@@ -1529,46 +1528,31 @@ public class FlightController : ControllerBase
 
     /// <summary>
     /// Telefon numarasini BiletBank'in beklediği +CC-XXXXXXXXXX formatina donusturur.
-    /// libphonenumber ile uluslararasi tum numaralari destekler.
     /// Ornek: +90-5351234567, +971-501234567, +1-2025551234
     /// </summary>
-    private static string NormalizePhoneNumber(string? phone, string defaultRegion = "TR")
+    private static string NormalizePhoneNumber(string? phone)
     {
         if (string.IsNullOrWhiteSpace(phone))
             return "+90-5000000000";
 
-        try
-        {
-            var phoneUtil = PhoneNumberUtil.GetInstance();
-            var parsed = phoneUtil.Parse(phone, defaultRegion);
+        // Zaten +CC-XXX formatindaysa dokunma
+        if (phone.StartsWith("+") && phone.Contains('-'))
+            return phone;
 
-            if (!phoneUtil.IsValidNumber(parsed))
-            {
-                // Gecersiz numara — yine de format dene
-                var countryCode = parsed.CountryCode;
-                var nationalNumber = parsed.NationalNumber.ToString();
-                return $"+{countryCode}-{nationalNumber}";
-            }
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
 
-            var cc = parsed.CountryCode;
-            var nn = parsed.NationalNumber.ToString();
-            return $"+{cc}-{nn}";
-        }
-        catch
-        {
-            // Parse edemezse fallback: sadece rakamlari cikar ve TR varsay
-            var digits = new string(phone.Where(char.IsDigit).ToArray());
+        // +905351234567 veya 905351234567 (12 hane, 90 ile basliyor)
+        if (digits.Length == 12 && digits.StartsWith("90"))
+            return $"+90-{digits[2..]}";
 
-            if (digits.Length >= 12 && digits.StartsWith("90"))
-                return $"+90-{digits[2..]}";
+        // 05351234567 (11 hane, 0 ile basliyor)
+        if (digits.Length == 11 && digits.StartsWith("0"))
+            return $"+90-{digits[1..]}";
 
-            if (digits.Length == 11 && digits.StartsWith("0"))
-                return $"+90-{digits[1..]}";
+        // 5351234567 (10 hane — TR varsay)
+        if (digits.Length == 10)
+            return $"+90-{digits}";
 
-            if (digits.Length == 10)
-                return $"+90-{digits}";
-
-            return phone.StartsWith("+") ? phone : $"+{phone}";
-        }
+        return phone.StartsWith("+") ? phone : $"+{phone}";
     }
 }

@@ -1343,38 +1343,24 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             // Kural 2: Id = her zaman yeni GUID uretilecek
             var paxId = Guid.NewGuid().ToString();
 
-            // WSDL alphabetical order: BirthDate, CitizenNo, DestinationAddress, Email, FirstName,
-            // FrequentFlayerNo, Gender, HesCode, Id, IfContact, LastName, Nationality, PassportCountry,
-            // PassportNo, PassportValidDate, PaxReferences, Phone, SecondaryPhoneNumber, SequenceNo,
-            // TempTag, Type, WheelChairServiceType
+            // BiletBank dokumantasyonundaki element sirasi:
+            // BirthDate, CitizenNo, Email, FirstName, Gender, Id, IfContact, LastName,
+            // Nationality, PassportCountry, PassportNo, Phone, SequenceNo, TempTag, Type, WheelChairServiceType
             passengersXml.Append($@"
             <trev2:T_Passenger>
               <trev2:BirthDate>{birthDate}</trev2:BirthDate>
               <trev2:CitizenNo>{pax.CitizenNo ?? "00000000000"}</trev2:CitizenNo>
-              <trev2:DestinationAddress i:nil=""true""/>
               <trev2:Email>{(isContact ? request.Contact.Email : "")}</trev2:Email>
               <trev2:FirstName>{pax.FirstName}</trev2:FirstName>
-              <trev2:FrequentFlayerNo i:nil=""true""/>
               <trev2:Gender>{pax.Gender}</trev2:Gender>
-              <trev2:HesCode i:nil=""true""/>
               <trev2:Id>{paxId}</trev2:Id>
               <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
               <trev2:LastName>{pax.LastName}</trev2:LastName>
               <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
               <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
-              {(string.IsNullOrEmpty(pax.PassportNo) ? "<trev2:PassportNo i:nil=\"true\"/>" : $"<trev2:PassportNo>{pax.PassportNo}</trev2:PassportNo>")}
-              <trev2:PassportValidDate i:nil=""true""/>
-              <trev2:PaxReferences>
-                <trev:T_ForwardPaxReference>
-                  <trev:PaxReferenceId>{pax.PaxReferenceId}</trev:PaxReferenceId>
-                  <trev:ProductId>{request.ProductId}</trev:ProductId>
-                  <trev:ProductItemId>{request.ProductItemId}</trev:ProductItemId>
-                  <trev:SequenceNo>{i + 1}</trev:SequenceNo>
-                </trev:T_ForwardPaxReference>
-              </trev2:PaxReferences>
-              {(isContact ? $"<trev2:Phone>{request.Contact.Phone}</trev2:Phone>" : "<trev2:Phone i:nil=\"true\"/>")}
-              <trev2:SecondaryPhoneNumber i:nil=""true""/>
-              <trev2:SequenceNo>{i + 1}</trev2:SequenceNo>
+              <trev2:PassportNo>{(string.IsNullOrEmpty(pax.PassportNo) ? "P0000000" : pax.PassportNo)}</trev2:PassportNo>
+              <trev2:Phone>{(isContact ? request.Contact.Phone : "")}</trev2:Phone>
+              <trev2:SequenceNo>{i}</trev2:SequenceNo>
               <trev2:TempTag>{tempTag}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
               <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
