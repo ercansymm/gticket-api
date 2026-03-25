@@ -1918,28 +1918,27 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var paymentId = doc.GetValue("PaymentId");
 
             // 3D Secure — BiletBank farkli alanlarda donebilir
-            var threeDUrl = doc.GetValue("RedirectUrl")
+            var threeDUrl = doc.GetValue("ContinueUrl")
+                ?? doc.GetValue("RedirectUrl")
                 ?? doc.GetValue("ThreeDSecureUrl")
                 ?? doc.GetValue("PaymentUrl")
-                ?? doc.GetValue("ACSUrl")
-                ?? doc.GetValue("Url");
+                ?? doc.GetValue("ACSUrl");
 
             // 3D HTML content — XML icinde CDATA veya element value olarak gelebilir
             var threeDHtml = doc.GetValue("ThreeDHtml")
                 ?? doc.GetValue("HtmlContent")
                 ?? doc.GetValue("PaymentHtml")
-                ?? doc.GetValue("Form")
-                ?? doc.GetValue("Content")
                 ?? doc.GetValue("HTMLContent")
                 ?? doc.GetValue("PaymentPageContent");
 
             // Bazi durumlarda 3D HTML icerigi derin bir elementin altinda olabilir
             if (string.IsNullOrEmpty(threeDHtml))
             {
-                // Tum descendant'larda HTML form icerigi ara
                 var htmlElement = doc.Descendants()
-                    .FirstOrDefault(x => x.Value.Contains("<form", StringComparison.OrdinalIgnoreCase)
-                        || x.Value.Contains("<FORM", StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(x => !x.HasElements
+                        && !string.IsNullOrEmpty(x.Value)
+                        && (x.Value.Contains("<form", StringComparison.OrdinalIgnoreCase)
+                            || x.Value.Contains("<FORM", StringComparison.OrdinalIgnoreCase)));
                 if (htmlElement != null)
                 {
                     threeDHtml = htmlElement.Value;
@@ -1950,19 +1949,30 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 
             var is3DRequired = !string.IsNullOrEmpty(threeDUrl) || !string.IsNullOrEmpty(threeDHtml);
 
+            // PaymentId empty GUID + RemainingSum > 0 ise odeme henuz tamamlanmamis demektir (3D bekleniyor)
+            var isPaymentPending = paymentId == "00000000-0000-0000-0000-000000000000";
+            var remainingSum = shoppingFileEl != null ? shoppingFileEl.GetDecimalValue("RemainingSum") : 0;
+
             if (is3DRequired)
             {
                 _logger.LogInformation("[MakePayment] 3D Secure algilandi. URL={ThreeDUrl}, HTML uzunluk={HtmlLen}",
                     threeDUrl, threeDHtml?.Length ?? 0);
             }
+            else if (isPaymentPending && remainingSum > 0)
+            {
+                _logger.LogWarning("[MakePayment] 3D URL/HTML bulunamadi ama odeme tamamlanmamis. PaymentId={PaymentId}, RemainingSum={RemainingSum}",
+                    paymentId, remainingSum);
+            }
+
+            var isSuccessful = !is3DRequired && !isPaymentPending;
 
             return new MakePaymentResponse
             {
                 HasError = false,
-                IsPaymentSuccessful = !is3DRequired,
-                Status = is3DRequired ? "Awaiting3DSecure" : (shoppingFileEl?.GetValue("Status") ?? "Paid"),
+                IsPaymentSuccessful = isSuccessful,
+                Status = is3DRequired ? "Awaiting3DSecure" : (isPaymentPending ? "PaymentPending" : (shoppingFileEl?.GetValue("Status") ?? "Paid")),
                 ShoppingFileId = shoppingFileEl?.GetValue("Id"),
-                RemainingSum = shoppingFileEl != null ? shoppingFileEl.GetDecimalValue("RemainingSum") : 0,
+                RemainingSum = remainingSum,
                 Currency = shoppingFileEl?.GetValue("Currency") ?? currency,
                 PaymentReferenceId = paymentId,
                 ThreeDSecureUrl = threeDUrl,
