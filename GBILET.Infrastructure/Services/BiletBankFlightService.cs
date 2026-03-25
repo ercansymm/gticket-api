@@ -1768,7 +1768,6 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays""
 xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 <soap:Body>
    <tem:MakePayment_Init3DPayment>
@@ -1778,10 +1777,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev:ExtraParamList>
-            <trev:ExtendedData>
-               <trev:Name>IntendedShoppingFileId</trev:Name>
-               <trev:Value>{shoppingFileId}</trev:Value>
-            </trev:ExtendedData>
+            <trev:ExtendedData></trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
@@ -1796,9 +1792,6 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:Currency>{currency}</trev1:Currency>
             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
             <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
-            <trev1:ProductIds>
-               <arr:guid>{request.ProductId}</arr:guid>
-            </trev1:ProductIds>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:PaymentForm>
       </tem:request>
@@ -1814,7 +1807,6 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
-xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays""
 xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 <soap:Body>
    <tem:MakePayment_FromRunningAccount>
@@ -1824,10 +1816,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev:ExtraParamList>
-            <trev:ExtendedData>
-               <trev:Name>IntendedShoppingFileId</trev:Name>
-               <trev:Value>{shoppingFileId}</trev:Value>
-            </trev:ExtendedData>
+            <trev:ExtendedData></trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
@@ -1835,9 +1824,6 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:Currency>{currency}</trev1:Currency>
             <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
             <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
-            <trev1:ProductIds>
-               <arr:guid>{request.ProductId}</arr:guid>
-            </trev1:ProductIds>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:PaymentForm>
       </tem:request>
