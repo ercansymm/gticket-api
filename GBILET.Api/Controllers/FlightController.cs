@@ -6,6 +6,7 @@ using GBILET.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using GBILET.Core.Entities;
+using PhoneNumbers;
 
 namespace GBILET.Api.Controllers;
 
@@ -1527,27 +1528,47 @@ public class FlightController : ControllerBase
     }
 
     /// <summary>
-    /// Telefon numarasını BiletBank'ın beklediği +90-XXXXXXXXXX formatına dönüştürür.
+    /// Telefon numarasini BiletBank'in beklediği +CC-XXXXXXXXXX formatina donusturur.
+    /// libphonenumber ile uluslararasi tum numaralari destekler.
+    /// Ornek: +90-5351234567, +971-501234567, +1-2025551234
     /// </summary>
-    private static string NormalizePhoneNumber(string? phone)
+    private static string NormalizePhoneNumber(string? phone, string defaultRegion = "TR")
     {
         if (string.IsNullOrWhiteSpace(phone))
-            return "+905000000000";
+            return "+90-5000000000";
 
-        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        try
+        {
+            var phoneUtil = PhoneNumberUtil.GetInstance();
+            var parsed = phoneUtil.Parse(phone, defaultRegion);
 
-        // 905351234567 (12 hane) → 5351234567
-        if (digits.Length == 12 && digits.StartsWith("90"))
-            digits = digits[2..];
+            if (!phoneUtil.IsValidNumber(parsed))
+            {
+                // Gecersiz numara — yine de format dene
+                var countryCode = parsed.CountryCode;
+                var nationalNumber = parsed.NationalNumber.ToString();
+                return $"+{countryCode}-{nationalNumber}";
+            }
 
-        // 05351234567 (11 hane) → 5351234567
-        if (digits.Length == 11 && digits.StartsWith("0"))
-            digits = digits[1..];
+            var cc = parsed.CountryCode;
+            var nn = parsed.NationalNumber.ToString();
+            return $"+{cc}-{nn}";
+        }
+        catch
+        {
+            // Parse edemezse fallback: sadece rakamlari cikar ve TR varsay
+            var digits = new string(phone.Where(char.IsDigit).ToArray());
 
-        // 5351234567 (10 hane) → +905351234567
-        if (digits.Length == 10)
-            return $"+90{digits}";
+            if (digits.Length >= 12 && digits.StartsWith("90"))
+                return $"+90-{digits[2..]}";
 
-        return phone.StartsWith("+") ? phone : $"+{phone}";
+            if (digits.Length == 11 && digits.StartsWith("0"))
+                return $"+90-{digits[1..]}";
+
+            if (digits.Length == 10)
+                return $"+90-{digits}";
+
+            return phone.StartsWith("+") ? phone : $"+{phone}";
+        }
     }
 }
