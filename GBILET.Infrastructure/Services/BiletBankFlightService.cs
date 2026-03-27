@@ -2063,11 +2063,11 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[MakePayment] Exception");
+            _logger.LogError(ex, "[MakePayment] Exception. StackTrace: {StackTrace}", ex.StackTrace);
             return new MakePaymentResponse
             {
                 HasError = true,
-                ErrorMessage = $"MakePayment hatasi: {ex.Message}"
+                ErrorMessage = $"MakePayment hatasi: {ex.Message} | Konum: {ex.StackTrace?.Split('\n').FirstOrDefault()?.Trim()}"
             };
         }
     }
