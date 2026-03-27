@@ -43,6 +43,12 @@ public class BookFlightResponse
     public string? ThreeDSecureUrl { get; set; }
     public bool Is3DSecureRequired { get; set; }
 
+    /// <summary>
+    /// 3D Secure HTML icerik (banka 3D dogrulama formu).
+    /// Bu HTML'i kullaniciya iframe veya yeni pencerede gosterin.
+    /// </summary>
+    public string? ThreeDSecureHtml { get; set; }
+
     // ?? Finalize ??
     public bool IsFinalized { get; set; }
     public List<TicketInfo> Tickets { get; set; } = [];

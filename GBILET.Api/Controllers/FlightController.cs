@@ -471,6 +471,19 @@ public class FlightController : ControllerBase
                     return BadRequest(new { error = "CVV zorunludur." });
             }
 
+            // ContinueUrl'u olustur — session bilgilerini query string'e gom
+            var baseCallbackUrl = $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
+            request.ContinueUrl = $"{baseCallbackUrl}?sid={Uri.EscapeDataString(request.SessionId)}&stk={Uri.EscapeDataString(request.SessionToken)}&sfid={Uri.EscapeDataString(request.ShoppingFileId)}&bid={request.BookingId}";
+
+            // Cache'e de yaz (fallback olarak)
+            _cache.Set($"3d_session_{request.ShoppingFileId}", new ThreeDSessionData
+            {
+                SessionId = request.SessionId,
+                SessionToken = request.SessionToken,
+                ShoppingFileId = request.ShoppingFileId,
+                BookingId = request.BookingId
+            }, TimeSpan.FromMinutes(15));
+
             var result = await _flightService.MakePaymentAsync(request);
 
             if (result == null)
@@ -518,6 +531,198 @@ public class FlightController : ControllerBase
                 error = ex.Message,
                 inner = ex.InnerException?.Message
             });
+        }
+    }
+
+    /// <summary>
+    /// 3D Secure tamamlandiktan sonra frontend'in cagirabilecegi JSON API endpoint'i.
+    /// Banka callback'i otomatik calismazsa veya SPA'dan manuel tetiklemek icin kullanilir.
+    /// 3D callback sonrasi FinalizeShopping yapmak icin session bilgilerine ihtiyac vardir.
+    /// </summary>
+    [HttpPost("complete-3d-payment")]
+    public async Task<IActionResult> Complete3DPayment([FromBody] Complete3DPaymentRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
+
+            if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
+                return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
+
+            if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId alani zorunludur." });
+
+            var result = await _flightService.Complete3DPaymentAsync(request);
+
+            // DB guncelle
+            if (!result.HasError && result.IsPaymentSuccessful && request.BookingId.HasValue)
+            {
+                try
+                {
+                    await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, "Paid");
+                    await _bookingRepository.AddLogAsync(new BookingLog
+                    {
+                        Id = Guid.NewGuid(),
+                        BookingId = request.BookingId.Value,
+                        SessionId = request.SessionId ?? "",
+                        SessionToken = request.SessionToken ?? "",
+                        Operation = "Complete3DPayment_API",
+                        IsSuccess = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[Complete3DPayment] DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
+                }
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                error = ex.Message,
+                inner = ex.InnerException?.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Banka 3D Secure dogrulamasi sonrasi bu endpoint'e POST yapar.
+    /// Bankadan gelen form parametreleri (MD, PaRes vb.) BiletBank'a iletilir.
+    /// </summary>
+    [HttpPost("3d-callback")]
+    [HttpGet("3d-callback")]
+    public async Task<IActionResult> ThreeDCallback()
+    {
+        try
+        {
+            _logger.LogInformation("[3DCallback] Request received. Method={Method}, ContentType={ContentType}",
+                Request.Method, Request.ContentType);
+
+            // Bankadan gelen tum form parametrelerini topla
+            var bankParams = new Dictionary<string, string>();
+
+            if (Request.HasFormContentType)
+            {
+                var form = await Request.ReadFormAsync();
+                foreach (var key in form.Keys)
+                {
+                    bankParams[key] = form[key].ToString();
+                    _logger.LogInformation("[3DCallback] Form param: {Key}={Value}",
+                        key, key.Equals("PaRes", StringComparison.OrdinalIgnoreCase) ? "[MASKED]" : form[key].ToString());
+                }
+            }
+
+            foreach (var key in Request.Query.Keys)
+            {
+                if (!bankParams.ContainsKey(key) && key != "sid" && key != "stk" && key != "sfid" && key != "bid")
+                {
+                    bankParams[key] = Request.Query[key].ToString();
+                    _logger.LogInformation("[3DCallback] Query param: {Key}={Value}", key, Request.Query[key].ToString());
+                }
+            }
+
+            if (bankParams.Count == 0)
+            {
+                _logger.LogWarning("[3DCallback] Bankadan parametre gelmedi.");
+            }
+
+            // Session bilgilerini query string'den al
+            var sessionId = Request.Query["sid"].ToString();
+            var sessionToken = Request.Query["stk"].ToString();
+            var shoppingFileId = Request.Query["sfid"].ToString();
+            var bookingId = Guid.TryParse(Request.Query["bid"].ToString(), out var bid) ? bid : (Guid?)null;
+
+            // Query string'te yoksa cache'ten dene
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(sessionToken))
+            {
+                // ShoppingFileId ile cache'ten bul
+                if (!string.IsNullOrEmpty(shoppingFileId)
+                    && _cache.TryGetValue<ThreeDSessionData>($"3d_session_{shoppingFileId}", out var cached)
+                    && cached != null)
+                {
+                    sessionId = cached.SessionId;
+                    sessionToken = cached.SessionToken;
+                    shoppingFileId = cached.ShoppingFileId;
+                    bookingId = cached.BookingId;
+                    _logger.LogInformation("[3DCallback] Session cache'ten alindi (sfid key). ShoppingFileId={ShoppingFileId}", shoppingFileId);
+                }
+                else
+                {
+                    _logger.LogError("[3DCallback] Session bilgisi bulunamadi (ne query'de ne cache'te).");
+                    return Content(
+                        "<html><body><h2>Hata</h2><p>Session bilgisi bulunamadi. 3D odeme yeniden baslatilmali.</p></body></html>",
+                        "text/html");
+                }
+            }
+
+            // BiletBank'a Complete3DPayment cagrisi yap
+            var completeRequest = new Complete3DPaymentRequest
+            {
+                SessionId = sessionId,
+                SessionToken = sessionToken,
+                ShoppingFileId = shoppingFileId,
+                BankResponseParameters = bankParams,
+                BookingId = bookingId
+            };
+
+            var result = await _flightService.Complete3DPaymentAsync(completeRequest);
+
+            _logger.LogInformation("[3DCallback] Complete3D result: HasError={HasError}, IsPaymentSuccessful={IsPaymentSuccessful}, Status={Status}",
+                result.HasError, result.IsPaymentSuccessful, result.Status);
+
+            // DB guncelle
+            if (!result.HasError && result.IsPaymentSuccessful && bookingId.HasValue)
+            {
+                try
+                {
+                    await _bookingRepository.UpdateStatusAsync(bookingId.Value, "Paid");
+                    await _bookingRepository.AddLogAsync(new BookingLog
+                    {
+                        Id = Guid.NewGuid(),
+                        BookingId = bookingId.Value,
+                        SessionId = sessionId,
+                        SessionToken = sessionToken,
+                        Operation = "Complete3DPayment",
+                        IsSuccess = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[3DCallback] DB guncelleme basarisiz.");
+                }
+            }
+
+            // Kullaniciya sonuc sayfasi goster
+            if (!result.HasError && result.IsPaymentSuccessful)
+            {
+                return Content(
+                    "<html><body><h2>Odeme basarili!</h2><p>Bu pencereyi kapatabilirsiniz.</p>" +
+                    $"<script>if(window.opener){{window.opener.postMessage({{status:'paid',bookingId:'{bookingId}',shoppingFileId:'{shoppingFileId}'}},'*');}}setTimeout(function(){{window.close();}},3000);</script>" +
+                    "</body></html>",
+                    "text/html");
+            }
+            else
+            {
+                var errorMsg = result.ErrorMessage ?? "Bilinmeyen hata";
+                return Content(
+                    $"<html><body><h2>Odeme basarisiz</h2><p>{System.Net.WebUtility.HtmlEncode(errorMsg)}</p>" +
+                    $"<script>if(window.opener){{window.opener.postMessage({{status:'failed',error:'{System.Net.WebUtility.HtmlEncode(errorMsg)}'}},'*');}}setTimeout(function(){{window.close();}},5000);</script>" +
+                    "</body></html>",
+                    "text/html");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[3DCallback] Exception");
+            return Content(
+                $"<html><body><h2>Hata olustu</h2><p>{System.Net.WebUtility.HtmlEncode(ex.Message)}</p></body></html>",
+                "text/html");
         }
     }
 
@@ -1390,6 +1595,18 @@ public class FlightController : ControllerBase
             // ── ADIM 5: MakePayment ──
             response.Steps.Add($"Ödeme yapılıyor ({request.PaymentType})...");
 
+            // ContinueUrl olustur ve session cache'le (BookFlight akisi icin)
+            var bfCallbackUrl = $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
+            var bfContinueUrl = $"{bfCallbackUrl}?sid={Uri.EscapeDataString(allocateResult.SessionId!)}&stk={Uri.EscapeDataString(allocateResult.SessionToken!)}&sfid={Uri.EscapeDataString(preBookResult.ShoppingFileId!)}&bid={savedBookingId}";
+
+            _cache.Set($"3d_session_{preBookResult.ShoppingFileId}", new ThreeDSessionData
+            {
+                SessionId = allocateResult.SessionId!,
+                SessionToken = allocateResult.SessionToken!,
+                ShoppingFileId = preBookResult.ShoppingFileId!,
+                BookingId = savedBookingId
+            }, TimeSpan.FromMinutes(15));
+
             var paymentRequest = new MakePaymentRequest
             {
                 SessionId = allocateResult.SessionId!,
@@ -1400,7 +1617,8 @@ public class FlightController : ControllerBase
                 Currency = preBookResult.Currency ?? "TRY",
                 PaymentType = request.PaymentType,
                 CreditCard = request.CreditCard,
-                BookingId = savedBookingId
+                BookingId = savedBookingId,
+                ContinueUrl = bfContinueUrl
             };
 
             var paymentResult = await _flightService.MakePaymentAsync(paymentRequest);
@@ -1423,8 +1641,9 @@ public class FlightController : ControllerBase
             // 3D Secure gerekiyorsa burada dur
             if (paymentResult.Is3DSecureRequired)
             {
-                response.Steps.Add("3D Secure doğrulaması gerekiyor — akış durdu. ThreeDSecureUrl'e yönlendirin.");
+                response.Steps.Add("3D Secure dogrulamasi gerekiyor — akis durdu. ThreeDSecureHtml'i kullaniciya gosterin.");
                 response.Status = "Awaiting3DSecure";
+                response.ThreeDSecureHtml = paymentResult.ThreeDSecureHtml;
                 return Ok(response);
             }
 

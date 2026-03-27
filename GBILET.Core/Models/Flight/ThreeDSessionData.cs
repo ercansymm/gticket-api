@@ -1,0 +1,14 @@
+namespace GBILET.Core.Models.Flight;
+
+/// <summary>
+/// 3D Secure baslatildiginda session bilgilerini cache'lemek icin kullanilir.
+/// Callback geldiginde bu bilgiler gereklidir.
+/// </summary>
+public class ThreeDSessionData
+{
+    public string SessionId { get; set; } = null!;
+    public string SessionToken { get; set; } = null!;
+    public string ShoppingFileId { get; set; } = null!;
+    public Guid? BookingId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}

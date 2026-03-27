@@ -4,6 +4,7 @@ using GBILET.Infrastructure.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Security;
 using System.Text; 
 using System.Xml.Linq;
 
@@ -1763,6 +1764,15 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 }
 
                 soapAction = "http://tempuri.org/I_Shopping/MakePayment_Init3DPayment";
+
+                // Taksit secenegi varsa InstallmentOptionId ekle
+                var installmentXml = !string.IsNullOrWhiteSpace(request.InstallmentOptionId)
+                    ? $"<trev1:InstallmentOptionId>{request.InstallmentOptionId}</trev1:InstallmentOptionId>"
+                    : "";
+
+                var isPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
+                var deductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
+
                 soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
@@ -1779,8 +1789,8 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
          <trev:ExtraParamList>
             <trev:ExtendedData></trev:ExtendedData>
          </trev:ExtraParamList>
-         <trev1:ContinueUrl>http://37.148.212.253:5000/api/Flight/3d-callback</trev1:ContinueUrl>
-         <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
+         <trev1:ContinueUrl>{request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback"}</trev1:ContinueUrl>
+         <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
             <trev1:Amount>{amount}</trev1:Amount>
             <trev1:CreditCard>
@@ -1791,7 +1801,8 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                <trev1:ExpiryYear>{request.CreditCard.ExpiryYear}</trev1:ExpiryYear>
             </trev1:CreditCard>
             <trev1:Currency>{currency}</trev1:Currency>
-            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
+            {installmentXml}
+            <trev1:IsPartialPayment>{isPartial}</trev1:IsPartialPayment>
             <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:PaymentForm>
@@ -1803,6 +1814,10 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             else
             {
                 soapAction = "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount";
+
+                var raIsPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
+                var raDeductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
+
                 soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
@@ -1819,11 +1834,11 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
          <trev:ExtraParamList>
             <trev:ExtendedData></trev:ExtendedData>
          </trev:ExtraParamList>
-         <trev1:DeductLastSellerCommission>false</trev1:DeductLastSellerCommission>
+         <trev1:DeductLastSellerCommission>{raDeductCommission}</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
             <trev1:Amount>{amount}</trev1:Amount>
             <trev1:Currency>{currency}</trev1:Currency>
-            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
+            <trev1:IsPartialPayment>{raIsPartial}</trev1:IsPartialPayment>
             <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:PaymentForm>
@@ -1918,6 +1933,22 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var shoppingFileEl = doc.GetDescendants("ShoppingFile").FirstOrDefault();
             var paymentId = doc.GetValue("PaymentId");
 
+            // T_AirBooking'den booking durumunu ve PNR'i al
+            var airBookingEl = doc.GetDescendants("T_AirBooking").FirstOrDefault();
+            var bookingStatus = airBookingEl?.GetValue("Status");
+            var bookingCode = airBookingEl?.GetValue("BookingCode");
+
+            // PriceSummary'den GrandTotal
+            var priceSummary = shoppingFileEl?.GetDescendants("PriceSummary").FirstOrDefault();
+            var grandTotal = priceSummary?.GetDecimalValue("GrandTotal") ?? 0;
+
+            // RunningAccountStatus — cari hesap bakiyesi
+            var raStatus = doc.GetDescendants("RunningAccountStatus").FirstOrDefault();
+            var raBalance = raStatus?.GetDecimalValue("Balance");
+
+            // RemainingSum
+            var remainingSum = shoppingFileEl != null ? shoppingFileEl.GetDecimalValue("RemainingSum") : 0;
+
             // 3D Secure — BiletBank farkli alanlarda donebilir
             var threeDUrl = doc.GetValue("ContinueUrl")
                 ?? doc.GetValue("RedirectUrl")
@@ -1950,35 +1981,80 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 
             var is3DRequired = !string.IsNullOrEmpty(threeDUrl) || !string.IsNullOrEmpty(threeDHtml);
 
-            // PaymentId empty GUID + RemainingSum > 0 ise odeme henuz tamamlanmamis demektir (3D bekleniyor)
+            // PaymentId empty GUID ise odeme basarisiz/beklemede
             var isPaymentPending = paymentId == "00000000-0000-0000-0000-000000000000";
-            var remainingSum = shoppingFileEl != null ? shoppingFileEl.GetDecimalValue("RemainingSum") : 0;
+
+            // Odeme basari kontrolu:
+            // - HasError=false (zaten yukarida kontrol edildi)
+            // - PaymentId gecerli bir GUID (bos GUID degil)
+            // - 3D Secure gerekmiyor
+            // NOT: RemainingSum, RA odemede odeme SONRASI bile > 0 gelebilir (BiletBank'in yapisi).
+            //      Asil gosterge PaymentId'nin gecerli olmasi ve HasError=false olmasidir.
+            var isSuccessful = !is3DRequired && !isPaymentPending;
 
             if (is3DRequired)
             {
                 _logger.LogInformation("[MakePayment] 3D Secure algilandi. URL={ThreeDUrl}, HTML uzunluk={HtmlLen}",
                     threeDUrl, threeDHtml?.Length ?? 0);
             }
-            else if (isPaymentPending && remainingSum > 0)
+
+            _logger.LogInformation(
+                "[MakePayment] Sonuc: PaymentId={PaymentId}, BookingStatus={BookingStatus}, PNR={PNR}, RemainingSum={RemainingSum}, GrandTotal={GrandTotal}, RABalance={RABalance}",
+                paymentId, bookingStatus, bookingCode, remainingSum, grandTotal, raBalance);
+
+            // Taksit seceneklerini parse et
+            var installmentOptions = new List<PaymentInstallmentOption>();
+            var paymentOptions = shoppingFileEl?.GetDescendants("T_PaymentInstallmentOption");
+            if (paymentOptions != null)
             {
-                _logger.LogWarning("[MakePayment] 3D URL/HTML bulunamadi ama odeme tamamlanmamis. PaymentId={PaymentId}, RemainingSum={RemainingSum}",
-                    paymentId, remainingSum);
+                foreach (var opt in paymentOptions)
+                {
+                    installmentOptions.Add(new PaymentInstallmentOption
+                    {
+                        InstallmentOptionId = opt.GetValue("InstallmentOptionId"),
+                        BankName = opt.GetValue("BankName"),
+                        Program = opt.GetValue("Program"),
+                        InstallmentCount = opt.GetIntValue("InstallmentCount"),
+                        TotalInstallmentCount = opt.GetIntValue("TotalInstallmentCount"),
+                        BonusInstallmentCount = opt.GetIntValue("BonusInstallmentCount"),
+                        MonthlyPayment = opt.GetDecimalValue("MontlyPayment"),
+                        SubTotal = opt.GetDecimalValue("SubTotal"),
+                        AmountOfInterest = opt.GetDecimalValue("AmountOfInterest"),
+                        RateOfInterest = opt.GetDecimalValue("RateOfInterest"),
+                        Currency = opt.GetValue("Currency")
+                    });
+                }
             }
 
-            var isSuccessful = !is3DRequired && !isPaymentPending;
+            // Status belirleme:
+            // 3D gerekiyorsa → Awaiting3DSecure
+            // PaymentId bos GUID ise → PaymentPending
+            // Basarili ise → T_AirBooking.Status (Reservation vb.) veya "Paid"
+            string resolvedStatus;
+            if (is3DRequired)
+                resolvedStatus = "Awaiting3DSecure";
+            else if (isPaymentPending)
+                resolvedStatus = "PaymentPending";
+            else
+                resolvedStatus = bookingStatus ?? "Paid";
 
             return new MakePaymentResponse
             {
                 HasError = false,
                 IsPaymentSuccessful = isSuccessful,
-                Status = is3DRequired ? "Awaiting3DSecure" : (isPaymentPending ? "PaymentPending" : (shoppingFileEl?.GetValue("Status") ?? "Paid")),
+                Status = resolvedStatus,
                 ShoppingFileId = shoppingFileEl?.GetValue("Id"),
                 RemainingSum = remainingSum,
                 Currency = shoppingFileEl?.GetValue("Currency") ?? currency,
                 PaymentReferenceId = paymentId,
+                PNR = bookingCode,
+                BookingStatus = bookingStatus,
+                RunningAccountBalance = raBalance,
+                GrandTotal = grandTotal,
                 ThreeDSecureUrl = threeDUrl,
                 Is3DSecureRequired = is3DRequired,
-                ThreeDSecureHtml = threeDHtml
+                ThreeDSecureHtml = threeDHtml,
+                InstallmentOptions = installmentOptions
             };
         }
         catch (Exception ex)
@@ -1993,6 +2069,130 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
     }
 
     #endregion 
+
+    #region Complete3DPayment
+
+    public async Task<MakePaymentResponse> Complete3DPaymentAsync(Complete3DPaymentRequest request)
+    {
+        try
+        {
+            var sessionId = request.SessionId ?? "";
+            var sessionToken = request.SessionToken ?? "";
+            var shoppingFileId = request.ShoppingFileId ?? "";
+
+            // Bankadan gelen parametreleri ExtraParamList olarak olustur
+            var extraParams = new StringBuilder();
+            foreach (var kvp in request.BankResponseParameters)
+            {
+                extraParams.Append($@"
+            <trev:ExtendedData>
+               <trev:Name>{SecurityElement.Escape(kvp.Key)}</trev:Name>
+               <trev:Value>{SecurityElement.Escape(kvp.Value)}</trev:Value>
+            </trev:ExtendedData>");
+            }
+
+            var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
+xmlns:tem=""http://tempuri.org/""
+xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
+<soap:Body>
+   <tem:MakePayment_Complete3DPayment>
+      <tem:request>
+         <trev:AuthenticationHeader>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
+         </trev:AuthenticationHeader>
+         <trev:ExtraParamList>{extraParams}
+         </trev:ExtraParamList>
+         <trev1:PaymentForm>
+            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
+         </trev1:PaymentForm>
+      </tem:request>
+   </tem:MakePayment_Complete3DPayment>
+</soap:Body>
+</soap:Envelope>";
+
+            _logger.LogInformation("[Complete3DPayment] SOAP Request:\n{SoapRequest}", soapRequest);
+
+            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
+            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePayment_Complete3DPayment");
+
+            var response = await _httpClient.PostAsync(_proxyUrl, content);
+            var responseText = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("[Complete3DPayment] HTTP Status: {StatusCode}", (int)response.StatusCode);
+            _logger.LogInformation("[Complete3DPayment] SOAP Response:\n{SoapResponse}", responseText);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new MakePaymentResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"Complete3DPayment HTTP {(int)response.StatusCode}: {responseText}"
+                };
+            }
+
+            var doc = XDocument.Parse(responseText);
+            var hasError = doc.GetValue("HasError");
+            if (hasError == "true")
+            {
+                return new MakePaymentResponse
+                {
+                    HasError = true,
+                    ErrorMessage = doc.GetValue("ErrorMessage")
+                        ?? doc.GetValue("DebugMessage")
+                        ?? doc.GetValue("Message")
+                        ?? doc.GetValue("ServiceError")
+                };
+            }
+
+            var shoppingFileEl = doc.GetDescendants("ShoppingFile").FirstOrDefault();
+            var paymentId = doc.GetValue("PaymentId");
+            var remainingSum = shoppingFileEl?.GetDecimalValue("RemainingSum") ?? 0;
+
+            var airBookingEl = doc.GetDescendants("T_AirBooking").FirstOrDefault();
+            var bookingStatus = airBookingEl?.GetValue("Status");
+            var bookingCode = airBookingEl?.GetValue("BookingCode");
+
+            var priceSummary = shoppingFileEl?.GetDescendants("PriceSummary").FirstOrDefault();
+            var grandTotal = priceSummary?.GetDecimalValue("GrandTotal") ?? 0;
+
+            var isPaymentPending = paymentId == "00000000-0000-0000-0000-000000000000";
+            var isSuccessful = !isPaymentPending;
+
+            _logger.LogInformation(
+                "[Complete3DPayment] Sonuc: PaymentId={PaymentId}, BookingStatus={BookingStatus}, PNR={PNR}, RemainingSum={RemainingSum}",
+                paymentId, bookingStatus, bookingCode, remainingSum);
+
+            return new MakePaymentResponse
+            {
+                HasError = false,
+                IsPaymentSuccessful = isSuccessful,
+                Status = isSuccessful ? (bookingStatus ?? "Paid") : "PaymentFailed",
+                ShoppingFileId = shoppingFileEl?.GetValue("Id"),
+                RemainingSum = remainingSum,
+                Currency = shoppingFileEl?.GetValue("Currency") ?? "TRY",
+                PaymentReferenceId = paymentId,
+                PNR = bookingCode,
+                BookingStatus = bookingStatus,
+                GrandTotal = grandTotal,
+                Is3DSecureRequired = false
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Complete3DPayment] Exception");
+            return new MakePaymentResponse
+            {
+                HasError = true,
+                ErrorMessage = $"Complete3DPayment hatasi: {ex.Message}"
+            };
+        }
+    }
+
+    #endregion
 
     #region FinalizeShopping
 
