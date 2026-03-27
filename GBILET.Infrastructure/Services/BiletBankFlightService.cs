@@ -1773,6 +1773,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var isPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
                 var deductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
 
+                // XML'de ozel karakterleri escape et (& -> &amp; vb.)
+                var continueUrl = SecurityElement.Escape(request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback");
+                var cardHolder = SecurityElement.Escape(request.CreditCard.CardHolderName);
+
                 soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
@@ -1789,12 +1793,12 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
          <trev:ExtraParamList>
             <trev:ExtendedData></trev:ExtendedData>
          </trev:ExtraParamList>
-         <trev1:ContinueUrl>{request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback"}</trev1:ContinueUrl>
+         <trev1:ContinueUrl>{continueUrl}</trev1:ContinueUrl>
          <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
             <trev1:Amount>{amount}</trev1:Amount>
             <trev1:CreditCard>
-               <trev1:CardHolderName>{request.CreditCard.CardHolderName}</trev1:CardHolderName>
+               <trev1:CardHolderName>{cardHolder}</trev1:CardHolderName>
                <trev1:CardNumber>{request.CreditCard.CardNumber}</trev1:CardNumber>
                <trev1:Cvv>{request.CreditCard.Cvv}</trev1:Cvv>
                <trev1:ExpiryMonth>{request.CreditCard.ExpiryMonth}</trev1:ExpiryMonth>
