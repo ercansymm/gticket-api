@@ -453,7 +453,7 @@ public class FlightController : ControllerBase
             if (request.Amount <= 0)
                 return BadRequest(new { error = "Amount sifirdan buyuk olmalidir." });
 
-            if (request.PaymentType == "CreditCard" && request.CreditCard == null)
+            if ((request.PaymentType == "CreditCard" || request.PaymentType == "CreditCardDirect") && request.CreditCard == null)
                 return BadRequest(new { error = "Kredi karti ile odeme icin CreditCard bilgileri zorunludur." });
 
             if (request.CreditCard != null)

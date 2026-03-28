@@ -1747,7 +1747,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             string soapRequest;
             string soapAction;
 
-            if (request.PaymentType == "CreditCard" && request.CreditCard != null)
+            if ((request.PaymentType == "CreditCard" || request.PaymentType == "CreditCardDirect") && request.CreditCard != null)
             {
                 // CreditCard null kontrolu
                 if (string.IsNullOrWhiteSpace(request.CreditCard.CardNumber) ||
@@ -1763,9 +1763,13 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     };
                 }
 
-                soapAction = "http://tempuri.org/I_Shopping/MakePayment_Init3DPayment";
+                // XML'de ozel karakterleri escape et
+                var cardHolder = SecurityElement.Escape(request.CreditCard?.CardHolderName ?? "");
+                var cardNumber = request.CreditCard?.CardNumber ?? "";
+                var cardCvv = request.CreditCard?.Cvv ?? "";
+                var cardExpMonth = request.CreditCard?.ExpiryMonth ?? "";
+                var cardExpYear = request.CreditCard?.ExpiryYear ?? "";
 
-                // Taksit secenegi varsa InstallmentOptionId ekle
                 var installmentXml = !string.IsNullOrWhiteSpace(request.InstallmentOptionId)
                     ? $"<trev1:InstallmentOptionId>{request.InstallmentOptionId}</trev1:InstallmentOptionId>"
                     : "";
@@ -1773,15 +1777,16 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var isPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
                 var deductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
 
-                // XML'de ozel karakterleri escape et (& -> &amp; vb.)
-                var continueUrl = SecurityElement.Escape(request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback");
-                var cardHolder = SecurityElement.Escape(request.CreditCard?.CardHolderName ?? "");
-                var cardNumber = request.CreditCard?.CardNumber ?? "";
-                var cardCvv = request.CreditCard?.Cvv ?? "";
-                var cardExpMonth = request.CreditCard?.ExpiryMonth ?? "";
-                var cardExpYear = request.CreditCard?.ExpiryYear ?? "";
+                // CreditCardDirect → 3D'siz dogrudan odeme (MakePayment_FromCreditCard)
+                // CreditCard → 3D Secure odeme (MakePayment_Init3DPayment)
+                var use3D = request.PaymentType != "CreditCardDirect";
 
-                soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+                if (use3D)
+                {
+                    soapAction = "http://tempuri.org/I_Shopping/MakePayment_Init3DPayment";
+                    var continueUrl = SecurityElement.Escape(request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback");
+
+                    soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
@@ -1818,10 +1823,53 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
    </tem:MakePayment_Init3DPayment>
 </soap:Body>
 </soap:Envelope>";
-            }
-            else
-            {
-                soapAction = "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount";
+                }
+                else
+                {
+                    // Non-3D dogrudan kredi karti odemesi
+                    soapAction = "http://tempuri.org/I_Shopping/MakePayment_FromCreditCard";
+
+                    soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
+xmlns:tem=""http://tempuri.org/""
+xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
+xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
+<soap:Body>
+   <tem:MakePayment_FromCreditCard>
+      <tem:request>
+         <trev:AuthenticationHeader>
+            <trev:SessionId>{sessionId}</trev:SessionId>
+            <trev:SessionToken>{sessionToken}</trev:SessionToken>
+         </trev:AuthenticationHeader>
+         <trev:ExtraParamList>
+            <trev:ExtendedData></trev:ExtendedData>
+         </trev:ExtraParamList>
+         <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
+         <trev1:PaymentForm>
+            <trev1:Amount>{amount}</trev1:Amount>
+            <trev1:CreditCard>
+               <trev1:CardHolderName>{cardHolder}</trev1:CardHolderName>
+               <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
+               <trev1:Cvv>{cardCvv}</trev1:Cvv>
+               <trev1:ExpiryMonth>{cardExpMonth}</trev1:ExpiryMonth>
+               <trev1:ExpiryYear>{cardExpYear}</trev1:ExpiryYear>
+            </trev1:CreditCard>
+            <trev1:Currency>{currency}</trev1:Currency>
+            {installmentXml}
+            <trev1:IsPartialPayment>{isPartial}</trev1:IsPartialPayment>
+            <trev1:PaymentType>CC_SINGLE_PAYMENT</trev1:PaymentType>
+            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
+         </trev1:PaymentForm>
+      </tem:request>
+   </tem:MakePayment_FromCreditCard>
+</soap:Body>
+</soap:Envelope>";
+    }
+}
+else
+{
+    soapAction = "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount";
 
                 var raIsPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
                 var raDeductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
@@ -1934,14 +1982,26 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var hasErrorVal = doc.GetValue("HasError");
             if (hasErrorVal == "true")
             {
-                var errMsg = doc.GetValue("ErrorMessage")
+                // ServiceError altindaki hata bilgilerini topla
+                var serviceError = doc.GetDescendants("ServiceError").FirstOrDefault();
+                var errMsg = serviceError?.GetValue("ErrorMessage")
+                    ?? doc.GetValue("ErrorMessage")
+                    ?? serviceError?.GetValue("DebugMessage")
                     ?? doc.GetValue("DebugMessage")
-                    ?? doc.GetValue("Message")
-                    ?? doc.GetValue("ServiceError");
+                    ?? doc.GetValue("Message");
+                var debugMsg = serviceError?.GetValue("DebugMessage");
+                var errorName = serviceError?.GetValue("Name");
+
+                var fullError = errMsg ?? "Bilinmeyen hata";
+                if (!string.IsNullOrEmpty(debugMsg) && debugMsg != errMsg)
+                    fullError += $" | Debug: {debugMsg}";
+                if (!string.IsNullOrEmpty(errorName))
+                    fullError += $" | Hata tipi: {errorName}";
+
                 return new MakePaymentResponse
                 {
                     HasError = true,
-                    ErrorMessage = errMsg,
+                    ErrorMessage = fullError,
                     RawSoapRequest = soapRequest,
                     RawSoapResponse = responseText
                 };

@@ -35,13 +35,14 @@ public class MakePaymentRequest
 
     /// <summary>
     /// Odeme tipi:
-    ///   "CreditCard"      → 3D Secure kredi karti odemesi (MakePayment_Init3DPayment)
-    ///   "RunningAccount"  → Cari hesap odemesi (MakePayment_FromRunningAccount)
+    ///   "CreditCard"        → 3D Secure kredi karti odemesi (MakePayment_Init3DPayment)
+    ///   "CreditCardDirect"  → 3D'siz dogrudan kredi karti odemesi (MakePayment_FromCreditCard)
+    ///   "RunningAccount"    → Cari hesap odemesi (MakePayment_FromRunningAccount)
     /// </summary>
     public string PaymentType { get; set; } = "CreditCard";
 
     /// <summary>
-    /// Kredi karti bilgileri (PaymentType = "CreditCard" ise zorunlu).
+    /// Kredi karti bilgileri (PaymentType = "CreditCard" veya "CreditCardDirect" ise zorunlu).
     /// </summary>
     public CreditCardInfo? CreditCard { get; set; }
 
