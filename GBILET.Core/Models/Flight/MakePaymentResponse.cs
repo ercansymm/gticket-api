@@ -76,6 +76,16 @@ public class MakePaymentResponse
     /// BiletBank PaymentInstallmentOptions olarak doner.
     /// </summary>
     public List<PaymentInstallmentOption> InstallmentOptions { get; set; } = [];
+
+    /// <summary>
+    /// Debug: Gonderilen SOAP request
+    /// </summary>
+    public string? RawSoapRequest { get; set; }
+
+    /// <summary>
+    /// Debug: Alinan SOAP response
+    /// </summary>
+    public string? RawSoapResponse { get; set; }
 }
 
 /// <summary>

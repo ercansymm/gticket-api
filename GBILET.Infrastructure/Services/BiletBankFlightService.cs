@@ -1775,7 +1775,11 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
                 // XML'de ozel karakterleri escape et (& -> &amp; vb.)
                 var continueUrl = SecurityElement.Escape(request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback");
-                var cardHolder = SecurityElement.Escape(request.CreditCard.CardHolderName);
+                var cardHolder = SecurityElement.Escape(request.CreditCard?.CardHolderName ?? "");
+                var cardNumber = request.CreditCard?.CardNumber ?? "";
+                var cardCvv = request.CreditCard?.Cvv ?? "";
+                var cardExpMonth = request.CreditCard?.ExpiryMonth ?? "";
+                var cardExpYear = request.CreditCard?.ExpiryYear ?? "";
 
                 soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
@@ -1799,10 +1803,10 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:Amount>{amount}</trev1:Amount>
             <trev1:CreditCard>
                <trev1:CardHolderName>{cardHolder}</trev1:CardHolderName>
-               <trev1:CardNumber>{request.CreditCard.CardNumber}</trev1:CardNumber>
-               <trev1:Cvv>{request.CreditCard.Cvv}</trev1:Cvv>
-               <trev1:ExpiryMonth>{request.CreditCard.ExpiryMonth}</trev1:ExpiryMonth>
-               <trev1:ExpiryYear>{request.CreditCard.ExpiryYear}</trev1:ExpiryYear>
+               <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
+               <trev1:Cvv>{cardCvv}</trev1:Cvv>
+               <trev1:ExpiryMonth>{cardExpMonth}</trev1:ExpiryMonth>
+               <trev1:ExpiryYear>{cardExpYear}</trev1:ExpiryYear>
             </trev1:CreditCard>
             <trev1:Currency>{currency}</trev1:Currency>
             {installmentXml}
@@ -1871,7 +1875,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 return new MakePaymentResponse
                 {
                     HasError = true,
-                    ErrorMessage = $"MakePayment HTTP {(int)response.StatusCode}: {responseText}"
+                    ErrorMessage = $"MakePayment HTTP {(int)response.StatusCode}: {responseText}",
+                    RawSoapRequest = soapRequest,
+                    RawSoapResponse = responseText
                 };
             }
 
@@ -1880,7 +1886,8 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 return new MakePaymentResponse
                 {
                     HasError = true,
-                    ErrorMessage = "MakePayment: Bos response alindi."
+                    ErrorMessage = "MakePayment: Bos response alindi.",
+                    RawSoapRequest = soapRequest
                 };
             }
 
@@ -1897,7 +1904,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                     Is3DSecureRequired = true,
                     ThreeDSecureUrl = null,
                     Status = "Awaiting3DSecure",
-                    ThreeDSecureHtml = responseText
+                    ThreeDSecureHtml = responseText,
+                    RawSoapRequest = soapRequest,
+                    RawSoapResponse = responseText
                 };
             }
 
@@ -1916,7 +1925,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                     IsPaymentSuccessful = false,
                     Is3DSecureRequired = true,
                     Status = "Awaiting3DSecure",
-                    ThreeDSecureHtml = responseText
+                    ThreeDSecureHtml = responseText,
+                    RawSoapRequest = soapRequest,
+                    RawSoapResponse = responseText
                 };
             }
 
@@ -1930,7 +1941,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 return new MakePaymentResponse
                 {
                     HasError = true,
-                    ErrorMessage = errMsg
+                    ErrorMessage = errMsg,
+                    RawSoapRequest = soapRequest,
+                    RawSoapResponse = responseText
                 };
             }
 
@@ -2058,7 +2071,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 ThreeDSecureUrl = threeDUrl,
                 Is3DSecureRequired = is3DRequired,
                 ThreeDSecureHtml = threeDHtml,
-                InstallmentOptions = installmentOptions
+                InstallmentOptions = installmentOptions,
+                RawSoapRequest = soapRequest,
+                RawSoapResponse = responseText
             };
         }
         catch (Exception ex)

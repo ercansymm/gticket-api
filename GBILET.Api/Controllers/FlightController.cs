@@ -526,8 +526,11 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[MakePayment] Controller exception");
             return StatusCode(500, new
             {
+                hasError = true,
+                errorMessage = $"{ex.Message} | {ex.StackTrace?.Split('\n').FirstOrDefault()?.Trim()}",
                 error = ex.Message,
                 inner = ex.InnerException?.Message
             });
