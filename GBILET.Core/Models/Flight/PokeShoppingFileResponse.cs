@@ -49,4 +49,19 @@ public class PokeShoppingFileResponse
     /// Toplam tutar
     /// </summary>
     public decimal GrandTotal { get; set; }
+
+    /// <summary>
+    /// E-bilet numaralari (yolcu bazli)
+    /// </summary>
+    public List<TicketInfo> Tickets { get; set; } = [];
+
+    /// <summary>
+    /// Debug: SOAP request
+    /// </summary>
+    public string? RawSoapRequest { get; set; }
+
+    /// <summary>
+    /// Debug: SOAP response
+    /// </summary>
+    public string? RawSoapResponse { get; set; }
 }

@@ -2349,7 +2349,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 return new FinalizeShoppingResponse
                 {
                     HasError = true,
-                    ErrorMessage = $"FinalizeShopping HTTP {(int)response.StatusCode}: {responseText}"
+                    ErrorMessage = $"FinalizeShopping HTTP {(int)response.StatusCode}: {responseText}",
+                    RawSoapRequest = soapRequest,
+                    RawSoapResponse = responseText
                 };
             }
 
@@ -2357,14 +2359,23 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
+                var serviceError = doc.GetDescendants("ServiceError").FirstOrDefault();
+                var errMsg = serviceError?.GetValue("ErrorMessage")
+                    ?? doc.GetValue("ErrorMessage")
+                    ?? doc.GetValue("Message");
                 return new FinalizeShoppingResponse
                 {
                     HasError = true,
-                    ErrorMessage = doc.GetValue("ErrorMessage") ?? doc.GetValue("Message") ?? doc.GetValue("ServiceError")
+                    ErrorMessage = errMsg,
+                    RawSoapRequest = soapRequest,
+                    RawSoapResponse = responseText
                 };
             }
 
-            return ParseFinalizeShoppingResponse(doc);
+            var result = ParseFinalizeShoppingResponse(doc);
+            result.RawSoapRequest = soapRequest;
+            result.RawSoapResponse = responseText;
+            return result;
         }
         catch (Exception ex)
         {
@@ -2397,21 +2408,50 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
         }
 
         // E-bilet numaralarini topla
-        int seqNo = 0;
-        foreach (var pax in doc.GetDescendants("T_Passenger"))
+        // 1. Once T_AirBookingItem'lardaki TicketNumber'i kontrol et
+        var bookingItems = doc.GetDescendants("T_AirBookingItem").ToList();
+        var passengers = doc.GetDescendants("T_Passenger").ToList();
+
+        foreach (var item in bookingItems)
         {
-            seqNo++;
-            var ticketNo = pax.GetValue("TicketNumber");
-            if (!string.IsNullOrEmpty(ticketNo))
+            var ticketNo = item.GetValue("TicketNumber");
+            if (string.IsNullOrEmpty(ticketNo)) continue;
+
+            // PaxReference uzerinden yolcu bilgisini bul
+            var paxRef = item.GetDescendants("PaxReference").FirstOrDefault();
+            var passengerId = paxRef?.GetValue("PassengerId");
+
+            var matchedPax = passengers.FirstOrDefault(p => p.GetValue("Id") == passengerId);
+
+            result.Tickets.Add(new TicketInfo
             {
-                result.Tickets.Add(new TicketInfo
+                FirstName = matchedPax?.GetValue("FirstName"),
+                LastName = matchedPax?.GetValue("LastName"),
+                PaxType = matchedPax?.GetValue("Type") ?? paxRef?.GetValue("LocalPaxType"),
+                TicketNumber = ticketNo,
+                SequenceNo = paxRef?.GetIntValue("LocalSequenceNo") ?? 0
+            });
+        }
+
+        // 2. Eger BookingItem'dan ticket bulunamadiysa T_Passenger'dan dene
+        if (result.Tickets.Count == 0)
+        {
+            int seqNo = 0;
+            foreach (var pax in passengers)
+            {
+                seqNo++;
+                var ticketNo = pax.GetValue("TicketNumber");
+                if (!string.IsNullOrEmpty(ticketNo))
                 {
-                    FirstName = pax.GetValue("FirstName"),
-                    LastName = pax.GetValue("LastName"),
-                    PaxType = pax.GetValue("Type"),
-                    TicketNumber = ticketNo,
-                    SequenceNo = seqNo
-                });
+                    result.Tickets.Add(new TicketInfo
+                    {
+                        FirstName = pax.GetValue("FirstName"),
+                        LastName = pax.GetValue("LastName"),
+                        PaxType = pax.GetValue("Type"),
+                        TicketNumber = ticketNo,
+                        SequenceNo = seqNo
+                    });
+                }
             }
         }
 
@@ -2482,7 +2522,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
 
             var priceSummary = shoppingFile?.GetDescendants("PriceSummary").FirstOrDefault();
 
-            return new PokeShoppingFileResponse
+            var pokeResult = new PokeShoppingFileResponse
             {
                 HasError = false,
                 ShoppingFileId = shoppingFile?.GetValue("Id"),
@@ -2493,8 +2533,33 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
                 Currency = shoppingFile?.GetValue("Currency"),
                 IsReservationCancelled = shoppingFile != null && shoppingFile.GetBoolValue("IsReservationCancelled"),
                 BookingCode = airBooking?.GetValue("BookingCode"),
-                GrandTotal = priceSummary?.GetDecimalValue("GrandTotal") ?? 0
+                GrandTotal = priceSummary?.GetDecimalValue("GrandTotal") ?? 0,
+                RawSoapRequest = soapRequest,
+                RawSoapResponse = responseText
             };
+
+            // Ticket bilgilerini parse et
+            foreach (var item in doc.GetDescendants("T_AirBookingItem"))
+            {
+                var ticketNo = item.GetValue("TicketNumber");
+                if (string.IsNullOrEmpty(ticketNo)) continue;
+
+                var paxRef = item.GetDescendants("PaxReference").FirstOrDefault();
+                var passengerId = paxRef?.GetValue("PassengerId");
+                var matchedPax = doc.GetDescendants("T_Passenger")
+                    .FirstOrDefault(p => p.GetValue("Id") == passengerId);
+
+                pokeResult.Tickets.Add(new TicketInfo
+                {
+                    FirstName = matchedPax?.GetValue("FirstName"),
+                    LastName = matchedPax?.GetValue("LastName"),
+                    PaxType = matchedPax?.GetValue("Type"),
+                    TicketNumber = ticketNo,
+                    SequenceNo = paxRef?.GetIntValue("LocalSequenceNo") ?? 0
+                });
+            }
+
+            return pokeResult;
         }
         catch (Exception ex)
         {

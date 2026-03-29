@@ -34,6 +34,16 @@ public class FinalizeShoppingResponse
     /// Toplam tutar
     /// </summary>
     public decimal TotalFare { get; set; }
+
+    /// <summary>
+    /// Debug: Gonderilen SOAP request
+    /// </summary>
+    public string? RawSoapRequest { get; set; }
+
+    /// <summary>
+    /// Debug: Alinan SOAP response
+    /// </summary>
+    public string? RawSoapResponse { get; set; }
 }
 
 public class TicketInfo
