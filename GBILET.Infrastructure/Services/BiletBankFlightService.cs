@@ -1908,36 +1908,57 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             _logger.LogInformation("[MakePayment] PaymentType={PaymentType}, Amount={Amount}, Currency={Currency}, ShoppingFileId={ShoppingFileId}",
                 request.PaymentType, amount, currency, shoppingFileId);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", soapAction);
+            // BiletBank test ortami bazen UnknownSystemError donuyor — retry mekanizmasi
+            const int maxRetries = 2;
+            string? responseText = null;
 
-            var response = await _httpClient.PostAsync(_proxyUrl, content);
-            var responseText = await response.Content.ReadAsStringAsync();
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
+                content.Headers.Add("SOAPAction", soapAction);
 
-            _logger.LogInformation("[MakePayment] HTTP Status: {StatusCode}, Response Length: {Length}",
-                (int)response.StatusCode, responseText?.Length ?? 0);
+                var response = await _httpClient.PostAsync(_proxyUrl, content);
+                responseText = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("[MakePayment] Attempt {Attempt}/{MaxRetries} — HTTP Status: {StatusCode}, Response Length: {Length}",
+                    attempt, maxRetries, (int)response.StatusCode, responseText?.Length ?? 0);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return new MakePaymentResponse
+                    {
+                        HasError = true,
+                        ErrorMessage = $"MakePayment HTTP {(int)response.StatusCode}: {responseText}",
+                        RawSoapRequest = soapRequest,
+                        RawSoapResponse = responseText
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(responseText))
+                {
+                    return new MakePaymentResponse
+                    {
+                        HasError = true,
+                        ErrorMessage = "MakePayment: Bos response alindi.",
+                        RawSoapRequest = soapRequest
+                    };
+                }
+
+                // BiletBank UnknownSystemError + IsSystem:true donduyse retry yap
+                if (attempt < maxRetries
+                    && responseText.Contains("UnknownSystemError")
+                    && responseText.Contains("<IsSystem>true</IsSystem>"))
+                {
+                    _logger.LogWarning("[MakePayment] BiletBank UnknownSystemError (IsSystem). {Delay}ms sonra tekrar deneniyor... (Attempt {Attempt}/{MaxRetries})",
+                        2000, attempt, maxRetries);
+                    await Task.Delay(2000);
+                    continue;
+                }
+
+                break; // Basarili veya farkli hata — donguyu kir
+            }
+
             _logger.LogInformation("[MakePayment] SOAP Response:\n{SoapResponse}", responseText);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return new MakePaymentResponse
-                {
-                    HasError = true,
-                    ErrorMessage = $"MakePayment HTTP {(int)response.StatusCode}: {responseText}",
-                    RawSoapRequest = soapRequest,
-                    RawSoapResponse = responseText
-                };
-            }
-
-            if (string.IsNullOrWhiteSpace(responseText))
-            {
-                return new MakePaymentResponse
-                {
-                    HasError = true,
-                    ErrorMessage = "MakePayment: Bos response alindi.",
-                    RawSoapRequest = soapRequest
-                };
-            }
 
             // Init3DPayment response'u dogrudan HTML (3D Secure redirect sayfasi) donebilir
             var trimmed = responseText.TrimStart();
