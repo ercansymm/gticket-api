@@ -755,9 +755,10 @@ public class FlightController : ControllerBase
             // Kullaniciya sonuc sayfasi goster
             if (!result.HasError && result.IsPaymentSuccessful)
             {
+                var paymentStatus = result.BookingStatus ?? "paid";
                 return Content(
                     "<html><body><h2>Odeme basarili!</h2><p>Bu pencereyi kapatabilirsiniz.</p>" +
-                    $"<script>if(window.opener){{window.opener.postMessage({{status:'paid',bookingId:'{bookingId}',shoppingFileId:'{shoppingFileId}'}},'*');}}setTimeout(function(){{window.close();}},3000);</script>" +
+                    $"<script>if(window.opener){{window.opener.postMessage({{status:'paid',bookingStatus:'{System.Net.WebUtility.HtmlEncode(paymentStatus)}',bookingId:'{bookingId}',shoppingFileId:'{shoppingFileId}',sessionId:'{System.Net.WebUtility.HtmlEncode(sessionId)}',sessionToken:'{System.Net.WebUtility.HtmlEncode(sessionToken)}'}},'*');}}setTimeout(function(){{window.close();}},3000);</script>" +
                     "</body></html>",
                     "text/html");
             }
@@ -800,14 +801,22 @@ public class FlightController : ControllerBase
             var result = await _flightService.FinalizeShoppingAsync(request);
 
             // Biletleme basariliysa DB'deki booking durumunu guncelle
-            if (!result.HasError && request.BookingId.HasValue)
+            // BiletBank test ortaminda "Booking" statusu basarili biletlemeyi gosterir.
+            // Canli ortamda "Ticketed" donecektir. Her iki durumu da basarili kabul ediyoruz.
+            var successStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { "Booking", "Ticketed", "Reservation" };
+            var isFinalized = !result.HasError
+                && !string.IsNullOrEmpty(result.Status)
+                && successStatuses.Contains(result.Status);
+
+            if (isFinalized && request.BookingId.HasValue)
             {
                 try
                 {
                     var booking = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
                     if (booking != null)
                     {
-                        booking.Status = result.Status ?? "Ticketed";
+                        booking.Status = result.Status ?? "Booking";
                         booking.IsFinalized = true;
                         booking.TicketedAt = DateTime.UtcNow;
                         booking.UpdatedAt = DateTime.UtcNow;

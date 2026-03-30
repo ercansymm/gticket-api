@@ -1961,7 +1961,10 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev:ExtraParamList>
-            <trev:ExtendedData></trev:ExtendedData>
+            <trev:ExtendedData>
+               <trev:Name>IntendedShoppingFileId</trev:Name>
+               <trev:Value>{shoppingFileId}</trev:Value>
+            </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:ContinueUrl>{continueUrl}</trev1:ContinueUrl>
          <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
@@ -2004,7 +2007,10 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev:ExtraParamList>
-            <trev:ExtendedData></trev:ExtendedData>
+            <trev:ExtendedData>
+               <trev:Name>IntendedShoppingFileId</trev:Name>
+               <trev:Value>{shoppingFileId}</trev:Value>
+            </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
@@ -2049,7 +2055,10 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev:SessionToken>{sessionToken}</trev:SessionToken>
          </trev:AuthenticationHeader>
          <trev:ExtraParamList>
-            <trev:ExtendedData></trev:ExtendedData>
+            <trev:ExtendedData>
+               <trev:Name>IntendedShoppingFileId</trev:Name>
+               <trev:Value>{shoppingFileId}</trev:Value>
+            </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:DeductLastSellerCommission>{raDeductCommission}</trev1:DeductLastSellerCommission>
          <trev1:PaymentForm>
@@ -2351,7 +2360,13 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var shoppingFileId = request.ShoppingFileId ?? "";
 
             // Bankadan gelen parametreleri ExtraParamList olarak olustur
+            // IntendedShoppingFileId her zaman eklenmeli
             var extraParams = new StringBuilder();
+            extraParams.Append($@"
+            <trev:ExtendedData>
+               <trev:Name>IntendedShoppingFileId</trev:Name>
+               <trev:Value>{shoppingFileId}</trev:Value>
+            </trev:ExtendedData>");
             foreach (var kvp in request.BankResponseParameters)
             {
                 extraParams.Append($@"
