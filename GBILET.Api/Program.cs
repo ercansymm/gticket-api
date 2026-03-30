@@ -82,10 +82,11 @@ builder.Services.AddScoped<IPopularRouteRepository, PopularRouteRepository>();
 builder.Services.AddMemoryCache();
 
 builder.Services
-    .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
-    {
-        client.BaseAddress = new Uri("https://apitest.biletbank.com");
-    });
+.AddHttpClient<IFlightService, BiletBankFlightService>(client =>
+{
+    client.BaseAddress = new Uri("https://apitest.biletbank.com");
+    client.Timeout = TimeSpan.FromSeconds(120);
+});
 
 
 var app = builder.Build();

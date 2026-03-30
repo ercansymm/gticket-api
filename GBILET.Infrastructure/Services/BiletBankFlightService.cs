@@ -1433,8 +1433,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
         try
         {
-            var response = await _httpClient.PostAsync(_proxyUrl, content);
-            var responseText = await response.Content.ReadAsStringAsync();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+            var response = await _httpClient.PostAsync(_proxyUrl, content, cts.Token);
+            var responseText = await response.Content.ReadAsStringAsync(cts.Token);
 
             _logger.LogInformation("[MakePreBooking] HTTP Status: {StatusCode}", (int)response.StatusCode);
             _logger.LogInformation("[MakePreBooking] SOAP Response:\n{SoapResponse}", responseText);
@@ -1464,6 +1465,15 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             }
 
             return ParseMakePreBookingResponse(doc);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("[MakePreBooking] Timeout — BiletBank 90 saniye icinde yanit vermedi.");
+            return new MakePreBookingResponse
+            {
+                HasError = true,
+                ErrorMessage = "MakePreBooking zaman asimina ugradi. BiletBank API yanitlamadi. Lutfen tekrar deneyin."
+            };
         }
         catch (Exception ex)
         {
@@ -1920,14 +1930,15 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             // BiletBank test ortami bazen UnknownSystemError donuyor — retry mekanizmasi
             const int maxRetries = 2;
             string? responseText = null;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
 
             for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
                 var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
                 content.Headers.Add("SOAPAction", soapAction);
 
-                var response = await _httpClient.PostAsync(_proxyUrl, content);
-                responseText = await response.Content.ReadAsStringAsync();
+                var response = await _httpClient.PostAsync(_proxyUrl, content, cts.Token);
+                responseText = await response.Content.ReadAsStringAsync(cts.Token);
 
                 _logger.LogInformation("[MakePayment] Attempt {Attempt}/{MaxRetries} — HTTP Status: {StatusCode}, Response Length: {Length}",
                     attempt, maxRetries, (int)response.StatusCode, responseText?.Length ?? 0);
@@ -2164,6 +2175,15 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 InstallmentOptions = installmentOptions,
                 RawSoapRequest = soapRequest,
                 RawSoapResponse = responseText
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("[MakePayment] Timeout — BiletBank 90 saniye icinde yanit vermedi.");
+            return new MakePaymentResponse
+            {
+                HasError = true,
+                ErrorMessage = "MakePayment zaman asimina ugradi. BiletBank API yanitlamadi. Lutfen tekrar deneyin."
             };
         }
         catch (Exception ex)
