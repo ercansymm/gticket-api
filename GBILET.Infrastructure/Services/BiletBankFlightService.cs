@@ -1,4 +1,4 @@
-﻿using GBILET.Core.Models.Flight;
+using GBILET.Core.Models.Flight;
 using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Extensions;
 using Microsoft.Extensions.Caching.Memory;
@@ -13,6 +13,31 @@ namespace GBILET.Infrastructure.Services;
 
 public class BiletBankFlightService : IFlightService
 {
+    /// <summary>
+    /// BOM'suz UTF-8 encoding � bazi SOAP servisleri BOM (EF BB BF) gordu�unde
+    /// "There is an error in XML document (1, 2)" hatasi verir.
+    /// </summary>
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+    /// <summary>
+    /// SOAP request icin ByteArrayContent olusturur.
+    /// StringContent yerine kullanilir cunku:
+    /// 1. BOM eklenmez (UTF8Encoding(false))
+    /// 2. Content-Type header'i tam olarak kontrol edilir
+    /// 3. Bazi WCF servisleri charset parametresinde sorun yasayabiliyor
+    /// </summary>
+    private static ByteArrayContent CreateSoapContent(string soapXml, string soapAction)
+    {
+        var bytes = Utf8NoBom.GetBytes(soapXml);
+        var content = new ByteArrayContent(bytes);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/xml")
+        {
+            CharSet = "utf-8"
+        };
+        content.Headers.TryAddWithoutValidation("SOAPAction", soapAction);
+        return content;
+    }
+
     private readonly HttpClient _httpClient;
     private readonly ILogger<BiletBankFlightService> _logger;
     private readonly IMemoryCache _cache;
@@ -46,7 +71,7 @@ public class BiletBankFlightService : IFlightService
             return new AirSearchResponse
             {
                 HasError = true,
-                ErrorMessage = $"Login hatası: {loginResult.ErrorMessage}"
+                ErrorMessage = $"Login hatas�: {loginResult.ErrorMessage}"
             };
         }
 
@@ -61,7 +86,7 @@ public class BiletBankFlightService : IFlightService
         var rawResponse = await SearchFlightAsync(request);
         var dto = FlightSearchMapper.MapToDto(rawResponse, _logger);
 
-        // Session bilgilerini cache'le (sonraki adımlarda allocate/booking için)
+        // Session bilgilerini cache'le (sonraki ad�mlarda allocate/booking i�in)
         if (!rawResponse.HasError && !string.IsNullOrEmpty(rawResponse.SearchId))
         {
             var cacheKey = $"flight_session_{rawResponse.SearchId}";
@@ -148,7 +173,7 @@ public class BiletBankFlightService : IFlightService
                 pax.TempTag = pax.PaxReferenceId;
         }
 
-        // Telefon numarasını BiletBank formatına normalize et
+        // Telefon numaras�n� BiletBank format�na normalize et
         if (request.Contact != null)
             request.Contact.Phone = NormalizePhone(request.Contact.Phone);
 
@@ -157,30 +182,30 @@ public class BiletBankFlightService : IFlightService
     }
 
     /// <summary>
-    /// Telefon numarasını BiletBank'ın beklediği +90XXXXXXXXXX formatına dönüştürür.
-    /// Kabul edilen girişler: 5351234567, 05351234567, 905351234567, 90-5351234567, +90-5351234567, +905351234567
+    /// Telefon numaras�n� BiletBank'�n bekledi�i +90XXXXXXXXXX format�na d�n��t�r�r.
+    /// Kabul edilen giri�ler: 5351234567, 05351234567, 905351234567, 90-5351234567, +90-5351234567, +905351234567
     /// </summary>
     private static string NormalizePhone(string? phone)
     {
         if (string.IsNullOrWhiteSpace(phone))
             return "+905000000000";
 
-        // Sadece rakamları al
+        // Sadece rakamlar� al
         var digits = new string(phone.Where(char.IsDigit).ToArray());
 
-        // 905351234567 (12 hane) → 5351234567
+        // 905351234567 (12 hane) � 5351234567
         if (digits.Length == 12 && digits.StartsWith("90"))
             digits = digits[2..];
 
-        // 05351234567 (11 hane, 0 ile başlıyor) → 5351234567
+        // 05351234567 (11 hane, 0 ile ba�l�yor) � 5351234567
         if (digits.Length == 11 && digits.StartsWith("0"))
             digits = digits[1..];
 
-        // 5351234567 (10 hane) → +905351234567
+        // 5351234567 (10 hane) � +905351234567
         if (digits.Length == 10)
             return $"+90{digits}";
 
-        // Diğer durumlarda orijinal değeri + ile başlat
+        // Di�er durumlarda orijinal de�eri + ile ba�lat
         return phone.StartsWith("+") ? phone : $"+{phone}";
     }
 
@@ -209,8 +234,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
         {
             _logger.LogInformation("[Login] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Authentication/Login");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Authentication/Login");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -257,7 +281,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
             if (string.IsNullOrEmpty(loginResponse.SessionId))
             {
                 loginResponse.HasError = true;
-                loginResponse.ErrorMessage ??= "Login yanıtında SessionId bulunamadı.";
+                loginResponse.ErrorMessage ??= "Login yan�t�nda SessionId bulunamad�.";
             }
 
             _logger.LogInformation("[Login] SessionId: {SessionId}, HasError: {HasError}",
@@ -303,8 +327,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
         {
             _logger.LogInformation("[AirSearch] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/AirSearch");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/AirSearch");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -345,7 +368,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
             return new AirSearchResponse
             {
                 HasError = true,
-                ErrorMessage = $"AirSearch hatası: {ex.Message}"
+                ErrorMessage = $"AirSearch hatas�: {ex.Message}"
             };
         }
     }
@@ -388,13 +411,13 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
                    <trev2:Destination>
                       <trev2:Code>{request.Destination}</trev2:Code>
                       <trev2:CountryCode>{request.DestinationCountryCode}</trev2:CountryCode>
-                      <trev2:IsCity>{request.DestinationIsCity.ToString().ToLower()}</trev2:IsCity>
+                      <trev2:IsCity>{request.DestinationIsCity.ToString().ToLowerInvariant()}</trev2:IsCity>
                       <trev2:Name/>
                    </trev2:Destination>
                    <trev2:Origin>
                       <trev2:Code>{request.Origin}</trev2:Code>
                       <trev2:CountryCode>{request.OriginCountryCode}</trev2:CountryCode>
-                      <trev2:IsCity>{request.OriginIsCity.ToString().ToLower()}</trev2:IsCity>
+                      <trev2:IsCity>{request.OriginIsCity.ToString().ToLowerInvariant()}</trev2:IsCity>
                       <trev2:Name/>
                    </trev2:Origin>
                    <trev2:SequenceNo>1</trev2:SequenceNo>
@@ -408,13 +431,13 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
                    <trev2:Destination>
                       <trev2:Code>{request.Origin}</trev2:Code>
                       <trev2:CountryCode>{request.OriginCountryCode}</trev2:CountryCode>
-                      <trev2:IsCity>{request.OriginIsCity.ToString().ToLower()}</trev2:IsCity>
+                      <trev2:IsCity>{request.OriginIsCity.ToString().ToLowerInvariant()}</trev2:IsCity>
                       <trev2:Name/>
                    </trev2:Destination>
                    <trev2:Origin>
                       <trev2:Code>{request.Destination}</trev2:Code>
                       <trev2:CountryCode>{request.DestinationCountryCode}</trev2:CountryCode>
-                      <trev2:IsCity>{request.DestinationIsCity.ToString().ToLower()}</trev2:IsCity>
+                      <trev2:IsCity>{request.DestinationIsCity.ToString().ToLowerInvariant()}</trev2:IsCity>
                       <trev2:Name/>
                    </trev2:Origin>
                    <trev2:SequenceNo>2</trev2:SequenceNo>
@@ -460,8 +483,8 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             <trev2:FlightType>{request.FlightType}</trev2:FlightType>
             <trev2:Options>
                <trev2:FlightClass>{request.FlightClass}</trev2:FlightClass>
-                <trev2:IfDirectFlightsOnly>{request.DirectFlightsOnly.ToString().ToLower()}</trev2:IfDirectFlightsOnly>
-               <trev2:IfRefundablesOnly>{request.RefundablesOnly.ToString().ToLower()}</trev2:IfRefundablesOnly>
+                <trev2:IfDirectFlightsOnly>{request.DirectFlightsOnly.ToString().ToLowerInvariant()}</trev2:IfDirectFlightsOnly>
+               <trev2:IfRefundablesOnly>{request.RefundablesOnly.ToString().ToLowerInvariant()}</trev2:IfRefundablesOnly>
                <trev2:SearchTimeoutMilliseconds>{request.SearchTimeoutMilliseconds}</trev2:SearchTimeoutMilliseconds>{preferredAirlines}
             </trev2:Options>
             <trev2:PaxItems>{paxItems}
@@ -880,8 +903,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         {
             _logger.LogInformation("[Allocate] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/Allocate");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/Allocate");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -1059,7 +1081,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             }
         }
 
-        // Passengers (T_Passenger) — TempTag degerlerini parse et
+        // Passengers (T_Passenger) � TempTag degerlerini parse et
         // BookingItems'tan PaxReferenceId'leri topla (TempTag ile eslestirmek icin)
         var paxRefLookup = response.AirBookings
             .SelectMany(ab => ab.BookingItems)
@@ -1088,7 +1110,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var allBookingItems = response.AirBookings.SelectMany(ab => ab.BookingItems).ToList();
             foreach (var item in allBookingItems)
             {
-                // TempTag olarak PaxReferenceId kullanilmali — yoksa BiletBank API eslestirme yapamiyor
+                // TempTag olarak PaxReferenceId kullanilmali � yoksa BiletBank API eslestirme yapamiyor
                 response.Passengers.Add(new AllocatePassenger
                 {
                     TempTag = item.PaxReferenceId ?? Guid.NewGuid().ToString(),
@@ -1307,8 +1329,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             debugXml = soapRequest;
             _logger.LogInformation("[UpdatePassengers] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/UpdatePassengers");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/UpdatePassengers");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             responseText = await response.Content.ReadAsStringAsync();
@@ -1322,6 +1343,19 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 {
                     HasError = true,
                     ErrorMessage = $"UpdatePassengers HTTP {(int)response.StatusCode}: {responseText}",
+                    RawSoapResponse = responseText,
+                    RawSoapRequest = debugXml
+                };
+            }
+
+            // Bos response kontrolu — BiletBank bazen bos yanit donebiliyor
+            if (string.IsNullOrWhiteSpace(responseText))
+            {
+                _logger.LogError("[UpdatePassengers] BiletBank bos response dondu. HTTP Status: {StatusCode}", (int)response.StatusCode);
+                return new UpdatePassengersResponse
+                {
+                    HasError = true,
+                    ErrorMessage = "UpdatePassengers: BiletBank bos yanit dondu. Lutfen tekrar deneyin.",
                     RawSoapResponse = responseText,
                     RawSoapRequest = debugXml
                 };
@@ -1352,6 +1386,14 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     ?? doc.GetValue("DebugMessage")
                     ?? doc.GetValue("Message")
                     ?? doc.GetValue("ServiceError");
+
+                // BiletBank'in tam hata detayini logla — debug icin kritik
+                var debugMsg = doc.GetValue("DebugMessage");
+                var serviceName = doc.GetValue("Name");
+                _logger.LogError(
+                    "[UpdatePassengers] BiletBank HATA dondu. ErrorMessage={ErrorMessage}, DebugMessage={DebugMessage}, ServiceName={ServiceName}",
+                    errorMsg, debugMsg, serviceName);
+
                 return new UpdatePassengersResponse
                 {
                     HasError = true,
@@ -1435,7 +1477,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:FirstName>{safeFirstName}</trev2:FirstName>
               <trev2:Gender>{pax.Gender}</trev2:Gender>
               <trev2:Id>{paxId}</trev2:Id>
-              <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
+              <trev2:IfContact>{isContact.ToString().ToLowerInvariant()}</trev2:IfContact>
               <trev2:LastName>{safeLastName}</trev2:LastName>
               <trev2:Nationality>{safeNationality}</trev2:Nationality>
               <trev2:PassportCountry>{safePassportCountry}</trev2:PassportCountry>
@@ -1496,8 +1538,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
         _logger.LogInformation("[MakePreBooking] SOAP Request:\n{SoapRequest}", soapRequest);
 
-        var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-        content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePrebooking");
+        var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/MakePrebooking");
 
         try
         {
@@ -1514,6 +1555,17 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 {
                     HasError = true,
                     ErrorMessage = $"MakePreBooking HTTP {(int)response.StatusCode}: {responseText}"
+                };
+            }
+
+            // Bos response kontrolu — BiletBank bazen bos yanit donebiliyor
+            if (string.IsNullOrWhiteSpace(responseText))
+            {
+                _logger.LogError("[MakePreBooking] BiletBank bos response dondu. HTTP Status: {StatusCode}", (int)response.StatusCode);
+                return new MakePreBookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = "MakePreBooking: BiletBank bos yanit dondu. Lutfen tekrar deneyin."
                 };
             }
 
@@ -1536,13 +1588,22 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
+                var errorMsg = doc.GetValue("ErrorMessage")
+                    ?? doc.GetValue("DebugMessage")
+                    ?? doc.GetValue("Message")
+                    ?? doc.GetValue("ServiceError");
+
+                // BiletBank'in tam hata detayini logla — debug icin kritik
+                var debugMsg = doc.GetValue("DebugMessage");
+                var serviceName = doc.GetValue("Name");
+                _logger.LogError(
+                    "[MakePreBooking] BiletBank HATA dondu. ErrorMessage={ErrorMessage}, DebugMessage={DebugMessage}, ServiceName={ServiceName}\nSOAP Request:\n{SoapRequest}",
+                    errorMsg, debugMsg, serviceName, soapRequest);
+
                 return new MakePreBookingResponse
                 {
                     HasError = true,
-                    ErrorMessage = doc.GetValue("ErrorMessage")
-                        ?? doc.GetValue("DebugMessage")
-                        ?? doc.GetValue("Message")
-                        ?? doc.GetValue("ServiceError")
+                    ErrorMessage = errorMsg
                 };
             }
 
@@ -1550,7 +1611,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("[MakePreBooking] Timeout — BiletBank 90 saniye icinde yanit vermedi.");
+            _logger.LogWarning("[MakePreBooking] Timeout � BiletBank 90 saniye icinde yanit vermedi.");
             return new MakePreBookingResponse
             {
                 HasError = true,
@@ -1648,7 +1709,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                 response.CanBeReserved = ruleAttr.GetBoolValue("IsReservable");
         }
 
-        // TimeTable — on rezervasyon ve rezervasyon gecerlilik sureleri
+        // TimeTable � on rezervasyon ve rezervasyon gecerlilik sureleri
         var timeTable = doc.GetDescendants("TimeTable").FirstOrDefault();
         if (timeTable != null)
         {
@@ -1701,7 +1762,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 
     public async Task<RemoveProductResponse> RemoveProductAsync(RemoveProductRequest request)
     {
-        // GUID validasyonu — bos GUID gonderimini engelle
+        // GUID validasyonu � bos GUID gonderimini engelle
         if (!Guid.TryParse(request.ProductId, out var productGuid) || productGuid == Guid.Empty)
         {
             _logger.LogWarning("[RemoveProduct] ProductId bos veya gecersiz GUID: '{ProductId}'", request.ProductId);
@@ -1756,8 +1817,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
         {
             _logger.LogInformation("[RemoveProduct] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/RemoveProduct");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/RemoveProduct");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -1817,7 +1877,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var sessionToken = request.SessionToken ?? "";
             var shoppingFileId = request.ShoppingFileId ?? "";
 
-            // Temel validasyonlar — BiletBank'a gondermeden once kontrol et
+            // Temel validasyonlar � BiletBank'a gondermeden once kontrol et
             if (string.IsNullOrWhiteSpace(sessionId) || string.IsNullOrWhiteSpace(sessionToken))
             {
                 return new MakePaymentResponse
@@ -1878,8 +1938,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var isPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
                 var deductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
 
-                // CreditCardDirect → 3D'siz dogrudan odeme (MakePayment_FromCreditCard)
-                // CreditCard → 3D Secure odeme (MakePayment_Init3DPayment)
+                // CreditCardDirect � 3D'siz dogrudan odeme (MakePayment_FromCreditCard)
+                // CreditCard � 3D Secure odeme (MakePayment_Init3DPayment)
                 var use3D = request.PaymentType != "CreditCardDirect";
 
                 if (use3D)
@@ -2009,20 +2069,19 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             _logger.LogInformation("[MakePayment] PaymentType={PaymentType}, Amount={Amount}, Currency={Currency}, ShoppingFileId={ShoppingFileId}",
                 request.PaymentType, amount, currency, shoppingFileId);
 
-            // BiletBank test ortami bazen UnknownSystemError donuyor — retry mekanizmasi
+            // BiletBank test ortami bazen UnknownSystemError donuyor � retry mekanizmasi
             const int maxRetries = 2;
             string? responseText = null;
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
 
             for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-                content.Headers.Add("SOAPAction", soapAction);
+                var content = CreateSoapContent(soapRequest, soapAction);
 
                 var response = await _httpClient.PostAsync(_proxyUrl, content, cts.Token);
                 responseText = await response.Content.ReadAsStringAsync(cts.Token);
 
-                _logger.LogInformation("[MakePayment] Attempt {Attempt}/{MaxRetries} — HTTP Status: {StatusCode}, Response Length: {Length}",
+                _logger.LogInformation("[MakePayment] Attempt {Attempt}/{MaxRetries} � HTTP Status: {StatusCode}, Response Length: {Length}",
                     attempt, maxRetries, (int)response.StatusCode, responseText?.Length ?? 0);
 
                 if (!response.IsSuccessStatusCode)
@@ -2057,7 +2116,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                     continue;
                 }
 
-                break; // Basarili veya farkli hata — donguyu kir
+                break; // Basarili veya farkli hata � donguyu kir
             }
 
             _logger.LogInformation("[MakePayment] SOAP Response:\n{SoapResponse}", responseText);
@@ -2088,7 +2147,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             }
             catch (Exception parseEx)
             {
-                // XML parse edilemedi — HTML form olabilir, 3D Secure icerigi olarak dondur
+                // XML parse edilemedi � HTML form olabilir, 3D Secure icerigi olarak dondur
                 _logger.LogWarning(parseEx, "[MakePayment] XML parse hatasi. Response muhtemelen 3D Secure HTML icerigi.");
                 return new MakePaymentResponse
                 {
@@ -2142,21 +2201,21 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var priceSummary = shoppingFileEl?.GetDescendants("PriceSummary").FirstOrDefault();
             var grandTotal = priceSummary?.GetDecimalValue("GrandTotal") ?? 0;
 
-            // RunningAccountStatus — cari hesap bakiyesi
+            // RunningAccountStatus � cari hesap bakiyesi
             var raStatus = doc.GetDescendants("RunningAccountStatus").FirstOrDefault();
             var raBalance = raStatus?.GetDecimalValue("Balance");
 
             // RemainingSum
             var remainingSum = shoppingFileEl != null ? shoppingFileEl.GetDecimalValue("RemainingSum") : 0;
 
-            // 3D Secure — BiletBank farkli alanlarda donebilir
+            // 3D Secure � BiletBank farkli alanlarda donebilir
             var threeDUrl = doc.GetValue("ContinueUrl")
                 ?? doc.GetValue("RedirectUrl")
                 ?? doc.GetValue("ThreeDSecureUrl")
                 ?? doc.GetValue("PaymentUrl")
                 ?? doc.GetValue("ACSUrl");
 
-            // 3D HTML content — XML icinde CDATA veya element value olarak gelebilir
+            // 3D HTML content � XML icinde CDATA veya element value olarak gelebilir
             var threeDHtml = doc.GetValue("ThreeDHtml")
                 ?? doc.GetValue("HtmlContent")
                 ?? doc.GetValue("PaymentHtml")
@@ -2227,9 +2286,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             }
 
             // Status belirleme:
-            // 3D gerekiyorsa → Awaiting3DSecure
-            // PaymentId bos GUID ise → PaymentPending
-            // Basarili ise → T_AirBooking.Status (Reservation vb.) veya "Paid"
+            // 3D gerekiyorsa � Awaiting3DSecure
+            // PaymentId bos GUID ise � PaymentPending
+            // Basarili ise � T_AirBooking.Status (Reservation vb.) veya "Paid"
             string resolvedStatus;
             if (is3DRequired)
                 resolvedStatus = "Awaiting3DSecure";
@@ -2261,7 +2320,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("[MakePayment] Timeout — BiletBank 90 saniye icinde yanit vermedi.");
+            _logger.LogWarning("[MakePayment] Timeout � BiletBank 90 saniye icinde yanit vermedi.");
             return new MakePaymentResponse
             {
                 HasError = true,
@@ -2327,8 +2386,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 
             _logger.LogInformation("[Complete3DPayment] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/MakePayment_Complete3DPayment");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/MakePayment_Complete3DPayment");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -2460,8 +2518,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 </soap:Envelope>";
             _logger.LogInformation("[FinalizeShopping] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/FinalizeShopping");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/FinalizeShopping");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -2629,8 +2686,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
         {
             _logger.LogInformation("[PokeShoppingFile] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/PokeShoppingFile");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/PokeShoppingFile");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -2759,8 +2815,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
 
 _logger.LogInformation("[ReadShoppingFile] SOAP Request:\n{SoapRequest}", soapRequest);
 
-var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/ReadShoppingFile");
+var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/ReadShoppingFile");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -2930,8 +2985,7 @@ xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
         {
             _logger.LogInformation("[Logout] SOAP Request:\n{SoapRequest}", soapRequest);
 
-            var content = new StringContent(soapRequest, Encoding.UTF8, "text/xml");
-            content.Headers.Add("SOAPAction", "http://tempuri.org/I_Authentication/Logout");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Authentication/Logout");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
@@ -2990,7 +3044,7 @@ xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
 
     /// <summary>
     /// Telefon numarasini BiletBank'in bekledi +CC-XXXXXXXXXX formatina cevirir.
-    /// Bu metot SOAP XML olusturulmadan hemen once cagrilir — controller'dan
+    /// Bu metot SOAP XML olusturulmadan hemen once cagrilir � controller'dan
     /// ne gelirse gelsin burada garanti altina alinir.
     /// </summary>
     private static string FormatPhoneForBiletBank(string? phone)
@@ -3013,11 +3067,11 @@ xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
         if (digits.Length == 11 && digits.StartsWith("0"))
             return $"+90-{digits[1..]}";
 
-        // 5351234567 (10 hane — TR varsay)
+        // 5351234567 (10 hane � TR varsay)
         if (digits.Length == 10)
             return $"+90-{digits}";
 
-        // Diger durumlarda olduğu gibi dön
+        // Diger durumlarda oldu�u gibi d�n
         return phone.StartsWith("+") ? phone : $"+{phone}";
     }
 }
