@@ -371,6 +371,7 @@ public class FlightController : ControllerBase
                 result.BookingCode,
                 result.Status,
                 result.TotalFare,
+                grandTotal = result.TotalFare,
                 result.BaseFare,
                 result.Taxes,
                 result.ServiceFee,
