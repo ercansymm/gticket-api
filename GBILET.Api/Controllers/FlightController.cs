@@ -441,6 +441,9 @@ public class FlightController : ControllerBase
             if (request == null)
                 return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
 
+            _logger.LogInformation("[MakePayment] Gelen request: Amount={Amount}, PaymentType={PaymentType}, SessionId={SessionId}, ShoppingFileId={ShoppingFileId}, ProductId={ProductId}",
+                request.Amount, request.PaymentType, request.SessionId, request.ShoppingFileId, request.ProductId);
+
             if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
                 return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
 
@@ -448,7 +451,7 @@ public class FlightController : ControllerBase
                 return BadRequest(new { error = "ShoppingFileId alani zorunludur." });
 
             if (request.Amount <= 0)
-                return BadRequest(new { error = "Amount sifirdan buyuk olmalidir." });
+                return BadRequest(new { error = $"Amount sifirdan buyuk olmalidir. Gelen deger: {request.Amount}" });
 
             if ((request.PaymentType == "CreditCard" || request.PaymentType == "CreditCardDirect") && request.CreditCard == null)
                 return BadRequest(new { error = "Kredi karti ile odeme icin CreditCard bilgileri zorunludur." });
