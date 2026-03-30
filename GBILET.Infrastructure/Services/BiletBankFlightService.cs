@@ -1924,12 +1924,20 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     };
                 }
 
+
                 // XML'de ozel karakterleri escape et
                 var cardHolder = SecurityElement.Escape(request.CreditCard?.CardHolderName ?? "");
                 var cardNumber = request.CreditCard?.CardNumber ?? "";
                 var cardCvv = request.CreditCard?.Cvv ?? "";
-                var cardExpMonth = request.CreditCard?.ExpiryMonth ?? "";
-                var cardExpYear = request.CreditCard?.ExpiryYear ?? "";
+
+                // BiletBank ExpirationMonth/ExpirationYear int olarak bekler
+                // Frontend "01" veya "2026" gibi string gonderebilir
+                var rawMonth = request.CreditCard?.ExpiryMonth ?? "0";
+                var rawYear = request.CreditCard?.ExpiryYear ?? "0";
+                var cardExpMonth = int.TryParse(rawMonth, out var expM) ? expM.ToString() : "0";
+                var cardExpYear = int.TryParse(rawYear, out var expY)
+                    ? (expY < 100 ? (2000 + expY).ToString() : expY.ToString())
+                    : "0";
 
                 var installmentXml = !string.IsNullOrWhiteSpace(request.InstallmentOptionId)
                     ? $"<trev1:InstallmentOptionId>{request.InstallmentOptionId}</trev1:InstallmentOptionId>"
@@ -1966,23 +1974,20 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                <trev:Value>{shoppingFileId}</trev:Value>
             </trev:ExtendedData>
          </trev:ExtraParamList>
-         <trev1:ContinueUrl>{continueUrl}</trev1:ContinueUrl>
          <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
-         <trev1:PaymentForm>
+         <trev1:Form>
             <trev1:Amount>{amount}</trev1:Amount>
-            <trev1:CreditCard>
-               <trev1:CardHolderName>{cardHolder}</trev1:CardHolderName>
-               <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
-               <trev1:Cvv>{cardCvv}</trev1:Cvv>
-               <trev1:ExpiryMonth>{cardExpMonth}</trev1:ExpiryMonth>
-               <trev1:ExpiryYear>{cardExpYear}</trev1:ExpiryYear>
-            </trev1:CreditCard>
+            <trev1:CV2>{cardCvv}</trev1:CV2>
+            <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
+            <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
             <trev1:Currency>{currency}</trev1:Currency>
+            <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
+            <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
             {installmentXml}
-            <trev1:IsPartialPayment>{isPartial}</trev1:IsPartialPayment>
-            <trev1:PaymentType>CC_3D_PAYMENT</trev1:PaymentType>
+            <trev1:OriginalAmount>{amount}</trev1:OriginalAmount>
+            <trev1:ReturnUrl>{continueUrl}</trev1:ReturnUrl>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
-         </trev1:PaymentForm>
+         </trev1:Form>
       </tem:request>
    </tem:MakePayment_Init3DPayment>
 </soap:Body>
@@ -2013,21 +2018,18 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
-         <trev1:PaymentForm>
+         <trev1:PreAuthForm>
             <trev1:Amount>{amount}</trev1:Amount>
-            <trev1:CreditCard>
-               <trev1:CardHolderName>{cardHolder}</trev1:CardHolderName>
-               <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
-               <trev1:Cvv>{cardCvv}</trev1:Cvv>
-               <trev1:ExpiryMonth>{cardExpMonth}</trev1:ExpiryMonth>
-               <trev1:ExpiryYear>{cardExpYear}</trev1:ExpiryYear>
-            </trev1:CreditCard>
+            <trev1:CV2>{cardCvv}</trev1:CV2>
+            <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
+            <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
             <trev1:Currency>{currency}</trev1:Currency>
+            <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
+            <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
             {installmentXml}
-            <trev1:IsPartialPayment>{isPartial}</trev1:IsPartialPayment>
-            <trev1:PaymentType>CC_SINGLE_PAYMENT</trev1:PaymentType>
+            <trev1:OriginalAmount>{amount}</trev1:OriginalAmount>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
-         </trev1:PaymentForm>
+         </trev1:PreAuthForm>
       </tem:request>
    </tem:MakePayment_FromCreditCard>
 </soap:Body>
