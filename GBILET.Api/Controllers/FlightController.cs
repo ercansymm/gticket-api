@@ -447,9 +447,6 @@ public class FlightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
                 return BadRequest(new { error = "ShoppingFileId alani zorunludur." });
 
-            if (string.IsNullOrWhiteSpace(request.ProductId))
-                return BadRequest(new { error = "ProductId alani zorunludur." });
-
             if (request.Amount <= 0)
                 return BadRequest(new { error = "Amount sifirdan buyuk olmalidir." });
 

@@ -20,8 +20,9 @@ public class MakePaymentRequest
 
     /// <summary>
     /// Odeme yapilacak ProductId (AirBookings[0].ProductId).
+    /// SOAP isteklerinde kullanilmaz, sadece loglama/takip icin opsiyoneldir.
     /// </summary>
-    public string ProductId { get; set; } = null!;
+    public string? ProductId { get; set; }
 
     /// <summary>
     /// Odeme tutari.
