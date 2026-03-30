@@ -232,6 +232,39 @@ public class FlightController : ControllerBase
                 return Ok(result);
             }
 
+            // Session cache'ini fiyat bilgileriyle guncelle
+            try
+            {
+                var searchId = Request.Headers["x-search-id"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(searchId))
+                {
+                    var cacheKey = $"flight_session_{searchId}";
+                    if (_cache.TryGetValue<FlightSessionData>(cacheKey, out var sessionData) && sessionData != null)
+                    {
+                        sessionData.ProductId = result.ProductId;
+                        sessionData.BookingCode = result.BookingCode;
+                        sessionData.GrandTotal = result.TotalFare;
+                        sessionData.TotalFare = result.TotalFare;
+                        sessionData.BaseFare = result.BaseFare;
+                        sessionData.Taxes = result.Taxes;
+                        sessionData.ServiceFee = result.ServiceFee;
+                        sessionData.Currency = result.Currency;
+                        sessionData.Status = result.Status;
+                        sessionData.ShoppingFileId = result.ShoppingFileId ?? sessionData.ShoppingFileId;
+
+                        _cache.Set(cacheKey, sessionData, new MemoryCacheEntryOptions()
+                            .SetAbsoluteExpiration(TimeSpan.FromMinutes(20)));
+
+                        _logger.LogInformation("[MakePreBooking] Session cache guncellendi: SearchId={SearchId}, GrandTotal={GrandTotal}",
+                            searchId, result.TotalFare);
+                    }
+                }
+            }
+            catch (Exception cacheEx)
+            {
+                _logger.LogWarning(cacheEx, "[MakePreBooking] Session cache guncellemesi basarisiz.");
+            }
+
             // Basarili prebooking — DB'ye booking kaydi olustur
             Guid? resolvedUserId = null;
             Guid? resolvedGuestSessionId = null;
@@ -355,6 +388,23 @@ public class FlightController : ControllerBase
                 await _bookingRepository.CreateBookingAsync(bookingEntity);
                 savedBookingId = bookingEntity.Id;
                 Console.WriteLine($">>> DB WRITE SUCCESS BookingId={bookingEntity.Id}");
+
+                // BookingId'yi de session'a yaz
+                try
+                {
+                    var searchIdForBooking = Request.Headers["x-search-id"].FirstOrDefault();
+                    if (!string.IsNullOrEmpty(searchIdForBooking))
+                    {
+                        var bCacheKey = $"flight_session_{searchIdForBooking}";
+                        if (_cache.TryGetValue<FlightSessionData>(bCacheKey, out var bSession) && bSession != null)
+                        {
+                            bSession.BookingId = bookingEntity.Id;
+                            _cache.Set(bCacheKey, bSession, new MemoryCacheEntryOptions()
+                                .SetAbsoluteExpiration(TimeSpan.FromMinutes(20)));
+                        }
+                    }
+                }
+                catch { /* booking id cache hatasi kritik degil */ }
             }
             catch (Exception dbEx)
             {
