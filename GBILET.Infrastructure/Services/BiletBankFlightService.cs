@@ -1347,13 +1347,22 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             // Telefon numarasini BiletBank formatina (+CC-XXXXXXXXXX) cevir
             var phoneNumber = isContact ? FormatPhoneForBiletBank(request.Contact.Phone) : "";
 
+            // Yurt ici ucuslarda TCKN doluysa PassportNo/PassportCountry gonderilmemeli,
+            // yurt disi ucuslarda PassportNo doluysa CitizenNo gonderilmemeli.
+            var hasCitizenNo = !string.IsNullOrWhiteSpace(pax.CitizenNo);
+            var hasPassportNo = !string.IsNullOrWhiteSpace(pax.PassportNo);
+
+            var citizenNoValue = hasCitizenNo ? pax.CitizenNo! : (hasPassportNo ? "" : "");
+            var passportNoValue = hasPassportNo ? pax.PassportNo! : (hasCitizenNo ? "" : "");
+            var passportCountryValue = hasPassportNo ? (pax.PassportCountry ?? pax.Nationality) : (hasCitizenNo ? "" : "");
+
             // BiletBank dokumantasyonundaki element sirasi:
             // BirthDate, CitizenNo, Email, FirstName, Gender, Id, IfContact, LastName,
             // Nationality, PassportCountry, PassportNo, Phone, SequenceNo, TempTag, Type, WheelChairServiceType
             passengersXml.Append($@"
             <trev2:T_Passenger>
               <trev2:BirthDate>{birthDate}</trev2:BirthDate>
-              <trev2:CitizenNo>{pax.CitizenNo ?? "00000000000"}</trev2:CitizenNo>
+              <trev2:CitizenNo>{citizenNoValue}</trev2:CitizenNo>
               <trev2:Email>{(isContact ? request.Contact.Email : "")}</trev2:Email>
               <trev2:FirstName>{pax.FirstName}</trev2:FirstName>
               <trev2:Gender>{pax.Gender}</trev2:Gender>
@@ -1361,8 +1370,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
               <trev2:LastName>{pax.LastName}</trev2:LastName>
               <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
-              <trev2:PassportCountry>{pax.PassportCountry ?? pax.Nationality}</trev2:PassportCountry>
-              <trev2:PassportNo>{(string.IsNullOrEmpty(pax.PassportNo) ? "P0000000" : pax.PassportNo)}</trev2:PassportNo>
+              <trev2:PassportCountry>{passportCountryValue}</trev2:PassportCountry>
+              <trev2:PassportNo>{passportNoValue}</trev2:PassportNo>
               <trev2:Phone>{phoneNumber}</trev2:Phone>
               <trev2:SequenceNo>{i}</trev2:SequenceNo>
               <trev2:TempTag>{tempTag}</trev2:TempTag>
