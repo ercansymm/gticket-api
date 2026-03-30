@@ -227,7 +227,21 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[Login] XML parse hatasi. Response XML degil. Ilk 500 karakter: {ResponseStart}",
+                    responseText.Length > 500 ? responseText[..500] : responseText);
+                return new LoginResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"Login: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}"
+                };
+            }
 
             var hasError = doc.GetValue("HasError");
 
@@ -297,7 +311,21 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
 
             _logger.LogInformation("[AirSearch] SOAP Response:\n{SoapResponse}", responseText);
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[AirSearch] XML parse hatasi. Response XML degil. Ilk 500 karakter: {ResponseStart}",
+                    responseText.Length > 500 ? responseText[..500] : responseText);
+                return new AirSearchResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"AirSearch: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}"
+                };
+            }
 
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
@@ -871,7 +899,22 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[Allocate] XML parse hatasi. Response XML degil. Ilk 500 karakter: {ResponseStart}",
+                    responseText.Length > 500 ? responseText[..500] : responseText);
+                return new AllocateResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"Allocate: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}",
+                    RawSoapResponse = responseText
+                };
+            }
 
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
@@ -1284,7 +1327,24 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[UpdatePassengers] XML parse hatasi. Response XML degil. Ilk 500 karakter: {ResponseStart}",
+                    responseText.Length > 500 ? responseText[..500] : responseText);
+                return new UpdatePassengersResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"UpdatePassengers: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}",
+                    RawSoapResponse = responseText,
+                    RawSoapRequest = debugXml
+                };
+            }
+
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
@@ -1359,19 +1419,27 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             // BiletBank dokumantasyonundaki element sirasi:
             // BirthDate, CitizenNo, Email, FirstName, Gender, Id, IfContact, LastName,
             // Nationality, PassportCountry, PassportNo, Phone, SequenceNo, TempTag, Type, WheelChairServiceType
+            var safeFirstName = SecurityElement.Escape(pax.FirstName) ?? "";
+            var safeLastName = SecurityElement.Escape(pax.LastName) ?? "";
+            var safeEmail = isContact ? (SecurityElement.Escape(request.Contact.Email) ?? "") : "";
+            var safeCitizenNo = SecurityElement.Escape(citizenNoValue) ?? "";
+            var safePassportNo = SecurityElement.Escape(passportNoValue) ?? "";
+            var safePassportCountry = SecurityElement.Escape(passportCountryValue) ?? "";
+            var safeNationality = SecurityElement.Escape(pax.Nationality) ?? "";
+
             passengersXml.Append($@"
             <trev2:T_Passenger>
               <trev2:BirthDate>{birthDate}</trev2:BirthDate>
-              <trev2:CitizenNo>{citizenNoValue}</trev2:CitizenNo>
-              <trev2:Email>{(isContact ? request.Contact.Email : "")}</trev2:Email>
-              <trev2:FirstName>{pax.FirstName}</trev2:FirstName>
+              <trev2:CitizenNo>{safeCitizenNo}</trev2:CitizenNo>
+              <trev2:Email>{safeEmail}</trev2:Email>
+              <trev2:FirstName>{safeFirstName}</trev2:FirstName>
               <trev2:Gender>{pax.Gender}</trev2:Gender>
               <trev2:Id>{paxId}</trev2:Id>
               <trev2:IfContact>{isContact.ToString().ToLower()}</trev2:IfContact>
-              <trev2:LastName>{pax.LastName}</trev2:LastName>
-              <trev2:Nationality>{pax.Nationality}</trev2:Nationality>
-              <trev2:PassportCountry>{passportCountryValue}</trev2:PassportCountry>
-              <trev2:PassportNo>{passportNoValue}</trev2:PassportNo>
+              <trev2:LastName>{safeLastName}</trev2:LastName>
+              <trev2:Nationality>{safeNationality}</trev2:Nationality>
+              <trev2:PassportCountry>{safePassportCountry}</trev2:PassportCountry>
+              <trev2:PassportNo>{safePassportNo}</trev2:PassportNo>
               <trev2:Phone>{phoneNumber}</trev2:Phone>
               <trev2:SequenceNo>{i}</trev2:SequenceNo>
               <trev2:TempTag>{tempTag}</trev2:TempTag>
@@ -1449,7 +1517,21 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[MakePreBooking] XML parse hatasi. Response XML degil. Ilk 500 karakter: {ResponseStart}",
+                    responseText.Length > 500 ? responseText[..500] : responseText);
+                return new MakePreBookingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"MakePreBooking: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}"
+                };
+            }
 
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
@@ -2263,7 +2345,21 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[Complete3DPayment] XML parse hatasi. Response XML degil.");
+                return new MakePaymentResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"Complete3DPayment: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}"
+                };
+            }
+
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
@@ -2384,7 +2480,23 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[FinalizeShopping] XML parse hatasi. Response XML degil.");
+                return new FinalizeShoppingResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"FinalizeShopping: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}",
+                    RawSoapRequest = soapRequest,
+                    RawSoapResponse = responseText
+                };
+            }
+
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
@@ -2535,7 +2647,21 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[PokeShoppingFile] XML parse hatasi. Response XML degil.");
+                return new PokeShoppingFileResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"PokeShoppingFile: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}"
+                };
+            }
+
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
@@ -2651,7 +2777,21 @@ content.Headers.Add("SOAPAction", "http://tempuri.org/I_Shopping/ReadShoppingFil
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[ReadShoppingFile] XML parse hatasi. Response XML degil.");
+                return new ReadShoppingFileResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"ReadShoppingFile: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}"
+                };
+            }
+
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
@@ -2808,7 +2948,21 @@ xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
                 };
             }
 
-            var doc = XDocument.Parse(responseText);
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Parse(responseText);
+            }
+            catch (Exception xmlEx)
+            {
+                _logger.LogError(xmlEx, "[Logout] XML parse hatasi. Response XML degil.");
+                return new LogoutResponse
+                {
+                    HasError = true,
+                    ErrorMessage = $"Logout: Servis yaniti XML olarak parse edilemedi. Hata: {xmlEx.Message}"
+                };
+            }
+
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
