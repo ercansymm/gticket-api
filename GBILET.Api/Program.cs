@@ -46,10 +46,10 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("fixed", limiterOptions =>
     {
-        limiterOptions.PermitLimit = 60;
+        limiterOptions.PermitLimit = 300;
         limiterOptions.Window = TimeSpan.FromMinutes(1);
         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 5;
+        limiterOptions.QueueLimit = 20;
     });
     options.OnRejected = async (context, cancellationToken) =>
     {
