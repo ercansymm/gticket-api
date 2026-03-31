@@ -23,8 +23,28 @@ public static class FlightSearchMapper
         if (response.HasError)
             return dto;
 
+        // RecommendationBox'taki BrandedFareItems'ı ProductId bazlı index'le
+        // BrandedFareVersion=v2 kullanıldığında paket bilgileri T_FlightOption'da değil
+        // T_RecommendationBox altında döner
+        var rbBrandedFaresByProductId = new Dictionary<string, List<BrandedFareItem>>();
+        foreach (var rb in response.RecommendationBoxes)
+        {
+            if (!string.IsNullOrEmpty(rb.ProductId) && rb.BrandedFareItems.Count > 0)
+            {
+                rbBrandedFaresByProductId[rb.ProductId] = rb.BrandedFareItems;
+            }
+        }
+
         foreach (var option in response.FlightOptions)
         {
+            // FlightOption'da BrandedFareItems boşsa RecommendationBox'tan al
+            if (option.BrandedFareItems.Count == 0
+                && !string.IsNullOrEmpty(option.ProductId)
+                && rbBrandedFaresByProductId.TryGetValue(option.ProductId, out var rbBrandedFares))
+            {
+                option.BrandedFareItems = rbBrandedFares;
+            }
+
             var flight = MapFlightOption(option, logger);
             dto.Flights.Add(flight);
         }

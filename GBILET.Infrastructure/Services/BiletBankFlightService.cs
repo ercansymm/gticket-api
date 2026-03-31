@@ -883,6 +883,25 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             {
                 box.BrandedFareItems.Add(ParseBrandedFareItem(bfi));
             }
+
+            // BrandedItem'ları (isim + kurallar) BrandId ile doğru BrandedFareItem'a eşleştir
+            foreach (var bi in brandedFaresElement.GetElements("BrandedItem"))
+            {
+                var brandedItem = ParseBrandedItem(bi);
+                var matchedFareItem = box.BrandedFareItems.FirstOrDefault(bfi =>
+                    bfi.BrandedFarePassengers.Any(p =>
+                        p.FareComponents.Any(fc => fc.BrandId == brandedItem.BrandId)));
+                if (matchedFareItem != null)
+                {
+                    matchedFareItem.BrandedItems.Add(brandedItem);
+                }
+                else
+                {
+                    // Eşleşme bulunamadıysa tüm BrandedFareItem'lara ekle (fallback)
+                    foreach (var bfi in box.BrandedFareItems)
+                        bfi.BrandedItems.Add(brandedItem);
+                }
+            }
         }
 
         return box;
