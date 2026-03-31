@@ -1925,10 +1925,12 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 }
 
 
+
                 // XML'de ozel karakterleri escape et
                 var cardHolder = SecurityElement.Escape(request.CreditCard?.CardHolderName ?? "");
-                var cardNumber = request.CreditCard?.CardNumber ?? "";
-                var cardCvv = request.CreditCard?.Cvv ?? "";
+                // Kart numarasindan bosluk, tire ve diger ozel karakterleri temizle
+                var cardNumber = new string((request.CreditCard?.CardNumber ?? "").Where(char.IsDigit).ToArray());
+                var cardCvv = new string((request.CreditCard?.Cvv ?? "").Where(char.IsDigit).ToArray());
 
                 // BiletBank ExpirationMonth/ExpirationYear int olarak bekler
                 // Frontend "01" veya "2026" gibi string gonderebilir
@@ -1938,6 +1940,14 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var cardExpYear = int.TryParse(rawYear, out var expY)
                     ? (expY < 100 ? (2000 + expY).ToString() : expY.ToString())
                     : "0";
+
+                // Debug: Kart bilgilerini maskeli olarak logla
+                var maskedCard = cardNumber.Length >= 4
+                    ? $"{cardNumber[..6]}****{cardNumber[^4..]}"
+                    : "KISA";
+                _logger.LogInformation(
+                    "[MakePayment] Kart bilgileri: Holder={CardHolder}, Number={MaskedCard} (len={CardLen}), ExpMonth={ExpMonth}, ExpYear={ExpYear}, CVV_len={CvvLen}",
+                    cardHolder, maskedCard, cardNumber.Length, cardExpMonth, cardExpYear, cardCvv.Length);
 
                 var installmentXml = !string.IsNullOrWhiteSpace(request.InstallmentOptionId)
                     ? $"<trev1:InstallmentOptionId>{request.InstallmentOptionId}</trev1:InstallmentOptionId>"
