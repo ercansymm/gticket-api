@@ -1949,12 +1949,6 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     "[MakePayment] Kart bilgileri: Holder={CardHolder}, Number={MaskedCard} (len={CardLen}), ExpMonth={ExpMonth}, ExpYear={ExpYear}, CVV_len={CvvLen}",
                     cardHolder, maskedCard, cardNumber.Length, cardExpMonth, cardExpYear, cardCvv.Length);
 
-                // Kart tipini numara prefiksinden belirle
-                var cardType = cardNumber.StartsWith("4") ? "Visa"
-                    : cardNumber.StartsWith("5") ? "MasterCard"
-                    : cardNumber.StartsWith("3") ? "Amex"
-                    : "Visa";
-
                 var installmentXml = !string.IsNullOrWhiteSpace(request.InstallmentOptionId)
                     ? $"<trev1:InstallmentOptionId>{request.InstallmentOptionId}</trev1:InstallmentOptionId>"
                     : "";
@@ -1962,9 +1956,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var isPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
                 var deductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
 
-                // BiletBank test ortaminda 3D'siz odeme yasakli (WithoutThreeDIsNotAuthorized)
-                // Bu nedenle CreditCard ve CreditCardDirect her ikisi de Init3DPayment uzerinden gider
-                var use3D = true;
+                // CreditCardDirect = 3D'siz (MakePayment_FromCreditCard)
+                // CreditCard = 3D Secure (MakePayment_Init3DPayment)
+                var use3D = request.PaymentType != "CreditCardDirect";
 
                 if (use3D)
                 {
@@ -1996,7 +1990,6 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:CV2>{cardCvv}</trev1:CV2>
             <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
             <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
-            <trev1:CardType>{cardType}</trev1:CardType>
             <trev1:Currency>{currency}</trev1:Currency>
             <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
             <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
@@ -2040,7 +2033,6 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:CV2>{cardCvv}</trev1:CV2>
             <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
             <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
-            <trev1:CardType>{cardType}</trev1:CardType>
             <trev1:Currency>{currency}</trev1:Currency>
             <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
             <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
