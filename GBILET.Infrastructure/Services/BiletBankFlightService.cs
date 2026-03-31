@@ -1956,9 +1956,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var isPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
                 var deductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
 
-                // CreditCardDirect = 3D'siz (MakePayment_FromCreditCard)
-                // CreditCard = 3D Secure (MakePayment_Init3DPayment)
-                var use3D = request.PaymentType != "CreditCardDirect";
+                // BiletBank test ortami 3D'siz odemeye izin vermiyor (WithoutThreeDIsNotAuthorized)
+                // Bu nedenle CreditCard ve CreditCardDirect her ikisi de Init3DPayment uzerinden gider
+                var use3D = true;
 
                 if (use3D)
                 {
