@@ -430,12 +430,18 @@ public static class FlightSearchMapper
                 BookingClass = firstComponent?.BookingClass
             };
 
-            foreach (var brandedItem in bfi.BrandedItems)
-            {
-                package.BrandCode = brandedItem.BrandCode;
-                package.BrandName = brandedItem.BrandName;
+            // BrandedItem'ı BrandId üzerinden eşleştir
+            var brandId = firstComponent?.BrandId;
+            var matchedBrandedItem = bfi.BrandedItems
+                .FirstOrDefault(bi => bi.BrandId == brandId)
+                ?? bfi.BrandedItems.FirstOrDefault();
 
-                package.Rules = brandedItem.BrandedRules.Select(r => new BrandedRuleDto
+            if (matchedBrandedItem != null)
+            {
+                package.BrandCode = matchedBrandedItem.BrandCode;
+                package.BrandName = matchedBrandedItem.BrandName;
+
+                package.Rules = matchedBrandedItem.BrandedRules.Select(r => new BrandedRuleDto
                 {
                     Description = r.RuleDescription,
                     IsIncluded = r.Application is "F" or "C",

@@ -578,10 +578,24 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                 option.BrandedFareItems.Add(ParseBrandedFareItem(bfi));
             }
 
+            // BrandedItem'ları BrandId'ye göre doğru BrandedFareItem'a eşleştir
             foreach (var bi in brandedFaresElement.GetElements("BrandedItem"))
             {
-                var existingItem = option.BrandedFareItems.FirstOrDefault();
-                existingItem?.BrandedItems.Add(ParseBrandedItem(bi));
+                var brandedItem = ParseBrandedItem(bi);
+                // BrandedFareItem'ın FareComponent'ındaki BrandId ile eşleştir
+                var matchedFareItem = option.BrandedFareItems.FirstOrDefault(bfi =>
+                    bfi.BrandedFarePassengers.Any(p =>
+                        p.FareComponents.Any(fc => fc.BrandId == brandedItem.BrandId)));
+                if (matchedFareItem != null)
+                {
+                    matchedFareItem.BrandedItems.Add(brandedItem);
+                }
+                else
+                {
+                    // Eşleşme bulunamadıysa tüm BrandedFareItem'lara ekle (fallback)
+                    foreach (var bfi in option.BrandedFareItems)
+                        bfi.BrandedItems.Add(brandedItem);
+                }
             }
         }
 
