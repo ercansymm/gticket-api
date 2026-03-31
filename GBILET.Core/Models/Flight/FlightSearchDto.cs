@@ -9,6 +9,12 @@ public class FlightSearchResponseDto
     public string? SessionToken { get; set; }
     public List<FlightResultDto> Flights { get; set; } = [];
     public FlightFilterOptionsDto? FilterOptions { get; set; }
+
+    /// <summary>
+    /// Geçici debug bilgisi — BiletBank XML yapısını incelemek için.
+    /// Sorun çözüldükten sonra kaldırılacak.
+    /// </summary>
+    public object? _debug { get; set; }
 }
 
 public class FlightResultDto

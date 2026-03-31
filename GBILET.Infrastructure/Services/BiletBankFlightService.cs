@@ -360,6 +360,71 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
                 };
             }
 
+            // DEBUG: XML yapisini dosyaya yaz — BrandedFares nerede geliyor?
+            try
+            {
+                var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+                Directory.CreateDirectory(logDir);
+
+                // Tum benzersiz element isimlerini topla
+                var allElements = doc.Descendants().Select(x => x.Name.LocalName).Distinct().OrderBy(x => x).ToList();
+
+                // BrandedFares/BrandedFareItem/BrandedItem iceren elementleri bul
+                var brandedElements = doc.Descendants()
+                    .Where(x => x.Name.LocalName.Contains("Branded", StringComparison.OrdinalIgnoreCase)
+                             || x.Name.LocalName.Contains("Brand", StringComparison.OrdinalIgnoreCase))
+                    .Select(x => $"{x.Name.LocalName} (parent: {x.Parent?.Name.LocalName})")
+                    .Distinct()
+                    .ToList();
+
+                // T_FlightOption sayisi ve icindeki BrandedFares durumu
+                var flightOptions = doc.Descendants().Where(x => x.Name.LocalName == "T_FlightOption").ToList();
+                var foWithBranded = flightOptions.Count(fo =>
+                    fo.Elements().Any(e => e.Name.LocalName == "BrandedFares") ||
+                    fo.Descendants().Any(e => e.Name.LocalName == "BrandedFares"));
+
+                // T_RecommendationBox sayisi ve icindeki BrandedFares durumu
+                var recBoxes = doc.Descendants().Where(x => x.Name.LocalName == "T_RecommendationBox").ToList();
+                var rbWithBranded = recBoxes.Count(rb =>
+                    rb.Elements().Any(e => e.Name.LocalName == "BrandedFares") ||
+                    rb.Descendants().Any(e => e.Name.LocalName == "BrandedFares"));
+
+                // Ilk T_FlightOption'un XML yapisini kaydet (debug icin)
+                var firstFO = flightOptions.FirstOrDefault()?.ToString() ?? "YOK";
+                if (firstFO.Length > 3000) firstFO = firstFO[..3000] + "...[TRUNCATED]";
+
+                // Ilk T_RecommendationBox'un XML yapisini kaydet
+                var firstRB = recBoxes.FirstOrDefault()?.ToString() ?? "YOK";
+                if (firstRB.Length > 3000) firstRB = firstRB[..3000] + "...[TRUNCATED]";
+
+                var debugLog = $"""
+=== AirSearch XML DEBUG {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} ===
+Toplam benzersiz element: {allElements.Count}
+Element isimleri: {string.Join(", ", allElements)}
+
+--- Brand iceren elementler ---
+{(brandedElements.Count > 0 ? string.Join("\n", brandedElements) : "HICBIRI YOK")}
+
+--- T_FlightOption ---
+Toplam: {flightOptions.Count}
+BrandedFares iceren: {foWithBranded}
+
+--- T_RecommendationBox ---
+Toplam: {recBoxes.Count}
+BrandedFares iceren: {rbWithBranded}
+
+--- Ilk T_FlightOption XML ---
+{firstFO}
+
+--- Ilk T_RecommendationBox XML ---
+{firstRB}
+=== END ===
+
+""";
+                File.AppendAllText(Path.Combine(logDir, "airsearch-debug.log"), debugLog);
+            }
+            catch { /* debug log yazma hatasi kritik degil */ }
+
             return ParseAirSearchResponse(doc);
         }
         catch (Exception ex)
@@ -368,7 +433,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
             return new AirSearchResponse
             {
                 HasError = true,
-                ErrorMessage = $"AirSearch hatas�: {ex.Message}"
+                ErrorMessage = $"AirSearch hatas\u0131: {ex.Message}"
             };
         }
     }
@@ -507,16 +572,37 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             ShoppingFileId = doc.GetValue("ShoppingFileId")
         };
 
-        var flightOptions = doc.GetDescendants("T_FlightOption");
-        foreach (var fo in flightOptions)
+        // DEBUG: XML'deki tum benzersiz element isimlerini topla
+        response.DebugElementNames = doc.Descendants()
+            .Select(x => x.Name.LocalName)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+
+        var flightOptionElements = doc.GetDescendants("T_FlightOption").ToList();
+        foreach (var fo in flightOptionElements)
         {
             response.FlightOptions.Add(ParseFlightOption(fo));
         }
 
-        var recommendationBoxes = doc.GetDescendants("T_RecommendationBox");
-        foreach (var rb in recommendationBoxes)
+        // DEBUG: Ilk T_FlightOption'un ham XML'i
+        if (flightOptionElements.Count > 0)
+        {
+            var xml = flightOptionElements[0].ToString();
+            response.DebugFirstFlightOptionXml = xml.Length > 2000 ? xml[..2000] : xml;
+        }
+
+        var recommendationBoxElements = doc.GetDescendants("T_RecommendationBox").ToList();
+        foreach (var rb in recommendationBoxElements)
         {
             response.RecommendationBoxes.Add(ParseRecommendationBox(rb));
+        }
+
+        // DEBUG: Ilk T_RecommendationBox'un ham XML'i
+        if (recommendationBoxElements.Count > 0)
+        {
+            var xml = recommendationBoxElements[0].ToString();
+            response.DebugFirstRecommendationBoxXml = xml.Length > 2000 ? xml[..2000] : xml;
         }
 
         return response;

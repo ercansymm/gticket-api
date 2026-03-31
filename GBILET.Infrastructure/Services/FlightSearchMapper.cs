@@ -23,6 +23,26 @@ public static class FlightSearchMapper
         if (response.HasError)
             return dto;
 
+        // DEBUG: BiletBank XML yapisi bilgilerini response'a ekle
+        var brandElements = response.DebugElementNames?
+            .Where(e => e.Contains("Brand", StringComparison.OrdinalIgnoreCase) 
+                     || e.Contains("Baggage", StringComparison.OrdinalIgnoreCase)
+                     || e.Contains("FreeBag", StringComparison.OrdinalIgnoreCase))
+            .ToList() ?? [];
+
+        dto._debug = new
+        {
+            totalElementNames = response.DebugElementNames?.Count ?? 0,
+            brandRelatedElements = brandElements,
+            allElementNames = response.DebugElementNames,
+            flightOptionCount = response.FlightOptions.Count,
+            recommendationBoxCount = response.RecommendationBoxes.Count,
+            firstFlightOptionBrandedFareCount = response.FlightOptions.FirstOrDefault()?.BrandedFareItems.Count ?? -1,
+            firstRecommendationBoxBrandedFareCount = response.RecommendationBoxes.FirstOrDefault()?.BrandedFareItems.Count ?? -1,
+            firstFlightOptionXml = response.DebugFirstFlightOptionXml,
+            firstRecommendationBoxXml = response.DebugFirstRecommendationBoxXml
+        };
+
         // RecommendationBox'taki BrandedFareItems'ı ProductId bazlı index'le
         // BrandedFareVersion=v2 kullanıldığında paket bilgileri T_FlightOption'da değil
         // T_RecommendationBox altında döner

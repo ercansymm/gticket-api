@@ -15,6 +15,19 @@ public class AirSearchResponse
 
     public List<FlightOption> FlightOptions { get; set; } = [];
     public List<RecommendationBox> RecommendationBoxes { get; set; } = [];
+
+    /// <summary>
+    /// Geçici: XML'deki element isimlerini debug için tutar.
+    /// </summary>
+    public List<string>? DebugElementNames { get; set; }
+    /// <summary>
+    /// Geçici: Ýlk T_FlightOption'un ilk 2000 karakteri.
+    /// </summary>
+    public string? DebugFirstFlightOptionXml { get; set; }
+    /// <summary>
+    /// Geçici: Ýlk T_RecommendationBox'un ilk 2000 karakteri.
+    /// </summary>
+    public string? DebugFirstRecommendationBoxXml { get; set; }
 }
 
 public class FlightOption
