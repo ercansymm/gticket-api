@@ -656,19 +656,26 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             option.PassengerFareItems.Add(ParsePassengerFareItem(pfi));
         }
 
-        var brandedFaresElement = fo.GetElement("BrandedFares");
+        // BrandedFares: v1 yapısında doğrudan "BrandedFares", v2'de "T_BrandedFare_v2" olabilir.
+        // Ayrıca T_FlightOption'ın doğrudan çocuğu olmayabilir — GetDescendants kullan.
+        var brandedFaresElement = fo.GetElement("BrandedFares")
+            ?? fo.GetDescendants("BrandedFares").FirstOrDefault()
+            ?? fo.GetDescendants("T_BrandedFare_v2").FirstOrDefault();
         if (brandedFaresElement != null)
         {
-            foreach (var bfi in brandedFaresElement.GetElements("BrandedFareItem"))
+            // v2 yapısında: BrandedFareItems (çoğul container) > BrandedFareItem
+            // v1 yapısında: doğrudan BrandedFareItem
+            // GetDescendants her iki durumu da yakalar
+            foreach (var bfi in brandedFaresElement.GetDescendants("BrandedFareItem"))
             {
                 option.BrandedFareItems.Add(ParseBrandedFareItem(bfi));
             }
 
             // BrandedItem'ları BrandId'ye göre doğru BrandedFareItem'a eşleştir
-            foreach (var bi in brandedFaresElement.GetElements("BrandedItem"))
+            // v2 yapısında: BrandedItems (çoğul container) > BrandedItem
+            foreach (var bi in brandedFaresElement.GetDescendants("BrandedItem"))
             {
                 var brandedItem = ParseBrandedItem(bi);
-                // BrandedFareItem'ın FareComponent'ındaki BrandId ile eşleştir
                 var matchedFareItem = option.BrandedFareItems.FirstOrDefault(bfi =>
                     bfi.BrandedFarePassengers.Any(p =>
                         p.FareComponents.Any(fc => fc.BrandId == brandedItem.BrandId)));
@@ -685,10 +692,13 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             }
         }
 
-        var baggageElement = fo.GetElement("FreeBaggageAllowance");
+        // FreeBaggageAllowance: v2'de FreeBaggageAllowances (çoğul container) altında olabilir
+        var baggageElement = fo.GetElement("FreeBaggageAllowance")
+            ?? fo.GetDescendants("FreeBaggageAllowance").FirstOrDefault()
+            ?? fo.GetDescendants("FreeBaggageAllowances").FirstOrDefault();
         if (baggageElement != null)
         {
-            foreach (var pba in baggageElement.GetDescendants("PassengerBaggageAllowance"))
+            foreach (var pba in baggageElement.GetDescendants("PaxBaggageAllowance"))
             {
                 option.FreeBaggageAllowances.Add(new FreeBaggageAllowance
                 {
