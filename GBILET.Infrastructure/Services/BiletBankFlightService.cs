@@ -1949,6 +1949,12 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     "[MakePayment] Kart bilgileri: Holder={CardHolder}, Number={MaskedCard} (len={CardLen}), ExpMonth={ExpMonth}, ExpYear={ExpYear}, CVV_len={CvvLen}",
                     cardHolder, maskedCard, cardNumber.Length, cardExpMonth, cardExpYear, cardCvv.Length);
 
+                // Kart tipini numara prefiksinden belirle
+                var cardType = cardNumber.StartsWith("4") ? "Visa"
+                    : cardNumber.StartsWith("5") ? "MasterCard"
+                    : cardNumber.StartsWith("3") ? "Amex"
+                    : "Visa";
+
                 var installmentXml = !string.IsNullOrWhiteSpace(request.InstallmentOptionId)
                     ? $"<trev1:InstallmentOptionId>{request.InstallmentOptionId}</trev1:InstallmentOptionId>"
                     : "";
@@ -2090,6 +2096,31 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             _logger.LogInformation("[MakePayment] PaymentType={PaymentType}, Amount={Amount}, Currency={Currency}, ShoppingFileId={ShoppingFileId}",
                 request.PaymentType, amount, currency, shoppingFileId);
 
+            // SOAP request'i logla — debug icin kritik
+            _logger.LogInformation("[MakePayment] SOAP Request:\n{SoapRequest}", soapRequest);
+            _logger.LogInformation("[MakePayment] SOAPAction: {SoapAction}", soapAction);
+
+            // Dosyaya yaz — sunucuda debug icin
+            try
+            {
+                var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+                Directory.CreateDirectory(logDir);
+                var logFile = Path.Combine(logDir, "payment-debug.log");
+                var logEntry = $"""
+=== MakePayment {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} ===
+PaymentType: {request.PaymentType}
+Amount: {amount}
+Currency: {currency}
+ShoppingFileId: {shoppingFileId}
+SOAPAction: {soapAction}
+
+--- SOAP REQUEST ---
+{soapRequest}
+""";
+                File.AppendAllText(logFile, logEntry);
+            }
+            catch { /* log yazma hatasi kritik degil */ }
+
             // BiletBank test ortami bazen UnknownSystemError donuyor � retry mekanizmasi
             const int maxRetries = 2;
             string? responseText = null;
@@ -2141,6 +2172,21 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             }
 
             _logger.LogInformation("[MakePayment] SOAP Response:\n{SoapResponse}", responseText);
+
+            // Response'u dosyaya yaz — sunucuda debug icin
+            try
+            {
+                var logFile = Path.Combine(AppContext.BaseDirectory, "logs", "payment-debug.log");
+                var responseLog = $"""
+
+--- SOAP RESPONSE ---
+{responseText}
+=== END ===
+
+""";
+                File.AppendAllText(logFile, responseLog);
+            }
+            catch { /* log yazma hatasi kritik degil */ }
 
             // Init3DPayment response'u dogrudan HTML (3D Secure redirect sayfasi) donebilir
             var trimmed = responseText.TrimStart();
