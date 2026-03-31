@@ -226,13 +226,7 @@ public class FlightController : ControllerBase
             if (result.HasError)
                 return Ok(result);
 
-            if (string.IsNullOrEmpty(result.BookingCode))
-            {
-                Console.WriteLine($">>> BOOKING CODE EMPTY, skipping DB write. BookingCode='{result.BookingCode}'");
-                return Ok(result);
-            }
-
-            // Session cache'ini fiyat bilgileriyle guncelle
+            // Session cache'ini fiyat bilgileriyle guncelle — BookingCode bos olsa bile fiyat bilgisi gelir
             try
             {
                 var searchId = Request.Headers["x-search-id"].FirstOrDefault();
@@ -263,6 +257,12 @@ public class FlightController : ControllerBase
             catch (Exception cacheEx)
             {
                 _logger.LogWarning(cacheEx, "[MakePreBooking] Session cache guncellemesi basarisiz.");
+            }
+
+            if (string.IsNullOrEmpty(result.BookingCode))
+            {
+                Console.WriteLine($">>> BOOKING CODE EMPTY, skipping DB write. BookingCode='{result.BookingCode}'");
+                return Ok(result);
             }
 
             // Basarili prebooking — DB'ye booking kaydi olustur

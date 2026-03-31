@@ -1946,9 +1946,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var isPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
                 var deductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
 
-                // CreditCardDirect � 3D'siz dogrudan odeme (MakePayment_FromCreditCard)
-                // CreditCard � 3D Secure odeme (MakePayment_Init3DPayment)
-                var use3D = request.PaymentType != "CreditCardDirect";
+                // BiletBank test ortaminda 3D'siz odeme yasakli (WithoutThreeDIsNotAuthorized)
+                // Bu nedenle CreditCard ve CreditCardDirect her ikisi de Init3DPayment uzerinden gider
+                var use3D = true;
 
                 if (use3D)
                 {
@@ -2038,9 +2038,9 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 }
 else
 {
-    soapAction = "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount";
+                // RunningAccount (cari hesap) odemesi
+                soapAction = "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount";
 
-                var raIsPartial = request.IsPartialPayment.ToString().ToLowerInvariant();
                 var raDeductCommission = request.DeductLastSellerCommission.ToString().ToLowerInvariant();
 
                 soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
@@ -2066,7 +2066,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
          <trev1:PaymentForm>
             <trev1:Amount>{amount}</trev1:Amount>
             <trev1:Currency>{currency}</trev1:Currency>
-            <trev1:IsPartialPayment>{raIsPartial}</trev1:IsPartialPayment>
+            <trev1:IsPartialPayment>false</trev1:IsPartialPayment>
             <trev1:PaymentType>RA_BALANCE_PAYMENT</trev1:PaymentType>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:PaymentForm>
