@@ -2132,7 +2132,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
-         <trev1:Form>
+         <trev1:PreAuthForm>
             <trev1:Amount>{amount}</trev1:Amount>
             <trev1:CV2>{cardCvv}</trev1:CV2>
             <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
@@ -2145,7 +2145,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:OriginalAmount>{amount}</trev1:OriginalAmount>
             <trev1:ReturnUrl>{continueUrl}</trev1:ReturnUrl>
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
-         </trev1:Form>
+         </trev1:PreAuthForm>
       </tem:request>
    </tem:MakePayment_Init3DPayment>
 </soap:Body>
