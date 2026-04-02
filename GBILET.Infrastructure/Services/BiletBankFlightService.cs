@@ -158,9 +158,28 @@ public class BiletBankFlightService : IFlightService
             sessionToken = loginResult.SessionToken!;
         }
 
+        // BrandedFareItemId bossa, allocate response'undan otomatik olarak
+        // en dusuk fiyatli branded fare paketini secip sonraki adimlara hazirla
         var response = await AllocateAsync(sessionId, sessionToken, request);
         response.SessionId = sessionId;
         response.SessionToken = sessionToken;
+
+        // Allocate response'taki BrandedFareItems'tan otomatik en dusuk fiyatli paketi sec
+        if (string.IsNullOrEmpty(request.BrandedFareItemId))
+        {
+            var firstBooking = response.AirBookings.FirstOrDefault();
+            var cheapestBfi = firstBooking?.BrandedFareItems
+                .OrderBy(b => b.TotalFare)
+                .FirstOrDefault();
+            if (cheapestBfi != null)
+            {
+                response.AutoSelectedBrandedFareItemId = cheapestBfi.BrandedFareItemId;
+                _logger.LogInformation(
+                    "[Allocate] BrandedFareItemId otomatik secildi: {BrandedFareItemId} (TotalFare={TotalFare})",
+                    cheapestBfi.BrandedFareItemId, cheapestBfi.TotalFare);
+            }
+        }
+
         return response;
     }
 
