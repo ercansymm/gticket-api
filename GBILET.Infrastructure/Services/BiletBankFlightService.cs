@@ -2019,8 +2019,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
     {
         try
         {
-            var amount = request.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            var currency = request.Currency ?? "TRY";
+            var amount = request.Amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture); var currency = request.Currency ?? "TRY";
             var sessionId = request.SessionId ?? "";
             var sessionToken = request.SessionToken ?? "";
             var shoppingFileId = request.ShoppingFileId ?? "";
@@ -2138,6 +2137,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:CV2>{cardCvv}</trev1:CV2>
             <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
             <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
+            <trev1:CardType/>
             <trev1:Currency>{currency}</trev1:Currency>
             <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
             <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
