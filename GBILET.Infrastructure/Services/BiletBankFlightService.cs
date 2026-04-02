@@ -2132,20 +2132,20 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:DeductLastSellerCommission>{deductCommission}</trev1:DeductLastSellerCommission>
-         <trev1:PreAuthForm>
-            <trev1:Amount>{amount}</trev1:Amount>
-            <trev1:CV2>{cardCvv}</trev1:CV2>
-            <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
-            <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
-            <trev1:CardType/>
-            <trev1:Currency>{currency}</trev1:Currency>
-            <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
-            <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
-            {installmentXml}
-            <trev1:OriginalAmount>{amount}</trev1:OriginalAmount>
-            <trev1:ReturnUrl>{continueUrl}</trev1:ReturnUrl>
-            <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
-         </trev1:PreAuthForm>
+<trev1:PreAuthForm>
+   <trev1:Amount>{amount}</trev1:Amount>
+   <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
+   <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
+   <trev1:CardType/>
+   <trev1:Currency>{currency}</trev1:Currency>
+   <trev1:CV2>{cardCvv}</trev1:CV2>
+   <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
+   <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
+   {installmentXml}
+   <trev1:OriginalAmount>{amount}</trev1:OriginalAmount>
+   <trev1:ReturnUrl>{continueUrl}</trev1:ReturnUrl>
+   <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
+</trev1:PreAuthForm>
       </tem:request>
    </tem:MakePayment_Init3DPayment>
 </soap:Body>
