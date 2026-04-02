@@ -5,7 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Security;
-using System.Text; 
+using System.Text;
 using System.Xml.Linq;
 
 
@@ -2067,8 +2067,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var rawYear = request.CreditCard?.ExpiryYear ?? "0";
                 var cardExpMonth = int.TryParse(rawMonth, out var expM) ? expM.ToString() : "0";
                 var cardExpYear = int.TryParse(rawYear, out var expY)
-                    ? (expY < 100 ? (2000 + expY).ToString() : expY.ToString())
-                    : "0";
+      ? (expY >= 100 ? (expY % 100).ToString() : expY.ToString())
+      : "0";
 
                 // Debug: Kart bilgilerini maskeli olarak logla
                 var maskedCard = cardNumber.Length >= 4
@@ -2173,10 +2173,10 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
    </tem:MakePayment_FromCreditCard>
 </soap:Body>
 </soap:Envelope>";
-    }
-}
-else
-{
+                }
+            }
+            else
+            {
                 // RunningAccount (cari hesap) odemesi
                 soapAction = "http://tempuri.org/I_Shopping/MakePayment_FromRunningAccount";
 
@@ -3009,9 +3009,9 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
 </soap:Body>
 </soap:Envelope>";
 
-_logger.LogInformation("[ReadShoppingFile] SOAP Request:\n{SoapRequest}", soapRequest);
+            _logger.LogInformation("[ReadShoppingFile] SOAP Request:\n{SoapRequest}", soapRequest);
 
-var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/ReadShoppingFile");
+            var content = CreateSoapContent(soapRequest, "http://tempuri.org/I_Shopping/ReadShoppingFile");
 
             var response = await _httpClient.PostAsync(_proxyUrl, content);
             var responseText = await response.Content.ReadAsStringAsync();
