@@ -204,18 +204,19 @@ public static class FlightSearchMapper
             CustomerCommissionMax = commMax,
             CustomerCommissionValue = commVal,
 
-            // Branded / baggage (ham veri — sadece en dusuk fiyatli paket)
-            BrandedFareItems = option.BrandedFareItems.Count > 0
-                ? [option.BrandedFareItems.OrderBy(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue).First()]
-                : [],
+            // Bagaj ham veri
             FreeBaggageAllowances = option.FreeBaggageAllowances,
 
-            // Paketler (düzleştirilmiş)
+            // Paketler (tum branded fare secenekleri)
             FarePackages = MapBrandedFarePackages(option),
 
             // Bagaj özeti
             BaggageInfo = MapBaggageInfo(option.FreeBaggageAllowances)
         };
+
+        // Default (en dusuk fiyatli) paketi isaretle
+        var defaultPkg = result.FarePackages.FirstOrDefault(p => p.IsDefault);
+        result.DefaultBrandedFareItemId = defaultPkg?.BrandedFareItemId;
 
         return result;
     }
@@ -458,53 +459,84 @@ public static class FlightSearchMapper
     {
         var packages = new List<BrandedFareOptionDto>();
 
-        // Birden fazla branded fare paketi gelebilir (EcoFly, ExtraFly, PrimeFly vb.)
-        // Otomatik olarak en dusuk fiyatli paketi sec ve sadece onu dondur
-        var selectedBfi = option.BrandedFareItems
-            .OrderBy(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue)
-            .FirstOrDefault();
-
-        if (selectedBfi == null)
+        if (option.BrandedFareItems.Count == 0)
             return packages;
 
-        var firstPax = selectedBfi.BrandedFarePassengers.FirstOrDefault();
-        var firstComponent = firstPax?.FareComponents.FirstOrDefault();
+        // En dusuk fiyatli paketin toplam fiyatini bul (fark hesabi icin)
+        var minTotalFare = option.BrandedFareItems
+            .Select(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue)
+            .Min();
 
-        var package = new BrandedFareOptionDto
+        // Tum paketleri fiyata gore sirala ve dondur
+        var sortedItems = option.BrandedFareItems
+            .OrderBy(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue)
+            .ToList();
+
+        bool defaultMarked = false;
+
+        foreach (var bfi in sortedItems)
         {
-            BrandedFareItemId = selectedBfi.BrandedFareItemId,
-            TotalFare = selectedBfi.TotalFareInfo?.TotalFare ?? 0,
-            TotalTaxes = selectedBfi.TotalFareInfo?.TotalTaxes ?? 0,
-            CabinClass = firstComponent?.CabinClass,
-            BookingClass = firstComponent?.BookingClass
-        };
+            var firstPax = bfi.BrandedFarePassengers.FirstOrDefault();
+            var firstComponent = firstPax?.FareComponents.FirstOrDefault();
+            var currency = firstPax?.PassengerFareInfo?.Currency ?? option.Currency ?? "TRY";
+            var totalFare = bfi.TotalFareInfo?.TotalFare ?? 0;
+            var priceDiff = totalFare - minTotalFare;
+            var isDefault = !defaultMarked;
 
-        // BrandedItem'ı BrandId üzerinden eşleştir
-        var brandId = firstComponent?.BrandId;
-        var matchedBrandedItem = selectedBfi.BrandedItems
-            .FirstOrDefault(bi => bi.BrandId == brandId)
-            ?? selectedBfi.BrandedItems.FirstOrDefault();
+            if (isDefault)
+                defaultMarked = true;
 
-        if (matchedBrandedItem != null)
-        {
-            package.BrandCode = matchedBrandedItem.BrandCode;
-            package.BrandName = matchedBrandedItem.BrandName;
-
-            package.Rules = matchedBrandedItem.BrandedRules.Select(r => new BrandedRuleDto
+            var package = new BrandedFareOptionDto
             {
-                Description = r.RuleDescription,
-                IsIncluded = r.Application is "F" or "C",
-                IsChargeable = r.Application == "C",
-                ServiceGroup = r.ServiceGroup,
-                Application = r.Application
-            }).ToList();
+                BrandedFareItemId = bfi.BrandedFareItemId,
+                TotalFare = totalFare,
+                TotalTaxes = bfi.TotalFareInfo?.TotalTaxes ?? 0,
+                CabinClass = firstComponent?.CabinClass,
+                BookingClass = firstComponent?.BookingClass,
+                Currency = currency,
+                TotalFareFormatted = FormatPrice(totalFare, currency),
+                PriceDifference = priceDiff,
+                PriceDifferenceFormatted = priceDiff == 0 ? null : $"+{FormatPrice(priceDiff, currency)}",
+                IsDefault = isDefault
+            };
+
+            // BrandedItem'i BrandId uzerinden esleştir (paket adi, kurallar)
+            var brandId = firstComponent?.BrandId;
+            var matchedBrandedItem = bfi.BrandedItems
+                .FirstOrDefault(bi => bi.BrandId == brandId)
+                ?? bfi.BrandedItems.FirstOrDefault();
+
+            if (matchedBrandedItem != null)
+            {
+                package.BrandCode = matchedBrandedItem.BrandCode;
+                package.BrandName = matchedBrandedItem.BrandName;
+
+                package.Rules = matchedBrandedItem.BrandedRules.Select(r => new BrandedRuleDto
+                {
+                    Description = r.RuleDescription,
+                    IsIncluded = r.Application is "F" or "C",
+                    IsChargeable = r.Application == "C",
+                    ServiceGroup = r.ServiceGroup,
+                    Application = r.Application
+                }).ToList();
+            }
+
+            // Yolcu bazli fiyat kirilimi
+            foreach (var pax in bfi.BrandedFarePassengers)
+            {
+                package.PassengerFares.Add(new PassengerFareBreakdownDto
+                {
+                    PassengerType = pax.PassengerType,
+                    PassengerCount = pax.PassengerCount,
+                    BaseFare = pax.PassengerFareInfo?.BaseFare ?? 0,
+                    Taxes = pax.PassengerFareInfo?.Taxes ?? 0,
+                    TotalFare = pax.PassengerFareInfo?.TotalFare ?? 0,
+                    Currency = pax.PassengerFareInfo?.Currency ?? currency
+                });
+            }
+
+            packages.Add(package);
         }
-
-        var currency = firstPax?.PassengerFareInfo?.Currency ?? option.Currency ?? "TRY";
-        package.Currency = currency;
-        package.TotalFareFormatted = FormatPrice(package.TotalFare, currency);
-
-        packages.Add(package);
 
         return packages;
     }

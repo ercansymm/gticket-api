@@ -1452,10 +1452,10 @@ public class FlightController : ControllerBase
 
             // Branded fare seçimi
             string? selectedBrandedFareItemId = null;
-            if (selectedFlight.BrandedFareItems.Count > 0)
+            if (selectedFlight.FarePackages.Count > 0)
             {
-                var brandIndex = Math.Clamp(request.BrandedFareIndex, 0, selectedFlight.BrandedFareItems.Count - 1);
-                selectedBrandedFareItemId = selectedFlight.BrandedFareItems[brandIndex].BrandedFareItemId;
+                var brandIndex = Math.Clamp(request.BrandedFareIndex, 0, selectedFlight.FarePackages.Count - 1);
+                selectedBrandedFareItemId = selectedFlight.FarePackages[brandIndex].BrandedFareItemId;
                 response.Steps.Add($"Branded fare seçildi: index={brandIndex}, id={selectedBrandedFareItemId}");
             }
 

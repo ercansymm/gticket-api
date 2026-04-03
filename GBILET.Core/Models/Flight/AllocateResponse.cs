@@ -75,12 +75,6 @@ public class AllocateResponse
     public string? SessionToken { get; set; }
 
     /// <summary>
-    /// BrandedFareItemId otomatik secildiyse bu alanda doner.
-    /// Frontend bu degeri MakePreBooking'e gondermeli.
-    /// </summary>
-    public string? AutoSelectedBrandedFareItemId { get; set; }
-
-    /// <summary>
     /// Debug: Ham SOAP yaniti (gecici - production'da kaldirilacak)
     /// </summary>
     public string? RawSoapResponse { get; set; }

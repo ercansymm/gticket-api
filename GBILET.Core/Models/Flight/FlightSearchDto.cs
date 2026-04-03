@@ -84,11 +84,16 @@ public class FlightResultDto
     public decimal CustomerCommissionMax { get; set; }
     public decimal CustomerCommissionValue { get; set; }
 
-    // Branded Fare (ham veri)
-    public List<BrandedFareItem> BrandedFareItems { get; set; } = [];
+    /// <summary>
+    /// Varsayilan (en dusuk fiyatli) branded fare paket ID'si.
+    /// Frontend allocate'e bunu gonderir, kullanici degistirmedikce.
+    /// </summary>
+    public string? DefaultBrandedFareItemId { get; set; }
+
+    // Bagaj ham veri
     public List<FreeBaggageAllowance> FreeBaggageAllowances { get; set; } = [];
 
-    // Paket seçenekleri (EcoFly, ExtraFly, PrimeFly vb.)
+    // Paket secenekleri (EcoFly, ExtraFly, PrimeFly vb.) — tum paketler
     public List<BrandedFareOptionDto> FarePackages { get; set; } = [];
 
     // Bagaj bilgisi özeti
@@ -153,7 +158,38 @@ public class BrandedFareOptionDto
     public string? TotalFareFormatted { get; set; }
     public string? CabinClass { get; set; }
     public string? BookingClass { get; set; }
+
+    /// <summary>
+    /// Bu paketin baz fiyata gore fark tutari.
+    /// Negatif ise baz fiyattan ucuz, pozitif ise pahali.
+    /// </summary>
+    public decimal PriceDifference { get; set; }
+    public string? PriceDifferenceFormatted { get; set; }
+
+    /// <summary>
+    /// Yolcu bazli fiyat dagilimi (ADT, CHD, INF)
+    /// </summary>
+    public List<PassengerFareBreakdownDto> PassengerFares { get; set; } = [];
+
+    /// <summary>
+    /// Paket kurallari (bagaj, iade, degisiklik vb.)
+    /// </summary>
     public List<BrandedRuleDto> Rules { get; set; } = [];
+
+    /// <summary>
+    /// Bu paket en dusuk fiyatli mi? (varsayilan secim icin)
+    /// </summary>
+    public bool IsDefault { get; set; }
+}
+
+public class PassengerFareBreakdownDto
+{
+    public string? PassengerType { get; set; }
+    public int PassengerCount { get; set; }
+    public decimal BaseFare { get; set; }
+    public decimal Taxes { get; set; }
+    public decimal TotalFare { get; set; }
+    public string? Currency { get; set; }
 }
 
 public class BrandedRuleDto
