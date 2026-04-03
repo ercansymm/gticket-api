@@ -50,6 +50,17 @@ public class BookingRepository : IBookingRepository
         }
     }
 
+    public async Task UpdatePnrAsync(Guid bookingId, string pnr)
+    {
+        var booking = await _db.Bookings.FindAsync(bookingId);
+        if (booking != null)
+        {
+            booking.PNR = pnr;
+            booking.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+    }
+
     public async Task AddLogAsync(BookingLog log)
     {
         _db.BookingLogs.Add(log);

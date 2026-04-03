@@ -8,6 +8,7 @@ public interface IBookingRepository
     Task<Booking?> GetByIdAsync(Guid id);
     Task<Booking?> GetByPnrAsync(string pnr);
     Task UpdateStatusAsync(Guid bookingId, string status);
+    Task UpdatePnrAsync(Guid bookingId, string pnr);
     Task AddLogAsync(BookingLog log);
 
     // Admin takibi

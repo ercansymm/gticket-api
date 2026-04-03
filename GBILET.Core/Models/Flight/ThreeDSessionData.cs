@@ -10,5 +10,6 @@ public class ThreeDSessionData
     public string SessionToken { get; set; } = null!;
     public string ShoppingFileId { get; set; } = null!;
     public Guid? BookingId { get; set; }
+    public string? ProductId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
