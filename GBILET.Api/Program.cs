@@ -20,6 +20,8 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
+builder.Services.AddScoped<AirportSeeder>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
@@ -96,8 +98,12 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GTicketDbContext>();
     db.Database.EnsureCreated();
+    db.Database.EnsureCreated();
 
-    // Bozuk Türkçe karakterleri düzelt (önceki encoding hatalı seed'den kalma)
+    // === Havalimanı Seed ===
+    var airportSeeder = scope.ServiceProvider.GetRequiredService<AirportSeeder>();
+    await airportSeeder.SeedAsync();
+
     try
     {
         var corruptedAirlines = db.Airlines
@@ -200,4 +206,4 @@ app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers().RequireRateLimiting("fixed");
-app.Run();
+await app.RunAsync();
