@@ -98,7 +98,6 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GTicketDbContext>();
     db.Database.EnsureCreated();
-    db.Database.EnsureCreated();
 
     // === Havalimanı Seed ===
     var airportSeeder = scope.ServiceProvider.GetRequiredService<AirportSeeder>();

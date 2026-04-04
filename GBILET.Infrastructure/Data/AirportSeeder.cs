@@ -83,7 +83,7 @@ public class AirportSeeder
                     Timezone = dto.Timezone,
                     Latitude = dto.Latitude,
                     Longitude = dto.Longitude,
-                    CityCode = dto.IataCode.ToUpperInvariant(), // Varsayılan olarak IATA kodu
+                    //CityCode = dto.IataCode.ToUpperInvariant(), // Varsayılan olarak IATA kodu
                     Type = dto.Type ?? "airport",
                     IsDomestic = dto.IsDomestic,
                     IsPopular = dto.IsPopular,
