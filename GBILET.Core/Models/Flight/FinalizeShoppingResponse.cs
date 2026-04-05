@@ -6,6 +6,11 @@ public class FinalizeShoppingResponse
     public string? ErrorMessage { get; set; }
 
     /// <summary>
+    /// Biletleme basarili mi? (Status = Booking/Ticketed/Reservation ise true)
+    /// </summary>
+    public bool IsFinalized { get; set; }
+
+    /// <summary>
     /// PNR kodu
     /// </summary>
     public string? BookingCode { get; set; }

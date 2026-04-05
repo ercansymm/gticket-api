@@ -2851,6 +2851,12 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             }
         }
 
+        // IsFinalized: status basarili bir durumu gosteriyorsa true
+        var finalizedStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "Booking", "Ticketed", "Reservation" };
+        result.IsFinalized = !string.IsNullOrEmpty(result.Status)
+            && finalizedStatuses.Contains(result.Status);
+
         return result;
     }
 
