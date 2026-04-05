@@ -174,8 +174,19 @@ public class FlightController : ControllerBase
                 if (string.IsNullOrWhiteSpace(pax.PaxReferenceId))
                     return BadRequest(new { error = $"Yolcu {pax.SequenceNo}: PaxReferenceId zorunludur (Allocate response'taki passengers[].paxReferenceId)." });
 
+                // Kimlik bilgisi kontrolu — BiletBank CitizenNo veya PassportNo zorunlu tutuyor
+                if (string.IsNullOrWhiteSpace(pax.CitizenNo) && string.IsNullOrWhiteSpace(pax.PassportNo))
+                    return BadRequest(new { error = $"Yolcu {pax.SequenceNo}: Kimlik bilgisi zorunludur. TC kimlik no veya pasaport numarasi girilmelidir." });
+
                 if (string.IsNullOrWhiteSpace(pax.TempTag))
                     pax.TempTag = pax.PaxReferenceId;
+
+                _logger.LogInformation(
+                    "[UpdatePassengers] Pax {SeqNo}: Type={PaxType}, Name={FirstName} {LastName}, BirthDate={BirthDate}, CitizenNo={CitizenNo}, PassportNo={PassportNo}, TempTag={TempTag}",
+                    pax.SequenceNo, pax.PaxType, pax.FirstName, pax.LastName, pax.BirthDate,
+                    string.IsNullOrWhiteSpace(pax.CitizenNo) ? "(empty)" : pax.CitizenNo,
+                    string.IsNullOrWhiteSpace(pax.PassportNo) ? "(empty)" : pax.PassportNo,
+                    pax.TempTag);
             }
 
             var result = await _flightService.UpdatePassengersAsync(request);
