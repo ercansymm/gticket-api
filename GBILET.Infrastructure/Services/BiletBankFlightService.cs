@@ -1659,6 +1659,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
     public async Task<MakePreBookingResponse> MakePreBookingAsync(MakePreBookingRequest request)
     {
+        _logger.LogInformation(
+            "[MakePreBooking] Parametreler: SessionId={SessionId}, ProductId={ProductId}, BrandedFareItemId={BrandedFareItemId}, ShoppingFileId={ShoppingFileId}",
+            request.SessionId, request.ProductId, request.BrandedFareItemId ?? "(null)", request.ShoppingFileId);
+
         var soapRequest = BuildMakePreBookingSoapRequest(
             request.SessionId,
             request.SessionToken,
@@ -1727,8 +1731,10 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 var debugMsg = doc.GetValue("DebugMessage");
                 var serviceName = doc.GetValue("Name");
                 _logger.LogError(
-                    "[MakePreBooking] BiletBank HATA dondu. ErrorMessage={ErrorMessage}, DebugMessage={DebugMessage}, ServiceName={ServiceName}\nSOAP Request:\n{SoapRequest}",
-                    errorMsg, debugMsg, serviceName, soapRequest);
+                    "[MakePreBooking] BiletBank HATA dondu.\n  ErrorMessage={ErrorMessage}\n  DebugMessage={DebugMessage}\n  ServiceName={ServiceName}\n  ProductId={ProductId}\n  BrandedFareItemId={BrandedFareItemId}\n  ShoppingFileId={ShoppingFileId}\nSOAP Request:\n{SoapRequest}\nSOAP Response:\n{SoapResponse}",
+                    errorMsg, debugMsg, serviceName,
+                    request.ProductId, request.BrandedFareItemId ?? "(null)", request.ShoppingFileId,
+                    soapRequest, responseText);
 
                 return new MakePreBookingResponse
                 {

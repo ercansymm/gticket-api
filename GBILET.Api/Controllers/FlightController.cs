@@ -1491,8 +1491,12 @@ public class FlightController : ControllerBase
             response.ProductItemId = bookingItem?.ProductItemId;
 
             // Allocate'ten gelen branded fare item id'yi kullan
-            var allocBrandedId = airBooking?.BrandedFareItems.FirstOrDefault()?.BrandedFareItemId;
-            response.BrandedFareItemId = allocBrandedId ?? selectedBrandedFareItemId;
+            // SelectedBrandedFareItemId segmentte set edilir — allocate edilen GERCEK fare'i temsil eder
+            var segmentBrandedId = airBooking?.Segments.FirstOrDefault()?.SelectedBrandedFareItemId;
+            var fallbackBrandedId = airBooking?.BrandedFareItems.FirstOrDefault()?.BrandedFareItemId;
+            response.BrandedFareItemId = segmentBrandedId ?? fallbackBrandedId ?? selectedBrandedFareItemId;
+
+            response.Steps.Add($"BrandedFareItemId kaynak: segment={segmentBrandedId}, fareItems[0]={fallbackBrandedId}, search={selectedBrandedFareItemId} => kullanilan={response.BrandedFareItemId}");
 
             response.TotalFare = airBooking?.TotalFare ?? 0;
             response.BaseFare = airBooking?.BaseFare ?? 0;
