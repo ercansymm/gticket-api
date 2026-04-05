@@ -178,6 +178,14 @@ public class BiletBankFlightService : IFlightService
         if (request.Contact != null)
             request.Contact.Phone = NormalizePhone(request.Contact.Phone);
 
+        // Yolcu bilgilerini logla — debug icin kritik
+        _logger.LogInformation(
+            "[UpdatePassengers] Yolcu sayisi: {Count}, Tipler: {Types}, SequenceNo'lar: {SeqNos}, TempTag'ler: {TempTags}",
+            request.Passengers.Count,
+            string.Join(", ", request.Passengers.Select(p => p.PaxType)),
+            string.Join(", ", request.Passengers.Select(p => p.SequenceNo)),
+            string.Join(", ", request.Passengers.Select(p => p.TempTag ?? "(null)")));
+
         var inner = await UpdatePassengersInternalAsync(request.SessionId, request.SessionToken, request);
         return inner;
     }
@@ -1599,6 +1607,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var safePassportCountry = SecurityElement.Escape(passportCountryValue) ?? "";
             var safeNationality = SecurityElement.Escape(pax.Nationality) ?? "";
 
+            // PaxReferences: nil olarak gonderilir — BiletBank yolcu-urun eslestirmesini
+            // Type ve SequenceNo uzerinden otomatik yapar. Tek bir ProductItemId ile
+            // tum yolculari eslestirmek yanlis sonuc verir (CHD/INF farkli ProductItemId'ye sahiptir).
             passengersXml.Append($@"
             <trev2:T_Passenger>
               <trev2:BirthDate>{birthDate}</trev2:BirthDate>
@@ -1612,8 +1623,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:Nationality>{safeNationality}</trev2:Nationality>
               <trev2:PassportCountry>{safePassportCountry}</trev2:PassportCountry>
               <trev2:PassportNo>{safePassportNo}</trev2:PassportNo>
+              <trev2:PaxReferences i:nil=""true""/>
               <trev2:Phone>{phoneNumber}</trev2:Phone>
-              <trev2:SequenceNo>{i}</trev2:SequenceNo>
+              <trev2:SequenceNo>{pax.SequenceNo}</trev2:SequenceNo>
               <trev2:TempTag>{tempTag}</trev2:TempTag>
               <trev2:Type>{pax.PaxType}</trev2:Type>
               <trev2:WheelChairServiceType>0</trev2:WheelChairServiceType>
