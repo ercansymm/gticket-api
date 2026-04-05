@@ -1,11 +1,11 @@
 ﻿using GBILET.Core.Service;
-using GBILET.Core.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GBILET.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+
 public class AirportController : ControllerBase
 {
     private readonly IAirportRepository _airportRepository;
