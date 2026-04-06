@@ -108,8 +108,11 @@ public class BiletBankFlightService : IFlightService
                     Destination = destination,
                     OriginCountryCode = request.OriginCountryCode,
                     DestinationCountryCode = request.DestinationCountryCode,
-                    OriginIsCity = request.OriginIsCity,
-                    DestinationIsCity = request.DestinationIsCity,
+                    // City group birden fazla havalimanına bölününce her biri tekil airport kodudur,
+                    // dolayısıyla IsCity=false olmalı (IsCity=true gönderilirse BiletBank şehir kodu
+                    // olarak arar, bulamaz ve 0 sonuç döner).
+                    OriginIsCity = false,
+                    DestinationIsCity = false,
                     DepartureDate = request.DepartureDate,
                     ReturnDate = request.ReturnDate,
                     FlightType = request.FlightType,
