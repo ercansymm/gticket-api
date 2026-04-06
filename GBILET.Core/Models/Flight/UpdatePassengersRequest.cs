@@ -28,7 +28,7 @@ public class UpdatePassengersRequest
     public string ProductItemId { get; set; } = null!;
 
     /// <summary>
-    /// Yolcu listesi (ADT, CHD, INF sýrasýna göre).
+    /// Yolcu listesi (ADT, CHD, INF sï¿½rasï¿½na gï¿½re).
     /// </summary>
     public List<UpdatePassengerItem> Passengers { get; set; } = [];
 
@@ -66,6 +66,11 @@ public class UpdatePassengerItem
     public string? CitizenNo { get; set; }
     public string? PassportNo { get; set; }
     public string? PassportCountry { get; set; }
+
+    /// <summary>
+    /// Pasaport gecerlilik tarihi (yyyy-MM-dd) â€” yurt disi ucuslar icin zorunlu
+    /// </summary>
+    public string? PassportExpiry { get; set; }
     public string Nationality { get; set; } = "TR";
 
     /// <summary>

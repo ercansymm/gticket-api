@@ -1729,9 +1729,14 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             var passportNoValue = hasPassportNo ? pax.PassportNo! : (hasCitizenNo ? "" : "");
             var passportCountryValue = hasPassportNo ? (pax.PassportCountry ?? pax.Nationality) : (hasCitizenNo ? "" : "");
 
+            // PassportValidDate: yurt disi ucuslarda pasaport gecerlilik tarihi
+            var passportValidDateValue = hasPassportNo && !string.IsNullOrWhiteSpace(pax.PassportExpiry)
+                ? pax.PassportExpiry
+                : null;
+
             // BiletBank dokumantasyonundaki element sirasi:
             // BirthDate, CitizenNo, Email, FirstName, Gender, Id, IfContact, LastName,
-            // Nationality, PassportCountry, PassportNo, Phone, SequenceNo, TempTag, Type, WheelChairServiceType
+            // Nationality, PassportCountry, PassportNo, PassportValidDate, PaxReferences, Phone, SequenceNo, TempTag, Type, WheelChairServiceType
             var safeFirstName = SecurityElement.Escape(pax.FirstName) ?? "";
             var safeLastName = SecurityElement.Escape(pax.LastName) ?? "";
             var safeEmail = isContact ? (SecurityElement.Escape(request.Contact.Email) ?? "") : "";
@@ -1756,6 +1761,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:Nationality>{safeNationality}</trev2:Nationality>
               <trev2:PassportCountry>{safePassportCountry}</trev2:PassportCountry>
               <trev2:PassportNo>{safePassportNo}</trev2:PassportNo>
+              {(passportValidDateValue != null ? $"<trev2:PassportValidDate>{passportValidDateValue}</trev2:PassportValidDate>" : "<trev2:PassportValidDate i:nil=\"true\"/>")}
               <trev2:PaxReferences i:nil=""true""/>
               <trev2:Phone>{phoneNumber}</trev2:Phone>
               <trev2:SequenceNo>{pax.SequenceNo}</trev2:SequenceNo>
