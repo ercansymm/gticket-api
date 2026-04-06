@@ -2243,8 +2243,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 if (use3D)
                 {
                     soapAction = "http://tempuri.org/I_Shopping/MakePayment_Init3DPayment";
-                    var continueUrl = SecurityElement.Escape(request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback");
-
+var callbackBase = request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback";
+var continueUrl = SecurityElement.Escape($"{callbackBase}?sfid={request.ShoppingFileId}");
                     soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
