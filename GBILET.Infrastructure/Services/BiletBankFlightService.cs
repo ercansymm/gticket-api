@@ -1731,7 +1731,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
 
             // PassportValidDate: yurt disi ucuslarda pasaport gecerlilik tarihi
             var passportValidDateValue = hasPassportNo && !string.IsNullOrWhiteSpace(pax.PassportExpiry)
-                ? pax.PassportExpiry
+                ? (pax.PassportExpiry!.Contains('T') ? pax.PassportExpiry.Split('T')[0] : pax.PassportExpiry)
                 : null;
 
             // BiletBank dokumantasyonundaki element sirasi:
