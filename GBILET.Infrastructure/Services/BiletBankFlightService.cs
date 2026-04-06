@@ -71,14 +71,147 @@ public class BiletBankFlightService : IFlightService
             return new AirSearchResponse
             {
                 HasError = true,
-                ErrorMessage = $"Login hatas�: {loginResult.ErrorMessage}"
+                ErrorMessage = $"Login hatası: {loginResult.ErrorMessage}"
             };
         }
 
-        var response = await AirSearchAsync(loginResult.SessionId!, loginResult.SessionToken!, request);
-        response.SessionId = loginResult.SessionId;
-        response.SessionToken = loginResult.SessionToken;
-        return response;
+        var sessionId = loginResult.SessionId!;
+        var sessionToken = loginResult.SessionToken!;
+
+        // Comma-separated origin/destination desteği: her IATA kodu için ayrı AirSearch yap
+        var origins = request.Origin.Contains(',')
+            ? request.Origin.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : new[] { request.Origin };
+
+        var destinations = request.Destination.Contains(',')
+            ? request.Destination.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : new[] { request.Destination };
+
+        // Tek origin + tek destination → normal akış
+        if (origins.Length == 1 && destinations.Length == 1)
+        {
+            var response = await AirSearchAsync(sessionId, sessionToken, request);
+            response.SessionId = sessionId;
+            response.SessionToken = sessionToken;
+            return response;
+        }
+
+        // Birden fazla origin/destination → paralel arama + sonuçları birleştir
+        var searchTasks = new List<Task<AirSearchResponse>>();
+        foreach (var origin in origins)
+        {
+            foreach (var destination in destinations)
+            {
+                var singleRequest = new SearchRequest
+                {
+                    Origin = origin,
+                    Destination = destination,
+                    OriginCountryCode = request.OriginCountryCode,
+                    DestinationCountryCode = request.DestinationCountryCode,
+                    OriginIsCity = request.OriginIsCity,
+                    DestinationIsCity = request.DestinationIsCity,
+                    DepartureDate = request.DepartureDate,
+                    ReturnDate = request.ReturnDate,
+                    FlightType = request.FlightType,
+                    FlightClass = request.FlightClass,
+                    AdultCount = request.AdultCount,
+                    ChildCount = request.ChildCount,
+                    InfantCount = request.InfantCount,
+                    DirectFlightsOnly = request.DirectFlightsOnly,
+                    RefundablesOnly = request.RefundablesOnly,
+                    SearchTimeoutMilliseconds = request.SearchTimeoutMilliseconds,
+                    PreferredAirlines = request.PreferredAirlines,
+                    SearchReason = request.SearchReason,
+                };
+                searchTasks.Add(AirSearchAsync(sessionId, sessionToken, singleRequest));
+            }
+        }
+
+        AirSearchResponse[] results;
+        try
+        {
+            results = await Task.WhenAll(searchTasks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[SearchFlight] Multi-origin parallel search failed");
+            return new AirSearchResponse
+            {
+                HasError = true,
+                ErrorMessage = $"Çoklu havalimanı araması başarısız: {ex.Message}"
+            };
+        }
+
+        // Sonuçları birleştir
+        var merged = MergeAirSearchResponses(results, sessionId, sessionToken);
+        return merged;
+    }
+
+    /// <summary>
+    /// Birden fazla AirSearch sonucunu birleştirir ve flight number + departure time'a göre deduplicate eder.
+    /// </summary>
+    private AirSearchResponse MergeAirSearchResponses(AirSearchResponse[] responses, string sessionId, string sessionToken)
+    {
+        var merged = new AirSearchResponse
+        {
+            HasError = false,
+            SessionId = sessionId,
+            SessionToken = sessionToken,
+        };
+
+        // İlk başarılı response'tan SearchId ve ShoppingFileId al
+        var firstSuccess = responses.FirstOrDefault(r => !r.HasError);
+        if (firstSuccess != null)
+        {
+            merged.SearchId = firstSuccess.SearchId;
+            merged.ShoppingFileId = firstSuccess.ShoppingFileId;
+        }
+
+        // Tüm başarısızsa hata dön
+        if (responses.All(r => r.HasError))
+        {
+            merged.HasError = true;
+            merged.ErrorMessage = responses.FirstOrDefault(r => r.ErrorMessage != null)?.ErrorMessage
+                ?? "Tüm arama istekleri başarısız oldu.";
+            return merged;
+        }
+
+        // FlightOption'ları birleştir ve deduplicate et
+        var seen = new HashSet<string>();
+        foreach (var resp in responses.Where(r => !r.HasError))
+        {
+            foreach (var fo in resp.FlightOptions)
+            {
+                var key = BuildFlightDeduplicationKey(fo);
+                if (seen.Add(key))
+                {
+                    merged.FlightOptions.Add(fo);
+                }
+            }
+
+            foreach (var rb in resp.RecommendationBoxes)
+            {
+                merged.RecommendationBoxes.Add(rb);
+            }
+        }
+
+        _logger.LogInformation(
+            "[MergeAirSearch] {TotalResponses} response merged → {FlightCount} unique flights",
+            responses.Length, merged.FlightOptions.Count);
+
+        return merged;
+    }
+
+    /// <summary>
+    /// FlightOption için deduplicate anahtarı oluşturur: flight number + departure time.
+    /// </summary>
+    private static string BuildFlightDeduplicationKey(FlightOption fo)
+    {
+        if (fo.Segments.Count == 0)
+            return fo.ProductId ?? Guid.NewGuid().ToString();
+
+        return string.Join("|", fo.Segments.Select(s =>
+            $"{s.MarketingAirline}{s.FlightNumber}_{s.DepartureDay}_{s.DepartureTime}_{s.OriginCode}_{s.DestinationCode}"));
     }
 
     public async Task<FlightSearchResponseDto> SearchFlightDtoAsync(SearchRequest request)
