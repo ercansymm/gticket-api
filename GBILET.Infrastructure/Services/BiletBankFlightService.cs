@@ -2837,11 +2837,26 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             var shoppingFileId = request.ShoppingFileId ?? "";
             var productId = request.ProductId ?? "";
 
+            // BillingInfo — null ise varsayilan degerler kullanilir
+            var billing = request.BillingInfo ?? new ShoppingBillingInfo();
+            var billingXml = $@"<trev1:BillingInfo>
+               <trev2:Address_City>{SecurityElement.Escape(billing.AddressCity)}</trev2:Address_City>
+               <trev2:Address_Detail>{SecurityElement.Escape(billing.AddressDetail)}</trev2:Address_Detail>
+               <trev2:Address_District>{SecurityElement.Escape(billing.AddressDistrict)}</trev2:Address_District>
+               <trev2:Address_ZipCode>{SecurityElement.Escape(billing.AddressZipCode)}</trev2:Address_ZipCode>
+               <trev2:BillingName>{SecurityElement.Escape(billing.BillingName)}</trev2:BillingName>
+               <trev2:CountryCode>{SecurityElement.Escape(billing.CountryCode)}</trev2:CountryCode>
+               <trev2:IfCompany>{billing.IfCompany}</trev2:IfCompany>
+               <trev2:TaxNo>{SecurityElement.Escape(billing.TaxNo)}</trev2:TaxNo>
+               <trev2:TaxOffice>{SecurityElement.Escape(billing.TaxOffice)}</trev2:TaxOffice>
+            </trev1:BillingInfo>";
+
             var soapRequest = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
 xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base""
 xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping""
+xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Shopping""
 xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
 <soap:Body>
    <tem:FinalizeShopping>
@@ -2857,8 +2872,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             </trev:ExtendedData>
          </trev:ExtraParamList>
          <trev1:Form>
-            <trev1:BillingInfo i:nil=""true""/>
-            <trev1:CorporatePin i:nil=""true""/>
+            {billingXml}
             <trev1:ShoppingFileId>{shoppingFileId}</trev1:ShoppingFileId>
          </trev1:Form>
       </tem:request>

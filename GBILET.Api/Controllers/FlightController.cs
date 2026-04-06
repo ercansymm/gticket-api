@@ -545,7 +545,8 @@ public class FlightController : ControllerBase
                 SessionToken = request.SessionToken,
                 ShoppingFileId = request.ShoppingFileId,
                 BookingId = request.BookingId,
-                ProductId = request.ProductId
+                ProductId = request.ProductId,
+                BillingInfo = request.BillingInfo
             }, TimeSpan.FromMinutes(15));
 
             var result = await _flightService.MakePaymentAsync(request);
@@ -671,6 +672,12 @@ public class FlightController : ControllerBase
             _logger.LogInformation("[3DCallback] Request received. Method={Method}, ContentType={ContentType}",
                 Request.Method, Request.ContentType);
 
+            // Gelen tum query string parametrelerini logla
+            foreach (var key in Request.Query.Keys)
+            {
+                _logger.LogInformation("[3DCallback] QueryString param: {Key}={Value}", key, Request.Query[key].ToString());
+            }
+
             // Bankadan gelen tum form parametrelerini topla
             var bankParams = new Dictionary<string, string>();
 
@@ -705,6 +712,7 @@ public class FlightController : ControllerBase
             var shoppingFileId = Request.Query["sfid"].ToString();
             var bookingId = Guid.TryParse(Request.Query["bid"].ToString(), out var bid) ? bid : (Guid?)null;
             string? productId = null;
+            ShoppingBillingInfo? billingInfo = null;
 
             // Query string'te yoksa cache'ten dene
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(sessionToken))
@@ -718,6 +726,7 @@ public class FlightController : ControllerBase
                     shoppingFileId = cached.ShoppingFileId;
                     bookingId = cached.BookingId;
                     productId = cached.ProductId;
+                    billingInfo = cached.BillingInfo;
                     _logger.LogInformation("[3DCallback] Session cache'ten alindi. ShoppingFileId={ShoppingFileId}, ProductId={ProductId}", shoppingFileId, productId);
                 }
                 else
@@ -728,12 +737,13 @@ public class FlightController : ControllerBase
             }
             else
             {
-                // Query string'ten session alindiysa cache'ten ProductId'yi al
+                // Query string'ten session alindiysa cache'ten ProductId ve BillingInfo'yu al
                 if (!string.IsNullOrEmpty(shoppingFileId)
                     && _cache.TryGetValue<ThreeDSessionData>($"3d_session_{shoppingFileId}", out var cached)
                     && cached != null)
                 {
                     productId = cached.ProductId;
+                    billingInfo = cached.BillingInfo;
                 }
             }
 
@@ -797,7 +807,8 @@ public class FlightController : ControllerBase
                             SessionToken = sessionToken,
                             ShoppingFileId = shoppingFileId,
                             ProductId = productId,
-                            BookingId = bookingId
+                            BookingId = bookingId,
+                            BillingInfo = billingInfo
                         });
 
                         if (!finalizeResult.HasError)
@@ -1768,7 +1779,8 @@ public class FlightController : ControllerBase
                 SessionId = allocateResult.SessionId!,
                 SessionToken = allocateResult.SessionToken!,
                 ShoppingFileId = preBookResult.ShoppingFileId!,
-                BookingId = savedBookingId
+                BookingId = savedBookingId,
+                ProductId = airBooking?.ProductId
             }, TimeSpan.FromMinutes(15));
 
             var paymentRequest = new MakePaymentRequest

@@ -74,6 +74,12 @@ public class MakePaymentRequest
     /// sunucu kendi base URL'ini kullanir.
     /// </summary>
     public string? ContinueUrl { get; set; }
+
+    /// <summary>
+    /// Fatura bilgileri (FinalizeShopping icin cache'e kaydedilir).
+    /// 3D Secure akisinda callback sonrasi FinalizeShopping'e iletilir.
+    /// </summary>
+    public ShoppingBillingInfo? BillingInfo { get; set; }
 }
 
 public class CreditCardInfo
