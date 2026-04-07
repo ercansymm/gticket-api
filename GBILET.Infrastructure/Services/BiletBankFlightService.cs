@@ -1290,7 +1290,14 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                       <trev1:Amount>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
                       <trev1:ProductItemServiceFee i:nil=""true""/>
                    </trev1:SelectedServiceFee>
-                   <trev1:SubOptions i:nil=""true""/>
+                   {((!string.IsNullOrEmpty(request.DepartureFlightId) || !string.IsNullOrEmpty(request.ReturnFlightId)) ? $@"<trev1:SubOptions>{(!string.IsNullOrEmpty(request.DepartureFlightId) ? $@"
+                      <trev1:IO_AllocationSubOption>
+                         <trev1:FlightId>{request.DepartureFlightId}</trev1:FlightId>
+                      </trev1:IO_AllocationSubOption>" : "")}{(!string.IsNullOrEmpty(request.ReturnFlightId) ? $@"
+                      <trev1:IO_AllocationSubOption>
+                         <trev1:FlightId>{request.ReturnFlightId}</trev1:FlightId>
+                      </trev1:IO_AllocationSubOption>" : "")}
+                   </trev1:SubOptions>" : @"<trev1:SubOptions i:nil=""true""/>")}
                 </trev1:IO_AllocationItem>
              </trev1:SelectedItems>
           </trev1:Form>

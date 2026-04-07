@@ -234,6 +234,9 @@ public static class FlightSearchMapper
             IsRoundTripBundle = true,
             IsReturnLeg = isReturnLeg,
             BundleProductId = rb.ProductId,
+
+            DepartureFlightId = isReturnLeg ? null : flight.FlightId,
+            ReturnFlightId = isReturnLeg ? flight.FlightId : null,
         };
     }
 

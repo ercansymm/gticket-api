@@ -114,6 +114,16 @@ public class FlightResultDto
     /// Dönüş bacağı için asıl RecommendationBox ProductId'si — allocate bu ID ile yapılır.
     /// </summary>
     public string? BundleProductId { get; set; }
+
+    /// <summary>
+    /// Gidiş bacağının FlightId'si — allocate SubOptions için.
+    /// </summary>
+    public string? DepartureFlightId { get; set; }
+
+    /// <summary>
+    /// Dönüş bacağının FlightId'si — allocate SubOptions için.
+    /// </summary>
+    public string? ReturnFlightId { get; set; }
 }
 
 public class FlightSegmentDto

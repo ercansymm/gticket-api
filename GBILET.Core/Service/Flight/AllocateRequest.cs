@@ -35,4 +35,14 @@ public class AllocateRequest
     /// Gonderilmezse sistem otomatik en dusuk paketi secer.
     /// </summary>
     public string? BrandedFareItemId { get; set; }
+
+    /// <summary>
+    /// RecommendationBox gidis bacaginin FlightId'si — SubOptions icin.
+    /// </summary>
+    public string? DepartureFlightId { get; set; }
+
+    /// <summary>
+    /// RecommendationBox donus bacaginin FlightId'si — SubOptions icin.
+    /// </summary>
+    public string? ReturnFlightId { get; set; }
 }
