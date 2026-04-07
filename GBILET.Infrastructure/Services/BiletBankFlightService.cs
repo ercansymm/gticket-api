@@ -1283,7 +1283,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
          <trev1:Form>
              <trev1:SelectedItems>
                 <trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(request.BrandedFareItemId) ? $@"
-                   <trev1:BrandedFareItemId>{request.BrandedFareItemId}</trev1:BrandedFareItemId>" : "")}
+                   <trev1:BrandedFareItemId>{request.BrandedFareItemId}</trev1:BrandedFareItemId>" : @"
+                   <trev1:BrandedFareItemId i:nil=""true""/>")}
                    <trev1:ProductId>{request.ProductId}</trev1:ProductId>
                    <trev1:SelectedServiceFee>
                       <trev1:Amount>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
