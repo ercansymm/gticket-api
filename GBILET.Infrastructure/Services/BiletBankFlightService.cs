@@ -1121,14 +1121,22 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             TotalFare = rb.GetDecimalValue("TotalFare")
         };
 
-        foreach (var of in rb.GetDescendants("OutboundFlight"))
+        var departureFlights = rb.GetElement("DepartureFlights");
+        if (departureFlights != null)
         {
-            box.OutboundFlights.Add(ParseRecommendationFlight(of));
+            foreach (var of in departureFlights.GetElements("A_Flight"))
+            {
+                box.OutboundFlights.Add(ParseRecommendationFlight(of));
+            }
         }
 
-        foreach (var inf in rb.GetDescendants("InboundFlight"))
+        var returnFlights = rb.GetElement("ReturnFlights");
+        if (returnFlights != null)
         {
-            box.InboundFlights.Add(ParseRecommendationFlight(inf));
+            foreach (var inf in returnFlights.GetElements("A_Flight"))
+            {
+                box.InboundFlights.Add(ParseRecommendationFlight(inf));
+            }
         }
 
         var brandedFaresElement = rb.GetElement("BrandedFares");
@@ -1170,7 +1178,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             Duration = flight.GetIntValue("Duration")
         };
 
-        foreach (var seg in flight.GetDescendants("T_Segment"))
+        foreach (var seg in flight.GetDescendants("A_FlightSegment"))
         {
             rf.Segments.Add(ParseSegment(seg));
         }
