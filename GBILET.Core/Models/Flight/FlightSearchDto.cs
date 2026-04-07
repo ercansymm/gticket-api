@@ -98,6 +98,22 @@ public class FlightResultDto
 
     // Bagaj bilgisi özeti
     public BaggageInfoDto? BaggageInfo { get; set; }
+
+    // RecommendationBox (RT bundle) alanları
+    // BiletBank RT aramasında T_FlightOption yerine T_RecommendationBox dönebilir.
+    // Bu durumda gidiş+dönüş tek bir ürün olarak paketlenir.
+    /// <summary>
+    /// true ise bu uçuş bir RecommendationBox'tan gelmiş RT bundle'ıdır.
+    /// </summary>
+    public bool IsRoundTripBundle { get; set; }
+    /// <summary>
+    /// Bundle içindeki dönüş bacağı mı? true ise IsReturnLeg=true, allocate için BundleProductId kullanılır.
+    /// </summary>
+    public bool IsReturnLeg { get; set; }
+    /// <summary>
+    /// Dönüş bacağı için asıl RecommendationBox ProductId'si — allocate bu ID ile yapılır.
+    /// </summary>
+    public string? BundleProductId { get; set; }
 }
 
 public class FlightSegmentDto

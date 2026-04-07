@@ -69,9 +69,163 @@ public static class FlightSearchMapper
             dto.Flights.Add(flight);
         }
 
+        // FlightOption yoksa (RT aramalarda BiletBank yalnızca RecommendationBox dönebilir):
+        // Her RecommendationBox'ı gidiş + dönüş olarak iki ayrı FlightResultDto'ya dönüştür.
+        if (response.FlightOptions.Count == 0 && response.RecommendationBoxes.Count > 0)
+        {
+            foreach (var rb in response.RecommendationBoxes)
+            {
+                var rbFlights = MapRecommendationBox(rb, logger);
+                dto.Flights.AddRange(rbFlights);
+            }
+        }
+
         dto.FilterOptions = BuildFilterOptions(dto.Flights);
 
         return dto;
+    }
+
+    /// <summary>
+    /// Bir RecommendationBox'ı iki FlightResultDto'ya dönüştürür:
+    ///   1. Gidiş bacağı (OutboundFlights) — IsRoundTripBundle=true, IsReturnLeg=false
+    ///   2. Dönüş bacağı (InboundFlights)  — IsRoundTripBundle=true, IsReturnLeg=true
+    /// Her iki DTO da aynı ProductId'yi paylaşır (RT bundle tek bir allocate ile rezerve edilir).
+    /// </summary>
+    private static List<FlightResultDto> MapRecommendationBox(RecommendationBox rb, ILogger? logger)
+    {
+        var result = new List<FlightResultDto>();
+
+        // Gidiş bacakları
+        foreach (var outbound in rb.OutboundFlights)
+        {
+            var dto = MapRecommendationFlight(outbound, rb, isReturnLeg: false, logger);
+            if (dto != null) result.Add(dto);
+        }
+
+        // Dönüş bacakları — segment SequenceNo'ları 2'ye zorla (frontend split için)
+        foreach (var inbound in rb.InboundFlights)
+        {
+            // Inbound segmentlerin SequenceNo'sunu 2 yap
+            foreach (var seg in inbound.Segments)
+                seg.SequenceNo = 2;
+
+            var dto = MapRecommendationFlight(inbound, rb, isReturnLeg: true, logger);
+            if (dto != null) result.Add(dto);
+        }
+
+        return result;
+    }
+
+    private static FlightResultDto? MapRecommendationFlight(
+        RecommendationFlight flight,
+        RecommendationBox rb,
+        bool isReturnLeg,
+        ILogger? logger)
+    {
+        if (flight.Segments.Count == 0) return null;
+
+        var firstSeg = flight.Segments.First();
+        var lastSeg = flight.Segments.Last();
+
+        var segmentDtos = new List<FlightSegmentDto>();
+        for (int i = 0; i < flight.Segments.Count; i++)
+        {
+            var seg = flight.Segments[i];
+            var segDto = MapSegment(seg);
+
+            if (i > 0)
+            {
+                var prevSeg = flight.Segments[i - 1];
+                var layover = CalculateLayoverMinutes(prevSeg, seg);
+                if (layover.HasValue)
+                {
+                    segDto.LayoverMinutes = layover.Value;
+                    segDto.LayoverFormatted = FormatDuration(layover.Value);
+                }
+            }
+
+            segmentDtos.Add(segDto);
+        }
+
+        var (totalHours, totalMinutes, totalDurationMinutes) = CalculateTotalDuration(firstSeg, lastSeg);
+        int stopCount = flight.Segments.Count - 1;
+        bool isDirect = stopCount == 0;
+        string stopText = BuildStopText(flight.Segments, stopCount, isDirect);
+
+        string airlineCode = firstSeg.MarketingAirline ?? "";
+        string airlineName = FlightMappings.GetAirlineName(airlineCode);
+        string originCode = firstSeg.OriginCode ?? "";
+        string destinationCode = lastSeg.DestinationCode ?? "";
+        var cabinClass = DetermineCabinClass(firstSeg.BookingClass, firstSeg.FareType);
+        var cabinClassName = FlightMappings.GetFareTypeName(cabinClass);
+
+        // ProductId: gidiş ve dönüş bacağı aynı box.ProductId'yi paylaşır.
+        // Dönüş bacağına "_ret" suffix ekleriz ki frontend duplikat olarak görmesin.
+        // Allocate'te BundleProductId (asıl) kullanılır.
+        var productId = isReturnLeg
+            ? $"{rb.ProductId}_ret_{flight.FlightId ?? originCode}"
+            : rb.ProductId;
+
+        return new FlightResultDto
+        {
+            ProductId = productId,
+            ProductItemId = rb.ProductId, // her iki bacak için de asıl ID
+
+            AirlineCode = airlineCode,
+            AirlineName = airlineName,
+            FlightNumber = firstSeg.FlightNumber,
+
+            OriginCode = originCode,
+            OriginName = FlightMappings.GetAirportName(originCode),
+            DestinationCode = destinationCode,
+            DestinationName = FlightMappings.GetAirportName(destinationCode),
+
+            DepartureDate = firstSeg.DepartureDay,
+            DepartureTime = firstSeg.DepartureTime,
+            ArrivalDate = lastSeg.ArrivalDay,
+            ArrivalTime = lastSeg.ArrivalTime,
+            DurationHours = totalHours,
+            DurationMinutes = totalMinutes,
+            DurationFormatted = FormatDuration(totalDurationMinutes),
+
+            Equipment = firstSeg.Equipment,
+
+            // Fiyat: RecommendationBox'taki combined fiyat (gidiş+dönüş toplamı)
+            BaseFare = rb.BaseFare,
+            Taxes = rb.Taxes,
+            ServiceFee = rb.ServiceFee,
+            TotalFare = rb.TotalFare,
+            Currency = rb.Currency ?? "TRY",
+            TotalFareFormatted = FormatPrice(rb.TotalFare, rb.Currency ?? "TRY"),
+
+            IsRefundable = false,
+            IsReservable = true,
+            RefundableText = "İade politikası için araştırın",
+
+            FareType = FlightMappings.GetFareTypeName(firstSeg.FareType),
+            BookingClass = firstSeg.BookingClass,
+            BookingClassName = FlightMappings.GetBookingClassName(firstSeg.BookingClass),
+            CabinClass = cabinClass,
+            CabinClassName = cabinClassName,
+
+            AvailableSeats = 0,
+            AvailableSeatsText = null,
+
+            StopCount = stopCount,
+            IsDirect = isDirect,
+            StopText = stopText,
+
+            Segments = segmentDtos,
+
+            FarePackages = [],
+            BaggageInfo = null,
+            FreeBaggageAllowances = [],
+
+            // Bundle marker alanları
+            IsRoundTripBundle = true,
+            IsReturnLeg = isReturnLeg,
+            BundleProductId = rb.ProductId,
+        };
     }
 
     private static FlightResultDto MapFlightOption(FlightOption option, ILogger? logger)
