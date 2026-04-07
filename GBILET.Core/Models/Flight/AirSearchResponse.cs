@@ -222,6 +222,11 @@ public class RecommendationBox
     public List<RecommendationFlight> OutboundFlights { get; set; } = [];
     public List<RecommendationFlight> InboundFlights { get; set; } = [];
     public List<BrandedFareItem> BrandedFareItems { get; set; } = [];
+    /// <summary>
+    /// DepartureFlights + ReturnFlights altındaki tüm FlightId'ler (önce departure, sonra return).
+    /// Allocate SubOptions için kullanılır.
+    /// </summary>
+    public List<Guid> SubOptionFlightIds { get; set; } = [];
 }
 
 public class RecommendationFlight

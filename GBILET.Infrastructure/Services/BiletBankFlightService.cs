@@ -1168,6 +1168,15 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             }
         }
 
+        // SubOptionFlightIds: DepartureFlights + ReturnFlights altındaki tüm FlightId'leri topla
+        box.SubOptionFlightIds = box.OutboundFlights
+            .Where(f => Guid.TryParse(f.FlightId, out _))
+            .Select(f => Guid.Parse(f.FlightId!))
+            .Concat(box.InboundFlights
+                .Where(f => Guid.TryParse(f.FlightId, out _))
+                .Select(f => Guid.Parse(f.FlightId!)))
+            .ToList();
+
         return box;
     }
 
@@ -1290,14 +1299,11 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                       <trev1:Amount>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
                       <trev1:ProductItemServiceFee i:nil=""true""/>
                    </trev1:SelectedServiceFee>
-                   {((!string.IsNullOrEmpty(request.DepartureFlightId) || !string.IsNullOrEmpty(request.ReturnFlightId)) ? $@"<trev1:SubOptions>{(!string.IsNullOrEmpty(request.DepartureFlightId) ? $@"
-                      <trev1:IO_AllocationSubOption>
-                         <trev1:FlightId>{request.DepartureFlightId}</trev1:FlightId>
-                      </trev1:IO_AllocationSubOption>" : "")}{(!string.IsNullOrEmpty(request.ReturnFlightId) ? $@"
-                      <trev1:IO_AllocationSubOption>
-                         <trev1:FlightId>{request.ReturnFlightId}</trev1:FlightId>
-                      </trev1:IO_AllocationSubOption>" : "")}
-                   </trev1:SubOptions>" : @"<trev1:SubOptions i:nil=""true""/>")}
+                   {(request.SubOptions != null && request.SubOptions.Count > 0
+                    ? $@"<trev1:SubOptions>{string.Join("", request.SubOptions.Select(g => $@"
+                      <arr:guid>{g:D}</arr:guid>"))}
+                   </trev1:SubOptions>"
+                    : @"<trev1:SubOptions i:nil=""true""/>")}
                 </trev1:IO_AllocationItem>
              </trev1:SelectedItems>
           </trev1:Form>

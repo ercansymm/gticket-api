@@ -124,6 +124,11 @@ public class FlightResultDto
     /// Dönüş bacağının FlightId'si — allocate SubOptions için.
     /// </summary>
     public string? ReturnFlightId { get; set; }
+
+    /// <summary>
+    /// RecommendationBox sonuçları için tüm gidiş+dönüş FlightId listesi — Allocate SubOptions için.
+    /// </summary>
+    public List<Guid>? SubOptionFlightIds { get; set; }
 }
 
 public class FlightSegmentDto

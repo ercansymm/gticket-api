@@ -237,6 +237,7 @@ public static class FlightSearchMapper
 
             DepartureFlightId = isReturnLeg ? null : flight.FlightId,
             ReturnFlightId = isReturnLeg ? flight.FlightId : null,
+            SubOptionFlightIds = rb.SubOptionFlightIds.Count > 0 ? rb.SubOptionFlightIds : null,
         };
     }
 

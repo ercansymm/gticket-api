@@ -45,4 +45,9 @@ public class AllocateRequest
     /// RecommendationBox donus bacaginin FlightId'si — SubOptions icin.
     /// </summary>
     public string? ReturnFlightId { get; set; }
+
+    /// <summary>
+    /// RecommendationBox RT sonuçları için gidiş+dönüş FlightId listesi — Allocate SubOptions olarak gönderilir.
+    /// </summary>
+    public List<Guid>? SubOptions { get; set; }
 }
