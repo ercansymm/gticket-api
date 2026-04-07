@@ -875,21 +875,22 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 
     private static FlightSegment ParseSegment(XElement seg)
     {
+        // Fallback: T_Segment (OW) ve A_FlightSegment (RT) farklı element isimleri kullanıyor
         var rawDepartureTime = seg.GetValue("DepartureTime");
         var rawArrivalTime = seg.GetValue("ArrivalTime");
-        var rawDuration = seg.GetValue("Duration");
+        var rawDuration = seg.GetValue("Duration") ?? seg.GetValue("FlightDuration");
 
         return new FlightSegment
         {
             SegmentId = seg.GetValue("SegmentId"),
             SequenceNo = seg.GetIntValue("SequenceNo"),
-            OriginCode = seg.GetValue("OriginCode"),
-            DestinationCode = seg.GetValue("DestinationCode"),
+            OriginCode = seg.GetValue("OriginCode") ?? seg.GetValue("DepartureAirport"),
+            DestinationCode = seg.GetValue("DestinationCode") ?? seg.GetValue("ArrivalAirport"),
             OD_OriginCode = seg.GetValue("OD_OriginCode"),
             OD_DestinationCode = seg.GetValue("OD_DestinationCode"),
-            DepartureDay = FormatDay(seg.GetValue("DepartureDay")),
+            DepartureDay = FormatDay(seg.GetValue("DepartureDay") ?? seg.GetValue("DepartureDate")),
             DepartureTime = FormatIso8601DurationAsTime(rawDepartureTime),
-            ArrivalDay = FormatDay(seg.GetValue("ArrivalDay")),
+            ArrivalDay = FormatDay(seg.GetValue("ArrivalDay") ?? seg.GetValue("ArrivalDate")),
             ArrivalTime = FormatIso8601DurationAsTime(rawArrivalTime),
             MarketingAirline = seg.GetValue("MarketingAirline"),
             OperatingAirline = seg.GetValue("OperatingAirline"),
