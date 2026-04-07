@@ -106,23 +106,6 @@ public class BiletBankFlightService : IFlightService
         {
             foreach (var destination in destinations)
             {
-                // Her sub-search için ayrı session aç — aynı sessionId ile sıralı istek
-                // yapılsa bile BiletBank RT aramalarında session lock'u daha uzun tuttuğundan
-                // SessionLockDuplicateCall hatası oluşuyordu.
-                var subLogin = await LoginAsync();
-                if (subLogin.HasError)
-                {
-                    _logger.LogWarning(
-                        "[SearchFlight] Sub-search login failed: {Origin} → {Destination}. Error: {Error}",
-                        origin, destination, subLogin.ErrorMessage);
-                    results.Add(new AirSearchResponse
-                    {
-                        HasError = true,
-                        ErrorMessage = $"Login hatası: {subLogin.ErrorMessage}"
-                    });
-                    continue;
-                }
-
                 var singleRequest = new SearchRequest
                 {
                     Origin = origin,
@@ -149,10 +132,10 @@ public class BiletBankFlightService : IFlightService
                 };
 
                 _logger.LogInformation(
-                    "[SearchFlight] Sequential sub-search: {Origin} → {Destination} (SessionId: {Sid})",
-                    origin, destination, subLogin.SessionId);
+                    "[SearchFlight] Sequential sub-search: {Origin} → {Destination}",
+                    origin, destination);
 
-                var subResult = await AirSearchAsync(subLogin.SessionId!, subLogin.SessionToken!, singleRequest);
+                var subResult = await AirSearchAsync(sessionId, sessionToken, singleRequest);
                 results.Add(subResult);
             }
         }

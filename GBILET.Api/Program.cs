@@ -99,6 +99,9 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<GTicketDbContext>();
     db.Database.EnsureCreated();
 
+    // CityCode kolonu entity'ye sonradan eklendi — mevcut DB'de yoksa oluştur
+    db.Database.ExecuteSqlRaw(@"ALTER TABLE IF EXISTS ""Airports"" ADD COLUMN IF NOT EXISTS ""CityCode"" varchar(10)");
+
     // === Havalimanı Seed ===
     var airportSeeder = scope.ServiceProvider.GetRequiredService<AirportSeeder>();
     await airportSeeder.SeedAsync();

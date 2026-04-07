@@ -83,7 +83,8 @@ public class AirportSeeder
                     Timezone = dto.Timezone,
                     Latitude = dto.Latitude,
                     Longitude = dto.Longitude,
-                    //CityCode = dto.IataCode.ToUpperInvariant(), // Varsayılan olarak IATA kodu
+                    CityCode = dto.CityCode??
+                        (CityCodeMap.TryGetValue(dto.IataCode, out var cc) ? cc : dto.IataCode.ToUpperInvariant()),
                     Type = dto.Type ?? "airport",
                     IsDomestic = dto.IsDomestic,
                     IsPopular = dto.IsPopular,
@@ -112,12 +113,37 @@ public class AirportSeeder
             {
                 _logger.LogInformation("Yüklenecek yeni havalimanı bulunamadı.");
             }
+
+            // Mevcut kayıtlarda CityCode null olanları güncelle
+            await UpdateMissingCityCodesAsync();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Havalimanı seed hatası!");
             throw;
         }
+    }
+
+    /// <summary>
+    /// CityCode null olan mevcut kayıtları CityCodeMap'e göre günceller.
+    /// </summary>
+    private async Task UpdateMissingCityCodesAsync()
+    {
+        var toUpdate = await _db.Airports
+            .Where(a => a.CityCode == null)
+            .ToListAsync();
+
+        if (toUpdate.Count == 0) return;
+
+        foreach (var airport in toUpdate)
+        {
+            airport.CityCode = CityCodeMap.TryGetValue(airport.IataCode, out var cc)
+                ? cc
+                : airport.IataCode;
+        }
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("{Count} havalimanı için CityCode güncellendi.", toUpdate.Count);
     }
 
     /// <summary>
@@ -146,6 +172,36 @@ public class AirportSeeder
     }
 
     /// <summary>
+    /// IATA havalimanı kodu → şehir kodu eşleşmesi.
+    /// Seed JSON'da cityCode yoksa buradan alınır.
+    /// </summary>
+    private static readonly Dictionary<string, string> CityCodeMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // İstanbul — hem IST hem SAW aynı şehir, city code = IST
+        { "IST", "IST" },
+        { "SAW", "IST" },
+        // Ankara — city code = ANK
+        { "ESB", "ANK" },
+        { "ANK", "ANK" },
+        // İzmir — city code = IZM
+        { "ADB", "IZM" },
+        // Londra
+        { "LHR", "LON" }, { "LGW", "LON" }, { "STN", "LON" }, { "LTN", "LON" }, { "LCY", "LON" },
+        // Paris
+        { "CDG", "PAR" }, { "ORY", "PAR" },
+        // New York
+        { "JFK", "NYC" }, { "LGA", "NYC" }, { "EWR", "NYC" },
+        // Tokyo
+        { "NRT", "TYO" }, { "HND", "TYO" },
+        // Stockholm
+        { "ARN", "STO" }, { "BMA", "STO" },
+        // Milan
+        { "MXP", "MIL" }, { "LIN", "MIL" },
+        // Chicago
+        { "ORD", "CHI" }, { "MDW", "CHI" },
+    };
+
+    /// <summary>
     /// JSON dosyasından okumak için DTO sınıfı
     /// </summary>
     private class AirportSeedDto
@@ -162,6 +218,7 @@ public class AirportSeeder
         public string? Timezone { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public string? CityCode { get; set; }
         public string? Type { get; set; }
         public bool IsDomestic { get; set; }
         public bool IsPopular { get; set; }
