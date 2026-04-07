@@ -179,10 +179,29 @@ public class BiletBankFlightService : IFlightService
             return merged;
         }
 
+        // Başarısız sub-search'lerin hata mesajlarını topla (partial failure için tanı)
+        var subErrors = responses
+            .Where(r => r.HasError && !string.IsNullOrEmpty(r.ErrorMessage))
+            .Select(r => r.ErrorMessage!)
+            .Distinct()
+            .ToList();
+
+        if (subErrors.Count > 0)
+        {
+            merged.SubSearchErrors = subErrors;
+            _logger.LogWarning(
+                "[MergeAirSearch] {ErrorCount}/{TotalResponses} sub-search(es) failed. Errors: {Errors}",
+                subErrors.Count, responses.Length, string.Join(" | ", subErrors));
+        }
+
         // FlightOption'ları birleştir ve deduplicate et
         var seen = new HashSet<string>();
         foreach (var resp in responses.Where(r => !r.HasError))
         {
+            _logger.LogInformation(
+                "[MergeAirSearch] Sub-search OK → FlightOptions: {Fo}, RecommendationBoxes: {Rb}",
+                resp.FlightOptions.Count, resp.RecommendationBoxes.Count);
+
             foreach (var fo in resp.FlightOptions)
             {
                 var key = BuildFlightDeduplicationKey(fo);
@@ -199,8 +218,8 @@ public class BiletBankFlightService : IFlightService
         }
 
         _logger.LogInformation(
-            "[MergeAirSearch] {TotalResponses} response merged → {FlightCount} unique flights",
-            responses.Length, merged.FlightOptions.Count);
+            "[MergeAirSearch] {TotalResponses} response merged → {FlightCount} unique flights, {RbCount} recommendation boxes",
+            responses.Length, merged.FlightOptions.Count, merged.RecommendationBoxes.Count);
 
         return merged;
     }
@@ -2459,7 +2478,7 @@ SOAPAction: {soapAction}
             _logger.LogInformation("[MakePayment] SOAP Response:\n{SoapResponse}", responseText);
 
             // Response'u dosyaya yaz — sunucuda debug icin
-            try
+            try 
             {
                 var logFile = Path.Combine(AppContext.BaseDirectory, "logs", "payment-debug.log");
                 var responseLog = $"""

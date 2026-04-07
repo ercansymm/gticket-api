@@ -40,7 +40,8 @@ public static class FlightSearchMapper
             firstFlightOptionBrandedFareCount = response.FlightOptions.FirstOrDefault()?.BrandedFareItems.Count ?? -1,
             firstRecommendationBoxBrandedFareCount = response.RecommendationBoxes.FirstOrDefault()?.BrandedFareItems.Count ?? -1,
             firstFlightOptionXml = response.DebugFirstFlightOptionXml,
-            firstRecommendationBoxXml = response.DebugFirstRecommendationBoxXml
+            firstRecommendationBoxXml = response.DebugFirstRecommendationBoxXml,
+            subSearchErrors = response.SubSearchErrors,
         };
 
         // RecommendationBox'taki BrandedFareItems'ı ProductId bazlı index'le

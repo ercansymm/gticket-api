@@ -17,18 +17,22 @@ public class AirSearchResponse
     public List<RecommendationBox> RecommendationBoxes { get; set; } = [];
 
     /// <summary>
-    /// Ge�ici: XML'deki element isimlerini debug i�in tutar.
+    /// Ge�ici: XML'deki element isimlerini debug i�in tutar.
     /// </summary>
     public List<string>? DebugElementNames { get; set; }
     /// <summary>
-    /// Ge�ici: �lk T_FlightOption'un ilk 2000 karakteri.
+    /// Ge�ici: �lk T_FlightOption'un ilk 2000 karakteri.
     /// </summary>
     public string? DebugFirstFlightOptionXml { get; set; }
     /// <summary>
-    /// Ge�ici: �lk T_RecommendationBox'un ilk 2000 karakteri.
+    /// Ge�ici: �lk T_RecommendationBox'un ilk 2000 karakteri.
     /// </summary>
     public string? DebugFirstRecommendationBoxXml { get; set; }
-}
+    /// <summary>
+    /// Çoklu origin aramasında başarısız olan sub-search'lerin hata mesajları.
+    /// Partial failure (bazı başarılı, bazı hatalı) durumunda diagnostik için kullanılır.
+    /// </summary>
+    public List<string>? SubSearchErrors { get; set; }}
 
 public class FlightOption
 {
