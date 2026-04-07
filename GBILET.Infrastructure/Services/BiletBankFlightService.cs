@@ -96,8 +96,12 @@ public class BiletBankFlightService : IFlightService
             return response;
         }
 
-        // Birden fazla origin/destination → paralel arama + sonuçları birleştir
-        var searchTasks = new List<Task<AirSearchResponse>>();
+        // Birden fazla origin/destination → sıralı arama + sonuçları birleştir
+        // NOT: BiletBank aynı sessionId ile eş zamanlı birden fazla istek gelince
+        // "SessionLockDuplicateCall" hatası döner. Bu yüzden Task.WhenAll yerine
+        // sıralı (sequential) await kullanılıyor — RT aramalarda lock süresi daha uzun
+        // olduğundan paralel çalışmada bu hata RT için düzenli olarak oluşuyordu.
+        var results = new List<AirSearchResponse>();
         foreach (var origin in origins)
         {
             foreach (var destination in destinations)
@@ -126,27 +130,18 @@ public class BiletBankFlightService : IFlightService
                     PreferredAirlines = request.PreferredAirlines,
                     SearchReason = request.SearchReason,
                 };
-                searchTasks.Add(AirSearchAsync(sessionId, sessionToken, singleRequest));
+
+                _logger.LogInformation(
+                    "[SearchFlight] Sequential sub-search: {Origin} → {Destination}",
+                    origin, destination);
+
+                var subResult = await AirSearchAsync(sessionId, sessionToken, singleRequest);
+                results.Add(subResult);
             }
         }
 
-        AirSearchResponse[] results;
-        try
-        {
-            results = await Task.WhenAll(searchTasks);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[SearchFlight] Multi-origin parallel search failed");
-            return new AirSearchResponse
-            {
-                HasError = true,
-                ErrorMessage = $"Çoklu havalimanı araması başarısız: {ex.Message}"
-            };
-        }
-
         // Sonuçları birleştir
-        var merged = MergeAirSearchResponses(results, sessionId, sessionToken);
+        var merged = MergeAirSearchResponses(results.ToArray(), sessionId, sessionToken);
         return merged;
     }
 
