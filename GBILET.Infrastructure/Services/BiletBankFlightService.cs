@@ -1140,16 +1140,21 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             }
         }
 
-        var brandedFaresElement = rb.GetElement("BrandedFares");
+        // BrandedFares: FlightOption ile aynı mantık — GetDescendants kullan
+        // çünkü v2 yapısında BrandedFares > BrandedFareItems (wrapper) > BrandedFareItem şeklinde nested gelebilir
+        var brandedFaresElement = rb.GetElement("BrandedFares")
+            ?? rb.GetDescendants("BrandedFares").FirstOrDefault()
+            ?? rb.GetDescendants("T_BrandedFare_v2").FirstOrDefault();
         if (brandedFaresElement != null)
         {
-            foreach (var bfi in brandedFaresElement.GetElements("BrandedFareItem"))
+            // GetDescendants: hem doğrudan child hem de BrandedFareItems wrapper içindeki öğeleri yakalar
+            foreach (var bfi in brandedFaresElement.GetDescendants("BrandedFareItem"))
             {
                 box.BrandedFareItems.Add(ParseBrandedFareItem(bfi));
             }
 
             // BrandedItem'ları (isim + kurallar) BrandId ile doğru BrandedFareItem'a eşleştir
-            foreach (var bi in brandedFaresElement.GetElements("BrandedItem"))
+            foreach (var bi in brandedFaresElement.GetDescendants("BrandedItem"))
             {
                 var brandedItem = ParseBrandedItem(bi);
                 var matchedFareItem = box.BrandedFareItems.FirstOrDefault(bfi =>
