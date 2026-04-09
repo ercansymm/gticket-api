@@ -16,6 +16,11 @@ public class MakePreBookingResponse
     public bool IsPriceChanged { get; set; }
 
     /// <summary>
+    /// Fiyat degismeden onceki toplam tutar (IsPriceChanged=true ise dolu)
+    /// </summary>
+    public decimal OldPrice { get; set; }
+
+    /// <summary>
     /// Ucus bilgisi degisti mi?
     /// </summary>
     public bool IsFlightInfoChanged { get; set; }

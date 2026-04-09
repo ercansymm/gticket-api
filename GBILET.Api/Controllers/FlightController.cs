@@ -290,6 +290,8 @@ public class FlightController : ControllerBase
                     {
                         if (result.IsPriceChanged)
                         {
+                            // Eski fiyati response'a ekle — frontend modal'da gosterecek
+                            result.OldPrice = sessionData.GrandTotal;
                             _logger.LogWarning("[MakePreBooking] Fiyat degisti! Eski GrandTotal: {EskiFiyat}, Yeni TotalFare: {YeniFiyat}",
                                 sessionData.GrandTotal, result.TotalFare);
                         }
