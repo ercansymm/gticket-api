@@ -117,6 +117,41 @@ public class FlightController : ControllerBase
                 return BadRequest(new { error = "SessionId/SessionToken verilmediyse SearchRequest zorunludur." });
 
             var result = await _flightService.AllocateFlightAsync(request);
+
+            // Session cache'ini allocate sonucu ile guncelle — ShoppingFileId degisebilir
+            if (!result.HasError)
+            {
+                try
+                {
+                    var searchId = Request.Headers["x-search-id"].FirstOrDefault();
+                    if (!string.IsNullOrEmpty(searchId))
+                    {
+                        var cacheKey = $"flight_session_{searchId}";
+                        if (_cache.TryGetValue<FlightSessionData>(cacheKey, out var sessionData) && sessionData != null)
+                        {
+                            if (!string.IsNullOrEmpty(result.ShoppingFileId))
+                                sessionData.ShoppingFileId = result.ShoppingFileId;
+
+                            // Allocate response'tan gelen ProductId'yi sakla
+                            var firstProduct = result.AirBookings.FirstOrDefault()?.ProductId;
+                            if (!string.IsNullOrEmpty(firstProduct))
+                                sessionData.ProductId = firstProduct;
+
+                            _cache.Set(cacheKey, sessionData, new MemoryCacheEntryOptions()
+                                .SetAbsoluteExpiration(TimeSpan.FromMinutes(20)));
+
+                            _logger.LogInformation(
+                                "[Allocate] Session cache guncellendi: SearchId={SearchId}, ShoppingFileId={ShoppingFileId}, ProductId={ProductId}",
+                                searchId, result.ShoppingFileId, firstProduct);
+                        }
+                    }
+                }
+                catch (Exception cacheEx)
+                {
+                    _logger.LogWarning(cacheEx, "[Allocate] Session cache guncellemesi basarisiz.");
+                }
+            }
+
             return Ok(result);
         }
         catch (Exception ex)
