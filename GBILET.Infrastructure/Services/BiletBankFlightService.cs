@@ -234,7 +234,7 @@ public class BiletBankFlightService : IFlightService
     public async Task<FlightSearchResponseDto> SearchFlightDtoAsync(SearchRequest request)
     {
         var rawResponse = await SearchFlightAsync(request);
-        var dto = FlightSearchMapper.MapToDto(rawResponse, _logger);
+        var dto = FlightSearchMapper.MapToDto(rawResponse, _logger, request.FlightClass);
 
         // Session bilgilerini cache'le (sonraki ad�mlarda allocate/booking i�in)
         if (!rawResponse.HasError && !string.IsNullOrEmpty(rawResponse.SearchId))

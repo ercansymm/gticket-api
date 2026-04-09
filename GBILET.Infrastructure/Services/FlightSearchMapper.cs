@@ -9,7 +9,8 @@ public static class FlightSearchMapper
 {
     public static FlightSearchResponseDto MapToDto(
         AirSearchResponse response,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        string? requestedFlightClass = null)
     {
         var dto = new FlightSearchResponseDto
         {
@@ -57,6 +58,23 @@ public static class FlightSearchMapper
             {
                 var rbFlights = MapRecommendationBox(rb, logger);
                 dto.Flights.AddRange(rbFlights);
+            }
+        }
+
+        // BiletBank may return flights from all cabin classes even when a specific
+        // FlightClass was requested. Filter to only the requested class.
+        if (!string.IsNullOrEmpty(requestedFlightClass))
+        {
+            var before = dto.Flights.Count;
+            dto.Flights = dto.Flights
+                .Where(f => string.Equals(f.CabinClassName, requestedFlightClass, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (dto.Flights.Count < before)
+            {
+                logger?.LogInformation(
+                    "[MapToDto] Filtered flights by requested cabin class '{RequestedClass}': {Before} -> {After}",
+                    requestedFlightClass, before, dto.Flights.Count);
             }
         }
 
