@@ -268,7 +268,13 @@ public class FlightController : ControllerBase
 
             var result = await _flightService.MakePreBookingAsync(request);
 
-            Console.WriteLine($">>> RESULT: HasError={result.HasError}, BookingCode={result.BookingCode}, Status={result.Status}");
+            _logger.LogInformation("[MakePreBooking] Result: HasError={HasError}, BookingCode={BookingCode}, Status={Status}",
+                result.HasError, result.BookingCode, result.Status);
+
+            if (result.IsPriceChanged)
+            {
+                _logger.LogWarning("[MakePreBooking] Price changed detected after MakePreBooking call.");
+            }
 
             if (result.HasError)
                 return Ok(result);
@@ -282,6 +288,12 @@ public class FlightController : ControllerBase
                     var cacheKey = $"flight_session_{searchId}";
                     if (_cache.TryGetValue<FlightSessionData>(cacheKey, out var sessionData) && sessionData != null)
                     {
+                        if (result.IsPriceChanged)
+                        {
+                            _logger.LogWarning("[MakePreBooking] Fiyat degisti! Eski GrandTotal: {EskiFiyat}, Yeni TotalFare: {YeniFiyat}",
+                                sessionData.GrandTotal, result.TotalFare);
+                        }
+
                         sessionData.ProductId = result.ProductId;
                         sessionData.BookingCode = result.BookingCode;
                         sessionData.GrandTotal = result.TotalFare;
@@ -308,7 +320,7 @@ public class FlightController : ControllerBase
 
             if (string.IsNullOrEmpty(result.BookingCode))
             {
-                Console.WriteLine($">>> BOOKING CODE EMPTY, skipping DB write. BookingCode='{result.BookingCode}'");
+                _logger.LogWarning("[MakePreBooking] Booking code empty, skipping DB write. BookingCode='{BookingCode}'", result.BookingCode);
                 return Ok(result);
             }
 
@@ -319,7 +331,7 @@ public class FlightController : ControllerBase
 
             try
             {
-                Console.WriteLine(">>> DB WRITE START");
+                _logger.LogInformation("[MakePreBooking] DB write start for BookingCode={BookingCode}", result.BookingCode);
 
                 if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
                 {
@@ -434,7 +446,7 @@ public class FlightController : ControllerBase
 
                 await _bookingRepository.CreateBookingAsync(bookingEntity);
                 savedBookingId = bookingEntity.Id;
-                Console.WriteLine($">>> DB WRITE SUCCESS BookingId={bookingEntity.Id}");
+                _logger.LogInformation("[MakePreBooking] DB write success. BookingId={BookingId}", bookingEntity.Id);
 
                 // BookingId'yi de session'a yaz
                 try
@@ -455,7 +467,6 @@ public class FlightController : ControllerBase
             }
             catch (Exception dbEx)
             {
-                Console.WriteLine($">>> DB WRITE ERROR: {dbEx.Message} | Inner: {dbEx.InnerException?.Message}");
                 _logger.LogError(dbEx,
                     "[MakePreBooking] DB kaydi basarisiz. PNR={BookingCode} yine de donuluyor.",
                     result.BookingCode);
