@@ -104,6 +104,10 @@ public static class FlightSearchMapper
     {
         var result = new List<FlightResultDto>();
 
+        logger?.LogInformation(
+            "[MapRecommendationBox] ProductId={ProductId}, BrandedFareItems={BrandedFareItemCount}, OutboundFlights={OutboundCount}, InboundFlights={InboundCount}",
+            rb.ProductId, rb.BrandedFareItems.Count, rb.OutboundFlights.Count, rb.InboundFlights.Count);
+
         // Gidiş bacakları
         foreach (var outbound in rb.OutboundFlights)
         {
@@ -178,6 +182,13 @@ public static class FlightSearchMapper
         // RecommendationBox BrandedFareItems → FarePackages + DefaultBrandedFareItemId
         var farePackages = MapBrandedFarePackages(rb.BrandedFareItems, rb.Currency ?? "TRY");
         var defaultBrandedFareItemId = farePackages.FirstOrDefault(p => p.IsDefault)?.BrandedFareItemId;
+
+        if (!isReturnLeg)
+        {
+            logger?.LogInformation(
+                "[MapRecommendationFlight] ProductId={ProductId}, FarePackages={Count}, Default={DefaultId}",
+                rb.ProductId, farePackages.Count, defaultBrandedFareItemId ?? "(null)");
+        }
 
         return new FlightResultDto
         {
