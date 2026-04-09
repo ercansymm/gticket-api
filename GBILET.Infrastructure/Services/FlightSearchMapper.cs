@@ -175,6 +175,10 @@ public static class FlightSearchMapper
             ? $"{rb.ProductId}_ret_{flight.FlightId ?? originCode}"
             : rb.ProductId;
 
+        // RecommendationBox BrandedFareItems → FarePackages + DefaultBrandedFareItemId
+        var farePackages = MapBrandedFarePackages(rb.BrandedFareItems, rb.Currency ?? "TRY");
+        var defaultBrandedFareItemId = farePackages.FirstOrDefault(p => p.IsDefault)?.BrandedFareItemId;
+
         return new FlightResultDto
         {
             ProductId = productId,
@@ -226,7 +230,8 @@ public static class FlightSearchMapper
 
             Segments = segmentDtos,
 
-            FarePackages = [],
+            FarePackages = farePackages,
+            DefaultBrandedFareItemId = defaultBrandedFareItemId,
             BaggageInfo = null,
             FreeBaggageAllowances = [],
 
@@ -624,18 +629,23 @@ public static class FlightSearchMapper
 
     private static List<BrandedFareOptionDto> MapBrandedFarePackages(FlightOption option)
     {
+        return MapBrandedFarePackages(option.BrandedFareItems, option.Currency ?? "TRY");
+    }
+
+    private static List<BrandedFareOptionDto> MapBrandedFarePackages(List<BrandedFareItem> brandedFareItems, string currency)
+    {
         var packages = new List<BrandedFareOptionDto>();
 
-        if (option.BrandedFareItems.Count == 0)
+        if (brandedFareItems.Count == 0)
             return packages;
 
         // En dusuk fiyatli paketin toplam fiyatini bul (fark hesabi icin)
-        var minTotalFare = option.BrandedFareItems
+        var minTotalFare = brandedFareItems
             .Select(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue)
             .Min();
 
         // Tum paketleri fiyata gore sirala ve dondur
-        var sortedItems = option.BrandedFareItems
+        var sortedItems = brandedFareItems
             .OrderBy(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue)
             .ToList();
 
@@ -645,7 +655,7 @@ public static class FlightSearchMapper
         {
             var firstPax = bfi.BrandedFarePassengers.FirstOrDefault();
             var firstComponent = firstPax?.FareComponents.FirstOrDefault();
-            var currency = firstPax?.PassengerFareInfo?.Currency ?? option.Currency ?? "TRY";
+            var itemCurrency = firstPax?.PassengerFareInfo?.Currency ?? currency;
             var totalFare = bfi.TotalFareInfo?.TotalFare ?? 0;
             var priceDiff = totalFare - minTotalFare;
             var isDefault = !defaultMarked;
@@ -660,10 +670,10 @@ public static class FlightSearchMapper
                 TotalTaxes = bfi.TotalFareInfo?.TotalTaxes ?? 0,
                 CabinClass = firstComponent?.CabinClass,
                 BookingClass = firstComponent?.BookingClass,
-                Currency = currency,
-                TotalFareFormatted = FormatPrice(totalFare, currency),
+                Currency = itemCurrency,
+                TotalFareFormatted = FormatPrice(totalFare, itemCurrency),
                 PriceDifference = priceDiff,
-                PriceDifferenceFormatted = priceDiff == 0 ? null : $"+{FormatPrice(priceDiff, currency)}",
+                PriceDifferenceFormatted = priceDiff == 0 ? null : $"+{FormatPrice(priceDiff, itemCurrency)}",
                 IsDefault = isDefault
             };
 
@@ -698,7 +708,7 @@ public static class FlightSearchMapper
                     BaseFare = pax.PassengerFareInfo?.BaseFare ?? 0,
                     Taxes = pax.PassengerFareInfo?.Taxes ?? 0,
                     TotalFare = pax.PassengerFareInfo?.TotalFare ?? 0,
-                    Currency = pax.PassengerFareInfo?.Currency ?? currency
+                    Currency = pax.PassengerFareInfo?.Currency ?? itemCurrency
                 });
             }
 
