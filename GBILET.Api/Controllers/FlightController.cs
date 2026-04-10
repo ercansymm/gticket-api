@@ -474,7 +474,7 @@ public class FlightController : ControllerBase
                     result.BookingCode);
             }
 
-            return Ok(new
+            var responseBody = new
             {
                 result.HasError,
                 result.ErrorMessage,
@@ -488,6 +488,7 @@ public class FlightController : ControllerBase
                 result.Currency,
                 result.ShoppingFileId,
                 result.IsPriceChanged,
+                result.OldPrice,
                 result.PrebookingExpiresAt,
                 result.ReservationExpiresAt,
                 result.Segments,
@@ -496,7 +497,25 @@ public class FlightController : ControllerBase
                 userId = resolvedUserId,
                 guestSessionId = resolvedGuestSessionId,
                 isGuest = request.UserId == null
-            });
+            };
+
+            // Fiyat degisti ise 409 Conflict don — frontend kullanicidan onay alacak
+            if (result.IsPriceChanged)
+            {
+                _logger.LogWarning(
+                    "[MakePreBooking] Fiyat degisikligi tespit edildi. Eski: {OldPrice}, Yeni: {NewPrice}. 409 donuluyor.",
+                    result.OldPrice, result.TotalFare);
+                return Conflict(new
+                {
+                    code = "PRICE_CHANGED",
+                    message = "Ucus fiyati degismistir. Devam etmek icin yeni fiyati onaylayin.",
+                    oldPrice = result.OldPrice,
+                    newPrice = result.TotalFare,
+                    data = responseBody
+                });
+            }
+
+            return Ok(responseBody);
         }
         catch (Exception ex)
         {
