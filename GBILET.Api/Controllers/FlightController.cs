@@ -45,6 +45,10 @@ public class FlightController : ControllerBase
             if (request.FlightType == "RT" && !request.ReturnDate.HasValue)
                 return BadRequest(new { error = "Gidiş-dönüş uçuşlar için ReturnDate zorunludur." });
 
+            // Bebek varsa en az 1 yetiskin zorunlu — otomatik duzelt
+            if (request.AdultCount < 1)
+                request.AdultCount = 1;
+
             if (request.AdultCount + request.ChildCount > 9)
                 return BadRequest(new { error = "Bebek hariç toplam yolcu sayısı 9'u geçemez." });
 
