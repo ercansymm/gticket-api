@@ -1804,8 +1804,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:IfContact>{isContact.ToString().ToLowerInvariant()}</trev2:IfContact>
               <trev2:LastName>{safeLastName}</trev2:LastName>
               <trev2:Nationality>{safeNationality}</trev2:Nationality>
-              <trev2:PassportCountry>{safePassportCountry}</trev2:PassportCountry>
-              <trev2:PassportNo>{safePassportNo}</trev2:PassportNo>
+              {(string.IsNullOrEmpty(safePassportCountry) ? "<trev2:PassportCountry i:nil=\"true\"/>" : $"<trev2:PassportCountry>{safePassportCountry}</trev2:PassportCountry>")}
+              {(string.IsNullOrEmpty(safePassportNo) ? "<trev2:PassportNo i:nil=\"true\"/>" : $"<trev2:PassportNo>{safePassportNo}</trev2:PassportNo>")}
               {(passportValidDateValue != null ? $"<trev2:PassportValidDate>{passportValidDateValue}</trev2:PassportValidDate>" : "<trev2:PassportValidDate i:nil=\"true\"/>")}
               <trev2:PaxReferences i:nil=""true""/>
               <trev2:Phone>{phoneNumber}</trev2:Phone>
