@@ -67,7 +67,7 @@ public static class FlightSearchMapper
         {
             var before = dto.Flights.Count;
             dto.Flights = dto.Flights
-                .Where(f => string.Equals(f.CabinClassName, requestedFlightClass, StringComparison.OrdinalIgnoreCase))
+                .Where(f => string.Equals(f.CabinClass, requestedFlightClass, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             if (dto.Flights.Count < before)
