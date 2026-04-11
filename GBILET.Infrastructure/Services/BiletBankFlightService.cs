@@ -695,7 +695,7 @@ BrandedFares iceren: {rbWithBranded}
         }
         else
         {
-            // OW / RT: mevcut mantık
+            // OW / RT
             segments.Append($@"
                 <trev2:T_AirSearch_SegmentItem>
                    <trev2:DepartureDay>{request.DepartureDate:yyyy-MM-dd}T00:00:00.000+00:00</trev2:DepartureDay>
