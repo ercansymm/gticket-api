@@ -592,7 +592,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
 
                 // Ilk T_RecommendationBox'un XML yapisini kaydet
                 var firstRB = recBoxes.FirstOrDefault()?.ToString() ?? "YOK";
-                if (firstRB.Length > 3000) firstRB = firstRB[..3000] + "...[TRUNCATED]";
+                if (firstRB.Length > 10000) firstRB = firstRB[..10000] + "...[TRUNCATED]";
 
                 var debugLog = $"""
 === AirSearch XML DEBUG {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} ===
@@ -1179,6 +1179,17 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 
     private static RecommendationBox ParseRecommendationBox(XElement rb)
     {
+        // DEBUG: RB'nin tüm direct child element isimlerini logla — OtherFlights element adını keşfetmek için
+        var childElementNames = rb.Elements().Select(e => e.Name.LocalName).ToList();
+        try
+        {
+            var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+            Directory.CreateDirectory(logDir);
+            File.AppendAllText(Path.Combine(logDir, "rb-children-debug.log"),
+                $"[{DateTime.UtcNow:HH:mm:ss}] RB children: {string.Join(", ", childElementNames)}\n");
+        }
+        catch { /* debug log yazma hatası kritik değil */ }
+
         var box = new RecommendationBox
         {
             ProductId = rb.GetValue("ProductId"),
@@ -1205,6 +1216,16 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             foreach (var inf in returnFlights.GetElements("A_Flight"))
             {
                 box.InboundFlights.Add(ParseRecommendationFlight(inf));
+            }
+        }
+
+        // OtherFlights: MP (Multi-city) aramalarda 3. ve sonraki bacak uçuşları
+        var otherFlights = rb.GetElement("OtherFlights");
+        if (otherFlights != null)
+        {
+            foreach (var of in otherFlights.GetElements("A_Flight"))
+            {
+                box.OtherFlights.Add(ParseRecommendationFlight(of));
             }
         }
 
@@ -1241,11 +1262,14 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             }
         }
 
-        // SubOptionFlightIds: DepartureFlights + ReturnFlights altındaki tüm FlightId'leri topla
+        // SubOptionFlightIds: DepartureFlights + ReturnFlights + OtherFlights altındaki tüm FlightId'leri topla
         box.SubOptionFlightIds = box.OutboundFlights
             .Where(f => Guid.TryParse(f.FlightId, out _))
             .Select(f => Guid.Parse(f.FlightId!))
             .Concat(box.InboundFlights
+                .Where(f => Guid.TryParse(f.FlightId, out _))
+                .Select(f => Guid.Parse(f.FlightId!)))
+            .Concat(box.OtherFlights
                 .Where(f => Guid.TryParse(f.FlightId, out _))
                 .Select(f => Guid.Parse(f.FlightId!)))
             .ToList();

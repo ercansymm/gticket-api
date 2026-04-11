@@ -102,6 +102,7 @@ public static class FlightSearchMapper
             // RecommendationBox segment tanısı — flights boş geliyorsa buraya bak
             firstRbOutboundFlightCount = firstRb?.OutboundFlights.Count ?? -1,
             firstRbInboundFlightCount = firstRb?.InboundFlights.Count ?? -1,
+            firstRbOtherFlightCount = firstRb?.OtherFlights.Count ?? -1,
             firstRbFirstOutboundSegmentCount = firstRb?.OutboundFlights.FirstOrDefault()?.Segments.Count ?? -1,
             firstRbFirstInboundSegmentCount = firstRb?.InboundFlights.FirstOrDefault()?.Segments.Count ?? -1,
             firstFlightOptionXml = response.DebugFirstFlightOptionXml,
@@ -113,18 +114,19 @@ public static class FlightSearchMapper
     }
 
     /// <summary>
-    /// Bir RecommendationBox'ı iki FlightResultDto'ya dönüştürür:
+    /// Bir RecommendationBox'ı FlightResultDto listesine dönüştürür:
     ///   1. Gidiş bacağı (OutboundFlights) — IsRoundTripBundle=true, IsReturnLeg=false
     ///   2. Dönüş bacağı (InboundFlights)  — IsRoundTripBundle=true, IsReturnLeg=true
-    /// Her iki DTO da aynı ProductId'yi paylaşır (RT bundle tek bir allocate ile rezerve edilir).
+    ///   3+ Diğer bacaklar (OtherFlights) — MP aramalarda 3. ve sonraki bacaklar
+    /// Her DTO aynı ProductId'yi paylaşır (bundle tek bir allocate ile rezerve edilir).
     /// </summary>
     private static List<FlightResultDto> MapRecommendationBox(RecommendationBox rb, ILogger? logger)
     {
         var result = new List<FlightResultDto>();
 
         logger?.LogInformation(
-            "[MapRecommendationBox] ProductId={ProductId}, BrandedFareItems={BrandedFareItemCount}, OutboundFlights={OutboundCount}, InboundFlights={InboundCount}",
-            rb.ProductId, rb.BrandedFareItems.Count, rb.OutboundFlights.Count, rb.InboundFlights.Count);
+            "[MapRecommendationBox] ProductId={ProductId}, BrandedFareItems={BrandedFareItemCount}, OutboundFlights={OutboundCount}, InboundFlights={InboundCount}, OtherFlights={OtherCount}",
+            rb.ProductId, rb.BrandedFareItems.Count, rb.OutboundFlights.Count, rb.InboundFlights.Count, rb.OtherFlights.Count);
 
         // Gidiş bacakları
         foreach (var outbound in rb.OutboundFlights)
@@ -142,6 +144,25 @@ public static class FlightSearchMapper
 
             var dto = MapRecommendationFlight(inbound, rb, isReturnLeg: true, logger);
             if (dto != null) result.Add(dto);
+        }
+
+        // OtherFlights: MP (Multi-city) 3. ve sonraki bacaklar — SequenceNo=3+ olarak zorla
+        for (int i = 0; i < rb.OtherFlights.Count; i++)
+        {
+            var other = rb.OtherFlights[i];
+            var legNo = 3 + i;
+            // 3. bacaktan itibaren SequenceNo ata (3, 4, 5...)
+            foreach (var seg in other.Segments)
+                seg.SequenceNo = legNo;
+
+            var dto = MapRecommendationFlight(other, rb, isReturnLeg: false, logger);
+            if (dto != null)
+            {
+                // Unique ProductId — outbound ile çakışmasın (React key + frontend tanımlama)
+                var otherOrigin = other.Segments.FirstOrDefault()?.OriginCode ?? "";
+                dto.ProductId = $"{rb.ProductId}_leg{legNo}_{other.FlightId ?? otherOrigin}";
+                result.Add(dto);
+            }
         }
 
         return result;

@@ -221,6 +221,11 @@ public class RecommendationBox
     public decimal TotalFare { get; set; }
     public List<RecommendationFlight> OutboundFlights { get; set; } = [];
     public List<RecommendationFlight> InboundFlights { get; set; } = [];
+    /// <summary>
+    /// MP (Multi-city) aramalarda 3. ve sonraki bacak uçuşları.
+    /// BiletBank SOAP yanıtında "OtherFlights" elementi altında gelir.
+    /// </summary>
+    public List<RecommendationFlight> OtherFlights { get; set; } = [];
     public List<BrandedFareItem> BrandedFareItems { get; set; } = [];
     /// <summary>
     /// DepartureFlights + ReturnFlights altındaki tüm FlightId'ler (önce departure, sonra return).
