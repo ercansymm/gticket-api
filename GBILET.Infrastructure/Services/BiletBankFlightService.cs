@@ -91,6 +91,25 @@ public class BiletBankFlightService : IFlightService
         if (origins.Length == 1 && destinations.Length == 1)
         {
             var response = await AirSearchAsync(sessionId, sessionToken, request);
+
+            // Transient BiletBank errors (e.g. TripTypeIsInvalidOrMissing on first call):
+            // retry once with a fresh login session.
+            if (response.HasError && response.ErrorMessage != null
+                && response.ErrorMessage.Contains("TripType", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "[SearchFlight] Transient TripType error — retrying with fresh session. Error: {Error}",
+                    response.ErrorMessage);
+
+                var retryLogin = await LoginAsync();
+                if (!retryLogin.HasError)
+                {
+                    sessionId = retryLogin.SessionId!;
+                    sessionToken = retryLogin.SessionToken!;
+                    response = await AirSearchAsync(sessionId, sessionToken, request);
+                }
+            }
+
             response.SessionId = sessionId;
             response.SessionToken = sessionToken;
             return response;
@@ -512,10 +531,29 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
             var hasError = doc.GetValue("HasError");
             if (hasError == "true")
             {
+                // BiletBank Message element may contain nested sub-elements whose text
+                // all get concatenated by XElement.Value. Extract only the first direct
+                // text node or the <Text>/<Description> child if present for a clean message.
+                var msgEl = doc.Descendants()
+                    .FirstOrDefault(x => x.Name.LocalName == "Message");
+                string? errorMessage = null;
+                if (msgEl != null)
+                {
+                    // Prefer a <Text> or <Description> child
+                    var textChild = msgEl.Elements()
+                        .FirstOrDefault(e => e.Name.LocalName is "Text" or "Description");
+                    errorMessage = textChild != null
+                        ? textChild.Value
+                        : (msgEl.HasElements
+                            ? msgEl.Elements().First().Value  // first child text
+                            : msgEl.Value);                    // leaf text
+                }
+                errorMessage ??= doc.GetValue("ServiceError");
+
                 return new AirSearchResponse
                 {
                     HasError = true,
-                    ErrorMessage = doc.GetValue("Message") ?? doc.GetValue("ServiceError")
+                    ErrorMessage = errorMessage
                 };
             }
 
