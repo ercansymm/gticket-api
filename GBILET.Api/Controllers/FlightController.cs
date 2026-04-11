@@ -36,14 +36,34 @@ public class FlightController : ControllerBase
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request.Origin) || string.IsNullOrWhiteSpace(request.Destination))
-                return BadRequest(new { error = "Origin ve Destination alanları zorunludur." });
+            if (request.FlightType == "MP")
+            {
+                if (request.Segments == null || request.Segments.Count < 2)
+                    return BadRequest(new { error = "Çoklu şehir aramasında en az 2 segment gereklidir." });
 
-            if (request.DepartureDate == default)
-                return BadRequest(new { error = "DepartureDate alanı zorunludur." });
+                if (request.Segments.Count > 6)
+                    return BadRequest(new { error = "Çoklu şehir aramasında en fazla 6 segment eklenebilir." });
 
-            if (request.FlightType == "RT" && !request.ReturnDate.HasValue)
-                return BadRequest(new { error = "Gidiş-dönüş uçuşlar için ReturnDate zorunludur." });
+                foreach (var seg in request.Segments)
+                {
+                    if (string.IsNullOrWhiteSpace(seg.Origin) || string.IsNullOrWhiteSpace(seg.Destination))
+                        return BadRequest(new { error = "Her segmentte Origin ve Destination zorunludur." });
+
+                    if (seg.DepartureDate == default)
+                        return BadRequest(new { error = "Her segmentte DepartureDate zorunludur." });
+                }
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(request.Origin) || string.IsNullOrWhiteSpace(request.Destination))
+                    return BadRequest(new { error = "Origin ve Destination alanları zorunludur." });
+
+                if (request.DepartureDate == default)
+                    return BadRequest(new { error = "DepartureDate alanı zorunludur." });
+
+                if (request.FlightType == "RT" && !request.ReturnDate.HasValue)
+                    return BadRequest(new { error = "Gidiş-dönüş uçuşlar için ReturnDate zorunludur." });
+            }
 
             if (request.AdultCount + request.ChildCount > 9)
                 return BadRequest(new { error = "Bebek hariç toplam yolcu sayısı 9'u geçemez." });

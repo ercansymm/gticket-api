@@ -629,7 +629,36 @@ BrandedFares iceren: {rbWithBranded}
         }
 
         var segments = new StringBuilder();
-        segments.Append($@"
+
+        if (request.FlightType == "MP" && request.Segments is { Count: >= 2 })
+        {
+            // Multi-city: her bacak için ayrı T_AirSearch_SegmentItem
+            for (var i = 0; i < request.Segments.Count; i++)
+            {
+                var seg = request.Segments[i];
+                segments.Append($@"
+                <trev2:T_AirSearch_SegmentItem>
+                   <trev2:DepartureDay>{seg.DepartureDate:yyyy-MM-dd}T00:00:00.000+00:00</trev2:DepartureDay>
+                   <trev2:Destination>
+                      <trev2:Code>{seg.Destination}</trev2:Code>
+                      <trev2:CountryCode>{seg.DestinationCountryCode}</trev2:CountryCode>
+                      <trev2:IsCity>{seg.DestinationIsCity.ToString().ToLowerInvariant()}</trev2:IsCity>
+                      <trev2:Name/>
+                   </trev2:Destination>
+                   <trev2:Origin>
+                      <trev2:Code>{seg.Origin}</trev2:Code>
+                      <trev2:CountryCode>{seg.OriginCountryCode}</trev2:CountryCode>
+                      <trev2:IsCity>{seg.OriginIsCity.ToString().ToLowerInvariant()}</trev2:IsCity>
+                      <trev2:Name/>
+                   </trev2:Origin>
+                   <trev2:SequenceNo>{i + 1}</trev2:SequenceNo>
+                </trev2:T_AirSearch_SegmentItem>");
+            }
+        }
+        else
+        {
+            // OW / RT: mevcut mantık
+            segments.Append($@"
                 <trev2:T_AirSearch_SegmentItem>
                    <trev2:DepartureDay>{request.DepartureDate:yyyy-MM-dd}T00:00:00.000+00:00</trev2:DepartureDay>
                    <trev2:Destination>
@@ -647,9 +676,9 @@ BrandedFares iceren: {rbWithBranded}
                    <trev2:SequenceNo>1</trev2:SequenceNo>
                 </trev2:T_AirSearch_SegmentItem>");
 
-        if (request.FlightType == "RT" && request.ReturnDate.HasValue)
-        {
-            segments.Append($@"
+            if (request.FlightType == "RT" && request.ReturnDate.HasValue)
+            {
+                segments.Append($@"
                 <trev2:T_AirSearch_SegmentItem>
                    <trev2:DepartureDay>{request.ReturnDate.Value:yyyy-MM-dd}T00:00:00.000+00:00</trev2:DepartureDay>
                    <trev2:Destination>
@@ -666,6 +695,7 @@ BrandedFares iceren: {rbWithBranded}
                    </trev2:Origin>
                    <trev2:SequenceNo>2</trev2:SequenceNo>
                 </trev2:T_AirSearch_SegmentItem>");
+            }
         }
 
         var preferredAirlines = string.Empty;

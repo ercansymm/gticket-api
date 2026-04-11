@@ -1,6 +1,17 @@
 ﻿using System;
 namespace GBILET.Core.Models.Flight;
 
+public class SearchSegment
+{
+    public string Origin { get; set; }
+    public string Destination { get; set; }
+    public string OriginCountryCode { get; set; } = "TR";
+    public string DestinationCountryCode { get; set; } = "TR";
+    public bool OriginIsCity { get; set; } = false;
+    public bool DestinationIsCity { get; set; } = false;
+    public DateTime DepartureDate { get; set; }
+}
+
 public class SearchRequest
 {
     public string Origin { get; set; }
@@ -21,4 +32,5 @@ public class SearchRequest
     public int SearchTimeoutMilliseconds { get; set; } = 0;
     public List<string>? PreferredAirlines { get; set; }
     public string SearchReason { get; set; } = "SearchAndBook"; // SearchOnly, SearchAndBook
+    public List<SearchSegment>? Segments { get; set; } // MP (multi-city) tipinde kullanılır
 }   
