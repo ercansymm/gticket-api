@@ -442,7 +442,7 @@ public class FlightController : ControllerBase
                     {
                         Id = Guid.NewGuid(),
                         BookingId = bookingEntity.Id,
-                        SequenceNo = bookingEntity.FlightSegments.Count,
+                        SequenceNo = bookingEntity.FlightSegments.Count + 1,
                         MarketingAirline = seg.MarketingAirline ?? "",
                         FlightNumber = seg.FlightNumber ?? "",
                         OriginCode = seg.OriginCode ?? "",
@@ -920,11 +920,21 @@ public class FlightController : ControllerBase
                                             ShoppingFileId = shoppingFileId
                                         });
 
+                                        Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] ReadShoppingFile returned {readResult?.Segments?.Count ?? 0} segments, HasError={readResult?.HasError}");
+                                        if (readResult?.Segments != null)
+                                        {
+                                            foreach (var seg in readResult.Segments)
+                                            {
+                                                Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] Segment: {seg.OriginCode} -> {seg.DestinationCode}, Flight: {seg.MarketingAirline}{seg.FlightNumber}, Dep: {seg.DepartureDay} {seg.DepartureTime}");
+                                            }
+                                        }
+
                                         if (!readResult.HasError && readResult.Segments.Count > 0)
                                         {
                                             var booking = await _bookingRepository.GetByIdAsync(bookingId.Value);
                                             if (booking != null)
                                             {
+                                                Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] Before clear: {booking.FlightSegments.Count} segments in DB");
                                                 booking.FlightSegments.Clear();
                                                 foreach (var seg in readResult.Segments)
                                                 {
@@ -932,7 +942,7 @@ public class FlightController : ControllerBase
                                                     {
                                                         Id = Guid.NewGuid(),
                                                         BookingId = booking.Id,
-                                                        SequenceNo = booking.FlightSegments.Count,
+                                                        SequenceNo = booking.FlightSegments.Count + 1,
                                                         MarketingAirline = seg.MarketingAirline ?? "",
                                                         FlightNumber = seg.FlightNumber ?? "",
                                                         OriginCode = seg.OriginCode ?? "",
@@ -944,12 +954,22 @@ public class FlightController : ControllerBase
                                                         BookingClass = seg.BookingClass
                                                     });
                                                 }
+                                                Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] After refresh: {booking.FlightSegments.Count} segments in DB");
                                                 _logger.LogInformation("[3DCallback] Updated segments from ReadShoppingFile. Count={Count}", readResult.Segments.Count);
                                             }
+                                            else
+                                            {
+                                                Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] ERROR: booking is null for bookingId={bookingId.Value}");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] Skipping refresh: HasError={readResult?.HasError}, SegmentCount={readResult?.Segments?.Count ?? 0}");
                                         }
                                     }
                                     catch (Exception readEx)
                                     {
+                                        Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] ERROR: {readEx.Message}\n{readEx.StackTrace}");
                                         _logger.LogWarning(readEx, "[3DCallback] ReadShoppingFile failed — keeping existing segments.");
                                     }
 
@@ -1863,7 +1883,7 @@ public class FlightController : ControllerBase
                         {
                             Id = Guid.NewGuid(),
                             BookingId = bookingEntity.Id,
-                            SequenceNo = bookingEntity.FlightSegments.Count,
+                            SequenceNo = bookingEntity.FlightSegments.Count + 1,
                             MarketingAirline = seg.MarketingAirline ?? "",
                             OperatingAirline = seg.OperatingAirline,
                             FlightNumber = seg.FlightNumber ?? "",
@@ -1887,7 +1907,7 @@ public class FlightController : ControllerBase
                         {
                             Id = Guid.NewGuid(),
                             BookingId = bookingEntity.Id,
-                            SequenceNo = bookingEntity.FlightSegments.Count,
+                            SequenceNo = bookingEntity.FlightSegments.Count + 1,
                             MarketingAirline = seg.MarketingAirline ?? "",
                             FlightNumber = seg.FlightNumber ?? "",
                             OriginCode = seg.OriginCode ?? "",
@@ -2065,8 +2085,18 @@ public class FlightController : ControllerBase
                                 ShoppingFileId = preBookResult.ShoppingFileId!
                             });
 
+                            Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] ReadShoppingFile returned {readResult?.Segments?.Count ?? 0} segments, HasError={readResult?.HasError}");
+                            if (readResult?.Segments != null)
+                            {
+                                foreach (var seg in readResult.Segments)
+                                {
+                                    Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] Segment: {seg.OriginCode} -> {seg.DestinationCode}, Flight: {seg.MarketingAirline}{seg.FlightNumber}, Dep: {seg.DepartureDay} {seg.DepartureTime}");
+                                }
+                            }
+
                             if (!readResult.HasError && readResult.Segments.Count > 0)
                             {
+                                Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] Before clear: {booking.FlightSegments.Count} segments in DB");
                                 booking.FlightSegments.Clear();
                                 var bagStr = FormatBaggageAllowance(airBooking?.BaggageAllowances);
                                 foreach (var seg in readResult.Segments)
@@ -2075,7 +2105,7 @@ public class FlightController : ControllerBase
                                     {
                                         Id = Guid.NewGuid(),
                                         BookingId = booking.Id,
-                                        SequenceNo = booking.FlightSegments.Count,
+                                        SequenceNo = booking.FlightSegments.Count + 1,
                                         MarketingAirline = seg.MarketingAirline ?? "",
                                         FlightNumber = seg.FlightNumber ?? "",
                                         OriginCode = seg.OriginCode ?? "",
@@ -2088,11 +2118,17 @@ public class FlightController : ControllerBase
                                         Baggage = bagStr
                                     });
                                 }
+                                Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] After refresh: {booking.FlightSegments.Count} segments in DB");
                                 _logger.LogInformation("[BookFlight] Updated segments from ReadShoppingFile. Count={Count}", readResult.Segments.Count);
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] Skipping refresh: HasError={readResult?.HasError}, SegmentCount={readResult?.Segments?.Count ?? 0}");
                             }
                         }
                         catch (Exception readEx)
                         {
+                            Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] ERROR: {readEx.Message}\n{readEx.StackTrace}");
                             _logger.LogWarning(readEx, "[BookFlight] ReadShoppingFile failed — keeping allocate segments.");
                         }
 
