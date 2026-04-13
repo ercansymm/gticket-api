@@ -2116,19 +2116,24 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             response.CanBeReserved = shoppingFile.GetBoolValue("CanBeReserved");
         }
 
-        // AirBooking bilgileri
-        var airBooking = doc.GetDescendants("T_AirBooking").FirstOrDefault();
-        if (airBooking != null)
+        // AirBooking bilgileri — round-trip icin birden fazla T_AirBooking olabilir
+        // Ilk T_AirBooking'den BookingCode, ProductId, Status alinir
+        // Fiyatlar tum T_AirBooking'lerden toplanir (gidis + donus = toplam)
+        var allAirBookings = doc.GetDescendants("T_AirBooking").ToList();
+        var firstAirBooking = allAirBookings.FirstOrDefault();
+        if (firstAirBooking != null)
         {
-            response.BookingCode = airBooking.GetValue("BookingCode");
-            response.ProductId = airBooking.GetValue("ProductId");
-            response.Status = airBooking.GetValue("Status");
-            response.BaseFare = airBooking.GetDecimalValue("BaseFare");
-            response.Taxes = airBooking.GetDecimalValue("Taxes");
-            response.ServiceFee = airBooking.GetDecimalValue("ServiceFee");
-            response.TotalFare = airBooking.GetDecimalValue("TotalFare");
+            response.BookingCode = firstAirBooking.GetValue("BookingCode");
+            response.ProductId = firstAirBooking.GetValue("ProductId");
+            response.Status = firstAirBooking.GetValue("Status");
 
-            var ruleAttr = airBooking.GetDescendants("FlightRuleAttribute").FirstOrDefault();
+            // Fiyatlari tum T_AirBooking'lerden topla
+            response.BaseFare = allAirBookings.Sum(ab => ab.GetDecimalValue("BaseFare"));
+            response.Taxes = allAirBookings.Sum(ab => ab.GetDecimalValue("Taxes"));
+            response.ServiceFee = allAirBookings.Sum(ab => ab.GetDecimalValue("ServiceFee"));
+            response.TotalFare = allAirBookings.Sum(ab => ab.GetDecimalValue("TotalFare"));
+
+            var ruleAttr = firstAirBooking.GetDescendants("FlightRuleAttribute").FirstOrDefault();
             if (ruleAttr != null)
                 response.CanBeReserved = ruleAttr.GetBoolValue("IsReservable");
         }
@@ -2159,22 +2164,27 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             });
         }
 
-        // Segmentler
-        foreach (var seg in doc.GetDescendants("T_Segment"))
+        // Segmentler — tum T_AirBooking'lerden topla (round-trip icin 2 ayri booking olabilir)
+        int segSequence = 0;
+        foreach (var ab in allAirBookings)
         {
-            response.Segments.Add(new PreBookingSegment
+            foreach (var seg in ab.GetDescendants("T_Segment"))
             {
-                SegmentId = seg.GetValue("Id"),
-                OriginCode = seg.GetValue("OriginCode"),
-                DestinationCode = seg.GetValue("DestinationCode"),
-                DepartureDay = FormatDay(seg.GetValue("DepartureDay")),
-                DepartureTime = FormatIso8601DurationAsTime(seg.GetValue("DepartureTime")),
-                ArrivalDay = FormatDay(seg.GetValue("ArrivalDay")),
-                ArrivalTime = FormatIso8601DurationAsTime(seg.GetValue("ArrivalTime")),
-                FlightNumber = seg.GetValue("FlightNumber"),
-                MarketingAirline = seg.GetValue("MarketingAirline"),
-                BookingClass = seg.GetValue("BookingClass")
-            });
+                segSequence++;
+                response.Segments.Add(new PreBookingSegment
+                {
+                    SegmentId = seg.GetValue("Id"),
+                    OriginCode = seg.GetValue("OriginCode"),
+                    DestinationCode = seg.GetValue("DestinationCode"),
+                    DepartureDay = FormatDay(seg.GetValue("DepartureDay")),
+                    DepartureTime = FormatIso8601DurationAsTime(seg.GetValue("DepartureTime")),
+                    ArrivalDay = FormatDay(seg.GetValue("ArrivalDay")),
+                    ArrivalTime = FormatIso8601DurationAsTime(seg.GetValue("ArrivalTime")),
+                    FlightNumber = seg.GetValue("FlightNumber"),
+                    MarketingAirline = seg.GetValue("MarketingAirline"),
+                    BookingClass = seg.GetValue("BookingClass")
+                });
+            }
         }
 
         return response;
@@ -3103,12 +3113,14 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             result.Currency = shoppingFile.GetValue("Currency");
         }
 
-        var airBooking = doc.GetDescendants("T_AirBooking").FirstOrDefault();
-        if (airBooking != null)
+        // AirBooking bilgileri — round-trip icin birden fazla T_AirBooking olabilir
+        var allAirBookings = doc.GetDescendants("T_AirBooking").ToList();
+        var firstAirBooking = allAirBookings.FirstOrDefault();
+        if (firstAirBooking != null)
         {
-            result.BookingCode = airBooking.GetValue("BookingCode");
-            result.Status = airBooking.GetValue("Status");
-            result.TotalFare = airBooking.GetDecimalValue("TotalFare");
+            result.BookingCode = firstAirBooking.GetValue("BookingCode");
+            result.Status = firstAirBooking.GetValue("Status");
+            result.TotalFare = allAirBookings.Sum(ab => ab.GetDecimalValue("TotalFare"));
         }
 
         // E-bilet numaralarini topla
@@ -3404,11 +3416,13 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
             }
         }
 
-        var airBooking = doc.GetDescendants("T_AirBooking").FirstOrDefault();
-        if (airBooking != null)
+        // AirBooking bilgileri — round-trip icin birden fazla T_AirBooking olabilir
+        var allAirBookings = doc.GetDescendants("T_AirBooking").ToList();
+        var firstAirBooking = allAirBookings.FirstOrDefault();
+        if (firstAirBooking != null)
         {
-            result.BookingCode = airBooking.GetValue("BookingCode");
-            result.Status = airBooking.GetValue("Status");
+            result.BookingCode = firstAirBooking.GetValue("BookingCode");
+            result.Status = firstAirBooking.GetValue("Status");
         }
 
         // Yolcular + bilet numaralari
@@ -3441,22 +3455,27 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
             }
         }
 
-        // Segmentler
-        foreach (var seg in doc.GetDescendants("T_Segment"))
+        // Segmentler — tum T_AirBooking'lerden topla (round-trip icin 2 ayri booking olabilir)
+        int segSequence = 0;
+        foreach (var ab in allAirBookings)
         {
-            result.Segments.Add(new PreBookingSegment
+            foreach (var seg in ab.GetDescendants("T_Segment"))
             {
-                SegmentId = seg.GetValue("Id"),
-                OriginCode = seg.GetValue("OriginCode"),
-                DestinationCode = seg.GetValue("DestinationCode"),
-                DepartureDay = seg.GetValue("DepartureDay"),
-                DepartureTime = FormatIso8601DurationAsTime(seg.GetValue("DepartureTime")),
-                ArrivalDay = seg.GetValue("ArrivalDay"),
-                ArrivalTime = FormatIso8601DurationAsTime(seg.GetValue("ArrivalTime")),
-                FlightNumber = seg.GetValue("FlightNumber"),
-                MarketingAirline = seg.GetValue("MarketingAirline"),
-                BookingClass = seg.GetValue("BookingClass")
-            });
+                segSequence++;
+                result.Segments.Add(new PreBookingSegment
+                {
+                    SegmentId = seg.GetValue("Id"),
+                    OriginCode = seg.GetValue("OriginCode"),
+                    DestinationCode = seg.GetValue("DestinationCode"),
+                    DepartureDay = seg.GetValue("DepartureDay"),
+                    DepartureTime = FormatIso8601DurationAsTime(seg.GetValue("DepartureTime")),
+                    ArrivalDay = seg.GetValue("ArrivalDay"),
+                    ArrivalTime = FormatIso8601DurationAsTime(seg.GetValue("ArrivalTime")),
+                    FlightNumber = seg.GetValue("FlightNumber"),
+                    MarketingAirline = seg.GetValue("MarketingAirline"),
+                    BookingClass = seg.GetValue("BookingClass")
+                });
+            }
         }
 
         // Odemeler
