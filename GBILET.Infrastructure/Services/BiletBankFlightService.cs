@@ -3397,7 +3397,11 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.IO.Shopping"">
 
             var priceSummary = shoppingFile.GetDescendants("PriceSummary").FirstOrDefault();
             if (priceSummary != null)
+            {
                 result.GrandTotal = priceSummary.GetDecimalValue("GrandTotal");
+                result.BaseFare = priceSummary.GetDecimalValue("TotalBaseFare");
+                result.Taxes = priceSummary.GetDecimalValue("TotalTaxes");
+            }
         }
 
         var airBooking = doc.GetDescendants("T_AirBooking").FirstOrDefault();

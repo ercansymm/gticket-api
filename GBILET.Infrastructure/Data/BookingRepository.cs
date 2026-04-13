@@ -39,6 +39,20 @@ public class BookingRepository : IBookingRepository
             .FirstOrDefaultAsync(b => b.PNR == pnr);
     }
 
+    public async Task<Booking?> GetByShoppingFileIdAsync(string shoppingFileId)
+    {
+        if (!Guid.TryParse(shoppingFileId, out var fileId))
+            return null;
+
+        return await _db.Bookings
+            .Include(b => b.Passengers)
+            .Include(b => b.FlightSegments)
+            .Include(b => b.FareDetails)
+            .Include(b => b.Payments)
+            .OrderByDescending(b => b.CreatedAt)
+            .FirstOrDefaultAsync(b => b.BiletBankFileId == fileId);
+    }
+
     public async Task UpdateStatusAsync(Guid bookingId, string status)
     {
         var booking = await _db.Bookings.FindAsync(bookingId);
