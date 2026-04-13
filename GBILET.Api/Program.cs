@@ -1,5 +1,6 @@
 ﻿using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
+using GBILET.Core.Service.Ticket;
 using GBILET.Core.Helpers;
 using GBILET.Infrastructure.Data;
 using GBILET.Infrastructure.Services;
@@ -7,10 +8,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using QuestPDF.Infrastructure;
 
 // PostgreSQL: DateTimeKind.Unspecified olan DateTime değerlerini kabul et
 // Npgsql 6+ varsayılan olarak sadece UTC kabul eder; bu switch legacy davranışı etkinleştirir
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+// QuestPDF Community License
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -80,6 +85,7 @@ builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IAirlineRepository, AirlineRepository>();
 builder.Services.AddScoped<IAirportRepository, AirportRepository>();
 builder.Services.AddScoped<IPopularRouteRepository, PopularRouteRepository>();
+builder.Services.AddScoped<ITicketPdfService, TicketPdfService>();
 
 builder.Services.AddMemoryCache();
 
