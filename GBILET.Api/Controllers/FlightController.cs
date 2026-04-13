@@ -442,7 +442,7 @@ public class FlightController : ControllerBase
                     {
                         Id = Guid.NewGuid(),
                         BookingId = bookingEntity.Id,
-                        SequenceNo = 0,
+                        SequenceNo = bookingEntity.FlightSegments.Count,
                         MarketingAirline = seg.MarketingAirline ?? "",
                         FlightNumber = seg.FlightNumber ?? "",
                         OriginCode = seg.OriginCode ?? "",
@@ -909,6 +909,50 @@ public class FlightController : ControllerBase
                             {
                                 try
                                 {
+                                    // ReadShoppingFile to refresh ALL segments (outbound + return) BEFORE UpdateStatusAsync
+                                    // so that SaveChangesAsync in UpdateStatusAsync persists the segment changes
+                                    try
+                                    {
+                                        var readResult = await _flightService.ReadShoppingFileAsync(new ReadShoppingFileRequest
+                                        {
+                                            SessionId = sessionId,
+                                            SessionToken = sessionToken,
+                                            ShoppingFileId = shoppingFileId
+                                        });
+
+                                        if (!readResult.HasError && readResult.Segments.Count > 0)
+                                        {
+                                            var booking = await _bookingRepository.GetByIdAsync(bookingId.Value);
+                                            if (booking != null)
+                                            {
+                                                booking.FlightSegments.Clear();
+                                                foreach (var seg in readResult.Segments)
+                                                {
+                                                    booking.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
+                                                    {
+                                                        Id = Guid.NewGuid(),
+                                                        BookingId = booking.Id,
+                                                        SequenceNo = booking.FlightSegments.Count,
+                                                        MarketingAirline = seg.MarketingAirline ?? "",
+                                                        FlightNumber = seg.FlightNumber ?? "",
+                                                        OriginCode = seg.OriginCode ?? "",
+                                                        DestinationCode = seg.DestinationCode ?? "",
+                                                        DepartureDate = DateTime.TryParse(seg.DepartureDay, out var rd) ? rd : DateTime.MinValue,
+                                                        DepartureTime = seg.DepartureTime,
+                                                        ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var ra) ? ra : null,
+                                                        ArrivalTime = seg.ArrivalTime,
+                                                        BookingClass = seg.BookingClass
+                                                    });
+                                                }
+                                                _logger.LogInformation("[3DCallback] Updated segments from ReadShoppingFile. Count={Count}", readResult.Segments.Count);
+                                            }
+                                        }
+                                    }
+                                    catch (Exception readEx)
+                                    {
+                                        _logger.LogWarning(readEx, "[3DCallback] ReadShoppingFile failed — keeping existing segments.");
+                                    }
+
                                     await _bookingRepository.UpdateStatusAsync(bookingId.Value, finalizeResult.Status ?? "Ticketed");
                                     if (!string.IsNullOrEmpty(finalizeResult.BookingCode))
                                         await _bookingRepository.UpdatePnrAsync(bookingId.Value, finalizeResult.BookingCode);
@@ -1806,23 +1850,55 @@ public class FlightController : ControllerBase
                     });
                 }
 
-                foreach (var seg in preBookResult.Segments)
+                // Use allocate segments (most complete — contains ALL legs for RT)
+                // Fallback to preBookResult segments if allocate segments are missing
+                var allSegments = airBooking?.Segments ?? [];
+                var baggageStr = FormatBaggageAllowance(airBooking?.BaggageAllowances);
+
+                if (allSegments.Count > 0)
                 {
-                    bookingEntity.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
+                    foreach (var seg in allSegments)
                     {
-                        Id = Guid.NewGuid(),
-                        BookingId = bookingEntity.Id,
-                        SequenceNo = 0,
-                        MarketingAirline = seg.MarketingAirline ?? "",
-                        FlightNumber = seg.FlightNumber ?? "",
-                        OriginCode = seg.OriginCode ?? "",
-                        DestinationCode = seg.DestinationCode ?? "",
-                        DepartureDate = DateTime.TryParse(seg.DepartureDay, out var depDt) ? depDt : DateTime.MinValue,
-                        DepartureTime = seg.DepartureTime,
-                        ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var arrDt) ? arrDt : null,
-                        ArrivalTime = seg.ArrivalTime,
-                        BookingClass = seg.BookingClass
-                    });
+                        bookingEntity.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
+                        {
+                            Id = Guid.NewGuid(),
+                            BookingId = bookingEntity.Id,
+                            SequenceNo = bookingEntity.FlightSegments.Count,
+                            MarketingAirline = seg.MarketingAirline ?? "",
+                            OperatingAirline = seg.OperatingAirline,
+                            FlightNumber = seg.FlightNumber ?? "",
+                            OriginCode = seg.OriginCode ?? "",
+                            DestinationCode = seg.DestinationCode ?? "",
+                            DepartureDate = DateTime.TryParse(seg.DepartureDay, out var depDt2) ? depDt2 : DateTime.MinValue,
+                            DepartureTime = seg.DepartureTime,
+                            ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var arrDt2) ? arrDt2 : null,
+                            ArrivalTime = seg.ArrivalTime,
+                            BookingClass = seg.BookingClass,
+                            FareBasis = seg.FareBasis,
+                            Baggage = baggageStr
+                        });
+                    }
+                }
+                else
+                {
+                    foreach (var seg in preBookResult.Segments)
+                    {
+                        bookingEntity.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
+                        {
+                            Id = Guid.NewGuid(),
+                            BookingId = bookingEntity.Id,
+                            SequenceNo = bookingEntity.FlightSegments.Count,
+                            MarketingAirline = seg.MarketingAirline ?? "",
+                            FlightNumber = seg.FlightNumber ?? "",
+                            OriginCode = seg.OriginCode ?? "",
+                            DestinationCode = seg.DestinationCode ?? "",
+                            DepartureDate = DateTime.TryParse(seg.DepartureDay, out var depDt) ? depDt : DateTime.MinValue,
+                            DepartureTime = seg.DepartureTime,
+                            ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var arrDt) ? arrDt : null,
+                            ArrivalTime = seg.ArrivalTime,
+                            BookingClass = seg.BookingClass
+                        });
+                    }
                 }
 
                 bookingEntity.BookingLogs.Add(new BookingLog
@@ -1979,6 +2055,47 @@ public class FlightController : ControllerBase
                                 pax.TicketNumber = ticket.TicketNumber;
                         }
 
+                        // ReadShoppingFile to get ALL segments (outbound + return) with definitive data
+                        try
+                        {
+                            var readResult = await _flightService.ReadShoppingFileAsync(new ReadShoppingFileRequest
+                            {
+                                SessionId = allocateResult.SessionId!,
+                                SessionToken = allocateResult.SessionToken!,
+                                ShoppingFileId = preBookResult.ShoppingFileId!
+                            });
+
+                            if (!readResult.HasError && readResult.Segments.Count > 0)
+                            {
+                                booking.FlightSegments.Clear();
+                                var bagStr = FormatBaggageAllowance(airBooking?.BaggageAllowances);
+                                foreach (var seg in readResult.Segments)
+                                {
+                                    booking.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        BookingId = booking.Id,
+                                        SequenceNo = booking.FlightSegments.Count,
+                                        MarketingAirline = seg.MarketingAirline ?? "",
+                                        FlightNumber = seg.FlightNumber ?? "",
+                                        OriginCode = seg.OriginCode ?? "",
+                                        DestinationCode = seg.DestinationCode ?? "",
+                                        DepartureDate = DateTime.TryParse(seg.DepartureDay, out var rd) ? rd : DateTime.MinValue,
+                                        DepartureTime = seg.DepartureTime,
+                                        ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var ra) ? ra : null,
+                                        ArrivalTime = seg.ArrivalTime,
+                                        BookingClass = seg.BookingClass,
+                                        Baggage = bagStr
+                                    });
+                                }
+                                _logger.LogInformation("[BookFlight] Updated segments from ReadShoppingFile. Count={Count}", readResult.Segments.Count);
+                            }
+                        }
+                        catch (Exception readEx)
+                        {
+                            _logger.LogWarning(readEx, "[BookFlight] ReadShoppingFile failed — keeping allocate segments.");
+                        }
+
                         await _bookingRepository.UpdateStatusAsync(savedBookingId.Value, response.Status!);
                         await _bookingRepository.AddLogAsync(new BookingLog
                         {
@@ -2008,6 +2125,17 @@ public class FlightController : ControllerBase
             response.Steps.Add($"HATA: {ex.Message}");
             return StatusCode(500, response);
         }
+    }
+
+    private static string? FormatBaggageAllowance(List<AllocateBaggageAllowance>? allowances)
+    {
+        if (allowances == null || allowances.Count == 0) return null;
+        var first = allowances[0];
+        if (!string.IsNullOrWhiteSpace(first.Allowance) && !string.IsNullOrWhiteSpace(first.Unit))
+            return $"{first.Allowance} {first.Unit}";
+        if (!string.IsNullOrWhiteSpace(first.Allowance))
+            return first.Allowance;
+        return null;
     }
 
     /// <summary>
