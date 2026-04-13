@@ -4,7 +4,8 @@ using GBILET.Core.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GBILET.Api.Controllers;
-
+ 
+ //api controller
 [ApiController]
 [Route("api/[controller]")]
 public class AirlineController : ControllerBase
