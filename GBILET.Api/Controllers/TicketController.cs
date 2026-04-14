@@ -44,9 +44,9 @@ public class TicketController : ControllerBase
                 return NotFound(new { error = "Rezervasyon bulunamadi." });
             }
 
-            var firstPax = booking.Passengers.OrderBy(p => p.SequenceNo).FirstOrDefault();
             var fareDetail = booking.FareDetails.FirstOrDefault();
-            var contactPax = booking.Passengers.FirstOrDefault(p => !string.IsNullOrEmpty(p.Email)) ?? firstPax;
+            var contactPax = booking.Passengers.FirstOrDefault(p => !string.IsNullOrEmpty(p.Email))
+                ?? booking.Passengers.OrderBy(p => p.SequenceNo).FirstOrDefault();
 
             var totalFare = fareDetail?.GrandTotal ?? booking.GrandTotal ?? 0;
             var currency = fareDetail?.Currency ?? booking.Currency ?? "TRY";
@@ -72,7 +72,7 @@ public class TicketController : ControllerBase
                     var seg = segments[i];
                     var amount = perSegment;
                     if (i == segments.Count - 1)
-                        amount += remainder; // last segment gets rounding remainder
+                        amount += remainder;
 
                     fareItems.Add(new TicketFareItemDto
                     {
@@ -83,15 +83,39 @@ public class TicketController : ControllerBase
                 }
             }
 
-            var data = new TicketPdfDataDto
+            var flightDtos = segments
+                .Select(seg => new TicketFlightDto
+                {
+                    AirlineName = FlightMappings.GetAirlineName(seg.MarketingAirline),
+                    FlightCode = FormatFlightCode(seg.MarketingAirline, seg.FlightNumber),
+                    BookingClass = seg.BookingClass ?? "",
+                    FareBasisName = seg.FareBasis,
+                    OriginCity = FlightMappings.GetAirportName(seg.OriginCode),
+                    OriginAirport = FlightMappings.GetAirportName(seg.OriginCode),
+                    OriginCode = seg.OriginCode,
+                    DepartureDate = FormatDateTurkish(seg.DepartureDate),
+                    DepartureTime = seg.DepartureTime ?? "",
+                    DestinationCity = FlightMappings.GetAirportName(seg.DestinationCode),
+                    DestinationAirport = FlightMappings.GetAirportName(seg.DestinationCode),
+                    DestinationCode = seg.DestinationCode,
+                    ArrivalDate = seg.ArrivalDate.HasValue ? FormatDateTurkish(seg.ArrivalDate.Value) : FormatDateTurkish(seg.DepartureDate),
+                    ArrivalTime = seg.ArrivalTime ?? "",
+                    BaggageAllowance = seg.Baggage ?? "—",
+                    AirlineCode = seg.MarketingAirline ?? ""
+                })
+                .ToList();
+
+            // Build per-passenger data list
+            var allPassengers = booking.Passengers.OrderBy(p => p.SequenceNo).ToList();
+            var passengerDataList = allPassengers.Select(pax => new TicketPdfDataDto
             {
-                PassengerName = firstPax != null ? $"{firstPax.FirstName} {firstPax.LastName}" : "—",
+                PassengerName = $"{pax.FirstName} {pax.LastName}",
                 Pnr = booking.PNR ?? "—",
-                TicketNumber = firstPax?.TicketNumber ?? "—",
+                TicketNumber = pax.TicketNumber ?? "—",
                 IssueDate = booking.TicketedAt ?? booking.PaidAt ?? booking.CreatedAt,
-                TcNo = firstPax?.CitizenNo,
-                PassportNo = firstPax?.PassportNo,
-                PassportCountry = firstPax?.PassportCountry,
+                TcNo = pax.CitizenNo,
+                PassportNo = pax.PassportNo,
+                PassportCountry = pax.PassportCountry,
                 IsInternational = isInternational,
                 BaseFare = fareDetail?.BaseFare ?? 0,
                 Taxes = fareDetail?.TotalTax ?? 0,
@@ -100,29 +124,10 @@ public class TicketController : ControllerBase
                 FareItems = fareItems,
                 ContactPhone = contactPax?.Phone ?? "",
                 ContactEmail = contactPax?.Email ?? "",
-                Flights = segments
-                    .Select(seg => new TicketFlightDto
-                    {
-                        AirlineName = FlightMappings.GetAirlineName(seg.MarketingAirline),
-                        FlightCode = FormatFlightCode(seg.MarketingAirline, seg.FlightNumber),
-                        BookingClass = seg.BookingClass ?? "",
-                        FareBasisName = seg.FareBasis,
-                        OriginCity = FlightMappings.GetAirportName(seg.OriginCode),
-                        OriginAirport = FlightMappings.GetAirportName(seg.OriginCode),
-                        OriginCode = seg.OriginCode,
-                        DepartureDate = FormatDateTurkish(seg.DepartureDate),
-                        DepartureTime = seg.DepartureTime ?? "",
-                        DestinationCity = FlightMappings.GetAirportName(seg.DestinationCode),
-                        DestinationAirport = FlightMappings.GetAirportName(seg.DestinationCode),
-                        DestinationCode = seg.DestinationCode,
-                        ArrivalDate = seg.ArrivalDate.HasValue ? FormatDateTurkish(seg.ArrivalDate.Value) : FormatDateTurkish(seg.DepartureDate),
-                        ArrivalTime = seg.ArrivalTime ?? "",
-                        BaggageAllowance = seg.Baggage ?? "—"
-                    })
-                    .ToList()
-            };
+                Flights = flightDtos
+            }).ToList();
 
-            var pdfBytes = _ticketPdfService.GeneratePdf(data);
+            var pdfBytes = _ticketPdfService.GeneratePdf(passengerDataList);
 
             return File(pdfBytes, "application/pdf", $"e-ticket-{shoppingFileId}.pdf");
         }

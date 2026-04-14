@@ -51,4 +51,5 @@ public class TicketFlightDto
     public string ArrivalTime { get; set; } = string.Empty;
 
     public string BaggageAllowance { get; set; } = string.Empty;
+    public string AirlineCode { get; set; } = string.Empty;
 }
