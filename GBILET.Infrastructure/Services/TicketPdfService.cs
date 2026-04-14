@@ -302,17 +302,17 @@ public class TicketPdfService : ITicketPdfService
 
                         bodyRow.ConstantItem(10); // gap after logo
 
-                        // ─── Kalkış / Departure column ───
-                        bodyRow.RelativeItem().Column(dep =>
+                        // ─── Kalkış / Departure column (sağa yaslanmış, çizgiye yakın) ───
+                        bodyRow.RelativeItem().AlignRight().PaddingRight(6).Column(dep =>
                         {
-                            dep.Item().Text("KALKIS / DEPARTURE").FontSize(7).FontColor(GrayColor);
-                            dep.Item().PaddingTop(3).Text(flight.DepartureTime).Bold().FontSize(18).FontColor(DarkColor);
-                            dep.Item().PaddingTop(1).Text($"{flight.OriginCity} ({flight.OriginCode})").Bold().FontSize(9);
-                            dep.Item().Text(flight.OriginAirport).FontSize(7).FontColor(GrayColor);
-                            dep.Item().PaddingTop(2).Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
+                            dep.Item().AlignRight().Text("KALKIS / DEPARTURE").FontSize(7).FontColor(GrayColor);
+                            dep.Item().PaddingTop(3).AlignRight().Text(flight.DepartureTime).Bold().FontSize(18).FontColor(DarkColor);
+                            dep.Item().PaddingTop(1).AlignRight().Text($"{flight.OriginCity} ({flight.OriginCode})").Bold().FontSize(9);
+                            dep.Item().AlignRight().Text(flight.OriginAirport).FontSize(7).FontColor(GrayColor);
+                            dep.Item().PaddingTop(2).AlignRight().Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
 
                             // Airline & flight info under departure
-                            dep.Item().PaddingTop(4).Text(text =>
+                            dep.Item().PaddingTop(4).AlignRight().Text(text =>
                             {
                                 text.Span(flight.AirlineName).Bold().FontSize(8).FontColor(DarkColor);
                                 text.Span($"  {flight.FlightCode}").FontSize(8).FontColor(GrayColor);
@@ -322,7 +322,7 @@ public class TicketPdfService : ITicketPdfService
 
                             if (!string.IsNullOrWhiteSpace(flight.FareBasisName))
                             {
-                                dep.Item().PaddingTop(2).Text(flight.FareBasisName).FontSize(7).FontColor("#374151");
+                                dep.Item().PaddingTop(2).AlignRight().Text(flight.FareBasisName).FontSize(7).FontColor("#374151");
                             }
                         });
 
@@ -351,9 +351,9 @@ public class TicketPdfService : ITicketPdfService
                         // ── CHANGE #4: No-baggage icon (suitcase with slash) ──
                         if (hasNoBaggage)
                         {
-                            footRow.ConstantItem(16).Height(16).AlignMiddle()
+                            footRow.ConstantItem(10).Height(10).AlignMiddle()
                                 .Svg(NoBaggageSvgIcon);
-                            footRow.ConstantItem(4); // gap
+                            footRow.ConstantItem(3); // gap
                         }
 
                         footRow.RelativeItem().AlignMiddle().Text(text =>
@@ -413,6 +413,5 @@ public class TicketPdfService : ITicketPdfService
     {
         return date.ToString("dd.MM.yyyy HH:mm");
     }
-
 
 }
