@@ -89,10 +89,10 @@ public class TicketPdfService : ITicketPdfService
         }
         else
         {
-            // 2. Download from Kiwi CDN
+            // 2. Download from Aviasales CDN
             try
             {
-                var url = $"https://images.kiwi.com/airlines/64x64/{upperCode}.png";
+                var url = $"https://pics.avs.io/64/64/{upperCode}.png";
                 var response = _httpClient.GetAsync(url).GetAwaiter().GetResult();
                 if (response.IsSuccessStatusCode)
                 {
@@ -284,16 +284,16 @@ public class TicketPdfService : ITicketPdfService
 
                         if (logoBytes != null)
                         {
-                            airlineRow.ConstantItem(26).Height(26)
+                            airlineRow.ConstantItem(36).Height(36)
                                 .Image(logoBytes).FitArea();
                         }
                         else
                         {
                             var clr = AirlineColors.GetValueOrDefault(flight.AirlineCode, "#4B5563");
-                            airlineRow.ConstantItem(26).Height(26).AlignCenter().AlignMiddle()
-                                .Background(clr).Padding(1)
+                            airlineRow.ConstantItem(36).Height(36).AlignCenter().AlignMiddle()
+                                .Background(clr).Padding(2)
                                 .AlignCenter().AlignMiddle()
-                                .Text(flight.AirlineCode).Bold().FontSize(9).FontColor("#FFFFFF");
+                                .Text(flight.AirlineCode).Bold().FontSize(11).FontColor("#FFFFFF");
                         }
 
                         airlineRow.ConstantItem(8);
@@ -328,17 +328,20 @@ public class TicketPdfService : ITicketPdfService
                         // Flight path connector: dot ---- arrow
                         bodyRow.ConstantItem(120).AlignMiddle().AlignCenter().Column(mid =>
                         {
-                            mid.Item().AlignCenter().Row(connRow =>
+                            mid.Item().AlignCenter().PaddingHorizontal(4).Row(connRow =>
                             {
                                 // Origin dot
-                                connRow.AutoItem().AlignMiddle().PaddingRight(3)
-                                    .Text("\u25CF").FontSize(9).FontColor(RedColor);
-                                // Dashed line
                                 connRow.AutoItem().AlignMiddle()
-                                    .Text("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500").FontSize(11).FontColor("#D1D5DB");
-                                // Arrow tip
-                                connRow.AutoItem().AlignMiddle().PaddingLeft(1)
-                                    .Text("\u25B6").FontSize(9).FontColor(RedColor);
+                                    .Width(8).Height(8).Container()
+                                    .Background(RedColor);
+
+                                // Line
+                                connRow.RelativeItem().AlignMiddle().PaddingVertical(3)
+                                    .LineHorizontal(2).LineColor("#D1D5DB");
+
+                                // Arrow tip >
+                                connRow.AutoItem().AlignMiddle()
+                                    .Text(">").Bold().FontSize(14).FontColor(RedColor);
                             });
                         });
 
