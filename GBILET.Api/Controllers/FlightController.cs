@@ -455,6 +455,18 @@ public class FlightController : ControllerBase
                     });
                 }
 
+                bookingEntity.FareDetails.Add(new FareDetail
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = bookingEntity.Id,
+                    BaseFare = result.BaseFare,
+                    TotalTax = result.Taxes,
+                    ServiceFee = result.ServiceFee,
+                    GrandTotal = result.TotalFare,
+                    Currency = result.Currency ?? "TRY",
+                    CreatedAt = DateTime.UtcNow
+                });
+
                 bookingEntity.BookingLogs.Add(new BookingLog
                 {
                     Id = Guid.NewGuid(),
@@ -1920,6 +1932,18 @@ public class FlightController : ControllerBase
                         });
                     }
                 }
+
+                bookingEntity.FareDetails.Add(new FareDetail
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = bookingEntity.Id,
+                    BaseFare = preBookResult.BaseFare,
+                    TotalTax = preBookResult.Taxes,
+                    ServiceFee = preBookResult.ServiceFee,
+                    GrandTotal = preBookResult.TotalFare,
+                    Currency = preBookResult.Currency ?? "TRY",
+                    CreatedAt = DateTime.UtcNow
+                });
 
                 bookingEntity.BookingLogs.Add(new BookingLog
                 {

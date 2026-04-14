@@ -266,13 +266,11 @@ public class TicketPdfService : ITicketPdfService
                             dep.Item().PaddingTop(2).Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
                         });
 
-                        // Plane icon with dashed line
+                        // Red dashed line separator
                         bodyRow.ConstantItem(80).AlignMiddle().AlignCenter().Column(mid =>
                         {
-                            mid.Item().AlignCenter().PaddingBottom(4)
-                                .Text("- - - - - - - - -").FontSize(7).FontColor("#D1D5DB");
-                            mid.Item().AlignCenter().Width(24).Height(24)
-                                .Svg(PlaneIconSvg);
+                            mid.Item().AlignCenter()
+                                .Text("— — — — —").FontSize(9).FontColor(RedColor);
                         });
 
                         // Arrival
