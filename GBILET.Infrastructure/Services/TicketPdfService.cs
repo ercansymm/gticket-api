@@ -325,24 +325,10 @@ public class TicketPdfService : ITicketPdfService
                             dep.Item().PaddingTop(2).Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
                         });
 
-                        // Flight path connector: dot ---- arrow
-                        bodyRow.ConstantItem(120).AlignMiddle().AlignCenter().Column(mid =>
+                        // Flight path connector: -------->
+                        bodyRow.ConstantItem(130).AlignMiddle().AlignCenter().Column(mid =>
                         {
-                            mid.Item().AlignCenter().PaddingHorizontal(4).Row(connRow =>
-                            {
-                                // Origin dot
-                                connRow.AutoItem().AlignMiddle()
-                                    .Width(8).Height(8).Container()
-                                    .Background(RedColor);
-
-                                // Line
-                                connRow.RelativeItem().AlignMiddle().PaddingVertical(3)
-                                    .LineHorizontal(2).LineColor("#D1D5DB");
-
-                                // Arrow tip >
-                                connRow.AutoItem().AlignMiddle()
-                                    .Text(">").Bold().FontSize(14).FontColor(RedColor);
-                            });
+                            mid.Item().AlignCenter().Text("---------------------------------------------->").Bold().FontSize(14).FontColor(RedColor);
                         });
 
                         // Arrival
@@ -362,9 +348,10 @@ public class TicketPdfService : ITicketPdfService
                         footRow.RelativeItem().Text(text =>
                         {
                             text.Span("Bagaj / Baggage: ").FontSize(8).FontColor(GrayColor);
-                            var baggageText = string.IsNullOrWhiteSpace(flight.BaggageAllowance) || flight.BaggageAllowance == "-"
+                            var bag = flight.BaggageAllowance?.Trim();
+                            var baggageText = string.IsNullOrWhiteSpace(bag) || bag == "-" || bag == "\u2014" || bag == "--"
                                 ? "Bagaj Yok"
-                                : flight.BaggageAllowance;
+                                : bag;
                             text.Span(baggageText).Bold().FontSize(8);
                         });
                     });
