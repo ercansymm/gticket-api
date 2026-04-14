@@ -326,14 +326,6 @@ public class TicketPdfService : ITicketPdfService
                             dep.Item().PaddingTop(2).Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
                         });
 
-                            bodyRow.ConstantItem(130).AlignMiddle().AlignCenter().Column(mid =>
-{
-    mid.Item().Height(20).Svg("""
-        <svg viewBox="0 0 130 20" xmlns="http://www.w3.org/2000/svg">
-            <line x1="0" y1="10" x2="130" y2="10" stroke="#E30A17" stroke-width="1.5" stroke-dasharray="6,3"/>
-        </svg>
-    """);
-});
 
 
                         // Arrival
