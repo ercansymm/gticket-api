@@ -1389,8 +1389,35 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         if (isBundle)
             returnProductId = null; // single IO_AllocationItem is enough for bundles
 
+        // SubOptions: RecommendationBox bundle'da gidiş+dönüş FlightId GUID'leri
+        var subOptionsXml = "";
+        if (isBundle && request.SubOptionFlightIds?.Count > 0)
+        {
+            var guids = string.Join("\n                        ",
+                request.SubOptionFlightIds.Select(id => $"<arr:guid>{id}</arr:guid>"));
+            subOptionsXml = $@"
+                   <trev1:SubOptions>
+                        {guids}
+                   </trev1:SubOptions>";
+        }
+
         // Departure IO_AllocationItem (always present)
-        var departureItem = $@"<trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(brandedFareItemId) ? $@"
+        // RecommendationBox bundle: BrandedFareItemId ve ProductItemServiceFee OLMADAN,
+        // SubOptions ile (referans: BILETBANK API-V2 BrandedFareItemId-RT RecommendationBox)
+        // Bağımsız FlightOption: BrandedFareItemId ile, SubOptions olmadan
+        string departureItem;
+        if (isBundle)
+        {
+            departureItem = $@"<trev1:IO_AllocationItem>
+                   <trev1:ProductId>{productId}</trev1:ProductId>
+                   <trev1:SelectedServiceFee>
+                      <trev1:Amount>{serviceFee}</trev1:Amount>
+                   </trev1:SelectedServiceFee>{subOptionsXml}
+                </trev1:IO_AllocationItem>";
+        }
+        else
+        {
+            departureItem = $@"<trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(brandedFareItemId) ? $@"
                    <trev1:BrandedFareItemId>{brandedFareItemId}</trev1:BrandedFareItemId>" : @"
                    <trev1:BrandedFareItemId i:nil=""true""/>")}
                    <trev1:ProductId>{productId}</trev1:ProductId>
@@ -1399,6 +1426,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                       <trev1:ProductItemServiceFee i:nil=""true""/>
                    </trev1:SelectedServiceFee>
                 </trev1:IO_AllocationItem>";
+        }
 
         // Return IO_AllocationItem (only for independent round-trip, NOT bundles)
         var returnItem = !string.IsNullOrEmpty(returnProductId)

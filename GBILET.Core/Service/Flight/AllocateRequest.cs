@@ -46,4 +46,10 @@ public class AllocateRequest
     /// Round-trip: Donus ucusunun BrandedFareItemId'si.
     /// </summary>
     public string? ReturnBrandedFareItemId { get; set; }
+
+    /// <summary>
+    /// RecommendationBox bundle: gidis+donus FlightId GUID'leri.
+    /// Allocate XML'inde SubOptions olarak gonderilir.
+    /// </summary>
+    public List<string>? SubOptionFlightIds { get; set; }
 }
