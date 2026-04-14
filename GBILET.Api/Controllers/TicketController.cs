@@ -93,6 +93,8 @@ public class TicketController : ControllerBase
                 PassportNo = firstPax?.PassportNo,
                 PassportCountry = firstPax?.PassportCountry,
                 IsInternational = isInternational,
+                BaseFare = fareDetail?.BaseFare ?? 0,
+                Taxes = fareDetail?.TotalTax ?? 0,
                 TotalFare = totalFare,
                 Currency = currency,
                 FareItems = fareItems,

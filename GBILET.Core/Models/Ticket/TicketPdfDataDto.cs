@@ -12,6 +12,8 @@ public class TicketPdfDataDto
     public string? PassportCountry { get; set; }
     public bool IsInternational { get; set; }
 
+    public decimal BaseFare { get; set; }
+    public decimal Taxes { get; set; }
     public decimal TotalFare { get; set; }
     public string Currency { get; set; } = "TRY";
 

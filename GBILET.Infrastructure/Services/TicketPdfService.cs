@@ -133,6 +133,22 @@ public class TicketPdfService : ITicketPdfService
                     });
                 }
 
+                col.Item().PaddingTop(8);
+
+                // Base fare
+                col.Item().Row(r =>
+                {
+                    r.RelativeItem().Text("Esas \u00dccret / Base Fare").FontSize(10);
+                    r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(10);
+                });
+
+                // Taxes
+                col.Item().PaddingTop(4).Row(r =>
+                {
+                    r.RelativeItem().Text("Vergiler ve Di\u011fer \u00dccretler / Taxes & Fees").FontSize(10);
+                    r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(10);
+                });
+
                 // Separator
                 col.Item().PaddingVertical(8).LineHorizontal(1).LineColor("#D1D5DB");
 
