@@ -37,17 +37,13 @@ public class AllocateRequest
     public string? BrandedFareItemId { get; set; }
 
     /// <summary>
-    /// RecommendationBox gidis bacaginin FlightId'si — SubOptions icin.
+    /// Round-trip: Donus ucusunun ProductId'si.
+    /// Verilirse Allocate XML'inde ikinci IO_AllocationItem olusturulur.
     /// </summary>
-    public string? DepartureFlightId { get; set; }
+    public string? ReturnProductId { get; set; }
 
     /// <summary>
-    /// RecommendationBox donus bacaginin FlightId'si — SubOptions icin.
+    /// Round-trip: Donus ucusunun BrandedFareItemId'si.
     /// </summary>
-    public string? ReturnFlightId { get; set; }
-
-    /// <summary>
-    /// RecommendationBox RT sonuçları için gidiş+dönüş FlightId listesi — Allocate SubOptions olarak gönderilir.
-    /// </summary>
-    public List<Guid>? SubOptions { get; set; }
+    public string? ReturnBrandedFareItemId { get; set; }
 }

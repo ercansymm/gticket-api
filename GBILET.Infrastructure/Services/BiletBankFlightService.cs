@@ -1372,6 +1372,33 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         string sessionToken,
         AllocateRequest request)
     {
+        var serviceFee = request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // Departure IO_AllocationItem (always present)
+        var departureItem = $@"<trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(request.BrandedFareItemId) ? $@"
+                   <trev1:BrandedFareItemId>{request.BrandedFareItemId}</trev1:BrandedFareItemId>" : @"
+                   <trev1:BrandedFareItemId i:nil=""true""/>")}
+                   <trev1:ProductId>{request.ProductId}</trev1:ProductId>
+                   <trev1:SelectedServiceFee>
+                      <trev1:Amount>{serviceFee}</trev1:Amount>
+                      <trev1:ProductItemServiceFee i:nil=""true""/>
+                   </trev1:SelectedServiceFee>
+                </trev1:IO_AllocationItem>";
+
+        // Return IO_AllocationItem (only for round-trip)
+        var returnItem = !string.IsNullOrEmpty(request.ReturnProductId)
+            ? $@"
+                <trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(request.ReturnBrandedFareItemId) ? $@"
+                   <trev1:BrandedFareItemId>{request.ReturnBrandedFareItemId}</trev1:BrandedFareItemId>" : @"
+                   <trev1:BrandedFareItemId i:nil=""true""/>")}
+                   <trev1:ProductId>{request.ReturnProductId}</trev1:ProductId>
+                   <trev1:SelectedServiceFee>
+                      <trev1:Amount>{serviceFee}</trev1:Amount>
+                      <trev1:ProductItemServiceFee i:nil=""true""/>
+                   </trev1:SelectedServiceFee>
+                </trev1:IO_AllocationItem>"
+            : "";
+
         return $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/""
 xmlns:tem=""http://tempuri.org/""
@@ -1388,20 +1415,7 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
          </trev:AuthenticationHeader>
          <trev1:Form>
              <trev1:SelectedItems>
-                <trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(request.BrandedFareItemId) ? $@"
-                   <trev1:BrandedFareItemId>{request.BrandedFareItemId}</trev1:BrandedFareItemId>" : @"
-                   <trev1:BrandedFareItemId i:nil=""true""/>")}
-                   <trev1:ProductId>{request.ProductId}</trev1:ProductId>
-                   <trev1:SelectedServiceFee>
-                      <trev1:Amount>{request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture)}</trev1:Amount>
-                      <trev1:ProductItemServiceFee i:nil=""true""/>
-                   </trev1:SelectedServiceFee>
-                   {(request.SubOptions != null && request.SubOptions.Count > 0
-                    ? $@"<trev1:SubOptions>{string.Join("", request.SubOptions.Select(g => $@"
-                      <arr:guid>{g:D}</arr:guid>"))}
-                   </trev1:SubOptions>"
-                    : @"<trev1:SubOptions i:nil=""true""/>")}
-                </trev1:IO_AllocationItem>
+                {departureItem}{returnItem}
              </trev1:SelectedItems>
           </trev1:Form>
       </tem:request>
