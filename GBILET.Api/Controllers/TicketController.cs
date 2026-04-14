@@ -14,6 +14,15 @@ public class TicketController : ControllerBase
     private readonly IBookingRepository _bookingRepository;
     private readonly ILogger<TicketController> _logger;
 
+    // Turkish IATA airport codes for international detection
+    private static readonly HashSet<string> TurkishAirports = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "SAW","IST","ESB","ADB","AYT","TZX","BJV","DLM","GZT","VAN","ERZ","EZS","DIY",
+        "SZF","KYA","ASR","HTY","MLX","GNY","MZH","NOP","KCM","OGU","CKZ","BZC","DNZ",
+        "ISE","MQM","NKT","SXZ","YKO","BAL","IGD","KSY","MSR","BGG","TJK","ONQ","AOE",
+        "USQ","AFY","EDO","TEQ","BDM","KZR","ADA","NAV","GZP"
+    };
+
     public TicketController(ITicketPdfService ticketPdfService, IBookingRepository bookingRepository, ILogger<TicketController> logger)
     {
         _ticketPdfService = ticketPdfService;
@@ -39,22 +48,57 @@ public class TicketController : ControllerBase
             var fareDetail = booking.FareDetails.FirstOrDefault();
             var contactPax = booking.Passengers.FirstOrDefault(p => !string.IsNullOrEmpty(p.Email)) ?? firstPax;
 
+            var totalFare = fareDetail?.GrandTotal ?? booking.GrandTotal ?? 0;
+            var currency = fareDetail?.Currency ?? booking.Currency ?? "TRY";
+
+            var segments = booking.FlightSegments
+                .OrderBy(s => s.DepartureDate)
+                .ThenBy(s => s.DepartureTime)
+                .ToList();
+
+            // International detection: any segment origin or destination is NOT Turkish
+            var isInternational = segments.Any(s =>
+                !TurkishAirports.Contains(s.OriginCode) || !TurkishAirports.Contains(s.DestinationCode));
+
+            // Per-flight fare items: split total proportionally across segments
+            var fareItems = new List<TicketFareItemDto>();
+            if (segments.Count > 0)
+            {
+                var perSegment = Math.Round(totalFare / segments.Count, 2);
+                var remainder = totalFare - (perSegment * segments.Count);
+
+                for (var i = 0; i < segments.Count; i++)
+                {
+                    var seg = segments[i];
+                    var amount = perSegment;
+                    if (i == segments.Count - 1)
+                        amount += remainder; // last segment gets rounding remainder
+
+                    fareItems.Add(new TicketFareItemDto
+                    {
+                        Route = $"{FlightMappings.GetAirportName(seg.OriginCode)} ({seg.OriginCode}) → {FlightMappings.GetAirportName(seg.DestinationCode)} ({seg.DestinationCode})",
+                        Amount = amount,
+                        Currency = currency
+                    });
+                }
+            }
+
             var data = new TicketPdfDataDto
             {
                 PassengerName = firstPax != null ? $"{firstPax.FirstName} {firstPax.LastName}" : "—",
                 Pnr = booking.PNR ?? "—",
                 TicketNumber = firstPax?.TicketNumber ?? "—",
                 IssueDate = booking.TicketedAt ?? booking.PaidAt ?? booking.CreatedAt,
-                PassportOrTcNo = firstPax?.CitizenNo ?? firstPax?.PassportNo,
-                BaseFare = fareDetail?.BaseFare ?? 0,
-                Taxes = fareDetail?.TotalTax ?? 0,
-                TotalFare = fareDetail?.GrandTotal ?? booking.GrandTotal ?? 0,
-                Currency = fareDetail?.Currency ?? booking.Currency ?? "TRY",
+                TcNo = firstPax?.CitizenNo,
+                PassportNo = firstPax?.PassportNo,
+                PassportCountry = firstPax?.PassportCountry,
+                IsInternational = isInternational,
+                TotalFare = totalFare,
+                Currency = currency,
+                FareItems = fareItems,
                 ContactPhone = contactPax?.Phone ?? "",
                 ContactEmail = contactPax?.Email ?? "",
-                Flights = booking.FlightSegments
-                    .OrderBy(s => s.DepartureDate)
-                    .ThenBy(s => s.DepartureTime)
+                Flights = segments
                     .Select(seg => new TicketFlightDto
                     {
                         AirlineName = FlightMappings.GetAirlineName(seg.MarketingAirline),

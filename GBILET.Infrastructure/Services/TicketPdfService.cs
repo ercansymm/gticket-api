@@ -51,8 +51,8 @@ public class TicketPdfService : ITicketPdfService
                 });
             });
 
-            // Green separator line
-            column.Item().PaddingVertical(8).LineHorizontal(2).LineColor("#22C55E");
+            // Red separator line
+            column.Item().PaddingVertical(8).LineHorizontal(2).LineColor("#DC2626");
 
             // E-TICKET title
             column.Item().AlignCenter().Text("E-B\u0130LET / E-TICKET").Bold().FontSize(16);
@@ -85,19 +85,33 @@ public class TicketPdfService : ITicketPdfService
                 col.Item().Text("YOLCU / PASSENGER").Bold().FontSize(9).FontColor("#6B7280");
                 col.Item().PaddingTop(2).Text(data.PassengerName).Bold().FontSize(12);
 
-                col.Item().PaddingTop(10).Text("REZERVASYON NO / BOOKING REF").Bold().FontSize(9).FontColor("#6B7280");
+                col.Item().PaddingTop(10).Text("PNR NUMARASI / PNR NUMBER").Bold().FontSize(9).FontColor("#6B7280");
                 col.Item().PaddingTop(2).Text(data.Pnr).Bold().FontSize(12);
 
                 col.Item().PaddingTop(10).Text("B\u0130LET NO / TICKET NUMBER").Bold().FontSize(9).FontColor("#6B7280");
                 col.Item().PaddingTop(2).Text(data.TicketNumber).FontSize(11);
 
-                col.Item().PaddingTop(10).Text("D\u00dcZENLENME TAR\u0130H\u0130 / ISSUE DATE").Bold().FontSize(9).FontColor("#6B7280");
+                col.Item().PaddingTop(10).Text("B\u0130LET OLU\u015eTURMA TAR\u0130H\u0130 / TICKET ISSUE DATE").Bold().FontSize(9).FontColor("#6B7280");
                 col.Item().PaddingTop(2).Text(FormatDateTurkish(data.IssueDate)).FontSize(11);
 
-                if (!string.IsNullOrWhiteSpace(data.PassportOrTcNo))
+                // TC Kimlik No (always shown if available)
+                if (!string.IsNullOrWhiteSpace(data.TcNo))
                 {
-                    col.Item().PaddingTop(10).Text("PASAPORT/TC NO").Bold().FontSize(9).FontColor("#6B7280");
-                    col.Item().PaddingTop(2).Text(data.PassportOrTcNo).FontSize(11);
+                    col.Item().PaddingTop(10).Text("TC K\u0130ML\u0130K NO / ID NUMBER").Bold().FontSize(9).FontColor("#6B7280");
+                    col.Item().PaddingTop(2).Text(data.TcNo).FontSize(11);
+                }
+
+                // Passport fields (international flights)
+                if (data.IsInternational)
+                {
+                    col.Item().PaddingTop(10).Text("PASAPORT NO / PASSPORT NO").Bold().FontSize(9).FontColor("#6B7280");
+                    col.Item().PaddingTop(2).Text(!string.IsNullOrWhiteSpace(data.PassportNo) ? data.PassportNo : "—").FontSize(11);
+
+                    if (!string.IsNullOrWhiteSpace(data.PassportCountry))
+                    {
+                        col.Item().PaddingTop(6).Text("PASAPORT \u00dcLKES\u0130 / PASSPORT COUNTRY").Bold().FontSize(9).FontColor("#6B7280");
+                        col.Item().PaddingTop(2).Text(data.PassportCountry).FontSize(11);
+                    }
                 }
             });
 
@@ -108,17 +122,16 @@ public class TicketPdfService : ITicketPdfService
             {
                 col.Item().Text("\u00dcCRET B\u0130LG\u0130LER\u0130 / PRICE INFO").Bold().FontSize(9).FontColor("#6B7280");
 
-                col.Item().PaddingTop(10).Row(r =>
+                // Per-flight fare breakdown
+                foreach (var item in data.FareItems)
                 {
-                    r.RelativeItem().Text("Esas \u00dccret / Base Fare").FontSize(10);
-                    r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(10);
-                });
-
-                col.Item().PaddingTop(6).Row(r =>
-                {
-                    r.RelativeItem().Text("Vergiler ve Di\u011fer \u00dccretler / Taxes & Fees").FontSize(10);
-                    r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(10);
-                });
+                    col.Item().PaddingTop(8).Text(item.Route).FontSize(8).FontColor("#374151");
+                    col.Item().PaddingTop(2).Row(r =>
+                    {
+                        r.RelativeItem().Text("Bilet \u00dccreti / Ticket Fare").FontSize(10);
+                        r.AutoItem().AlignRight().Text($"{item.Amount:N2} {item.Currency}").FontSize(10);
+                    });
+                }
 
                 // Separator
                 col.Item().PaddingVertical(8).LineHorizontal(1).LineColor("#D1D5DB");
@@ -126,7 +139,7 @@ public class TicketPdfService : ITicketPdfService
                 col.Item().Row(r =>
                 {
                     r.RelativeItem().Text("TOPLAM TUTAR / TOTAL FARE").Bold().FontSize(11);
-                    r.AutoItem().AlignRight().Text($"{data.TotalFare:N2} {data.Currency}").Bold().FontSize(13).FontColor("#22C55E");
+                    r.AutoItem().AlignRight().Text($"{data.TotalFare:N2} {data.Currency}").Bold().FontSize(13).FontColor("#DC2626");
                 });
             });
         });
@@ -155,7 +168,7 @@ public class TicketPdfService : ITicketPdfService
                 var flight = data.Flights[i];
                 var bgColor = i % 2 == 0 ? "#FFFFFF" : "#FAFAFA";
 
-                column.Item().BorderLeft(3).BorderColor("#22C55E").Background(bgColor).Padding(8).Row(row =>
+                column.Item().BorderLeft(3).BorderColor("#DC2626").Background(bgColor).Padding(8).Row(row =>
                 {
                     // Airline + flight code + class
                     row.RelativeItem(3).Column(col =>
@@ -163,7 +176,7 @@ public class TicketPdfService : ITicketPdfService
                         col.Item().Text($"{flight.AirlineName} {flight.FlightCode} - {flight.BookingClass}").FontSize(10).Bold();
                         if (!string.IsNullOrWhiteSpace(flight.FareBasisName))
                         {
-                            col.Item().PaddingTop(2).Text(flight.FareBasisName).FontSize(8).FontColor("#22C55E");
+                            col.Item().PaddingTop(2).Text(flight.FareBasisName).FontSize(8).FontColor("#DC2626");
                         }
                     });
 
@@ -213,7 +226,7 @@ public class TicketPdfService : ITicketPdfService
             column.Item().PaddingTop(6);
 
             // Bottom warning
-            column.Item().Text("Bilgi amaçlıdır, fatura yerine geçmez.")
+            column.Item().Text("Bilgi ama\u00e7l\u0131d\u0131r, fatura yerine ge\u00e7mez.")
                 .FontSize(8).FontColor("#DC2626").Italic();
         });
     }
@@ -222,8 +235,8 @@ public class TicketPdfService : ITicketPdfService
     {
         var months = new[]
         {
-            "", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+            "", "Ocak", "\u015eubat", "Mart", "Nisan", "May\u0131s", "Haziran",
+            "Temmuz", "A\u011fustos", "Eyl\u00fcl", "Ekim", "Kas\u0131m", "Aral\u0131k"
         };
         return $"{date.Day} {months[date.Month]} {date.Year}";
     }

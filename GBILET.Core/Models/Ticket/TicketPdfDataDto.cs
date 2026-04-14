@@ -6,17 +6,27 @@ public class TicketPdfDataDto
     public string Pnr { get; set; } = string.Empty;
     public string TicketNumber { get; set; } = string.Empty;
     public DateTime IssueDate { get; set; }
-    public string? PassportOrTcNo { get; set; }
 
-    public decimal BaseFare { get; set; }
-    public decimal Taxes { get; set; }
+    public string? TcNo { get; set; }
+    public string? PassportNo { get; set; }
+    public string? PassportCountry { get; set; }
+    public bool IsInternational { get; set; }
+
     public decimal TotalFare { get; set; }
     public string Currency { get; set; } = "TRY";
 
+    public List<TicketFareItemDto> FareItems { get; set; } = [];
     public List<TicketFlightDto> Flights { get; set; } = [];
 
     public string ContactPhone { get; set; } = string.Empty;
     public string ContactEmail { get; set; } = string.Empty;
+}
+
+public class TicketFareItemDto
+{
+    public string Route { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "TRY";
 }
 
 public class TicketFlightDto
