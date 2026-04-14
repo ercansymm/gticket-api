@@ -14,6 +14,13 @@ public class TicketPdfService : ITicketPdfService
     private const string GrayColor = "#6B7280";
     private const string LightGrayColor = "#F5F5F5";
 
+    // Plane SVG icon for flight direction indicator
+    private const string PlaneIconSvg = """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#DC2626">
+          <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+        </svg>
+        """;
+
     // Airline brand colors for badge fallback (when logo PNG not found)
     private static readonly Dictionary<string, string> AirlineColors = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -168,18 +175,20 @@ public class TicketPdfService : ITicketPdfService
                 }
 
                 col.Item().PaddingTop(6);
-// YENİ — if kontrolünü kaldır, her zaman göster:
-col.Item().Row(r =>
-{
-    r.RelativeItem().Text("Esas Ucret / Base Fare").FontSize(9);
-    r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(9);
-});
 
-col.Item().PaddingTop(3).Row(r =>
-{
-    r.RelativeItem().Text("Vergiler ve Diger Ucretler / Taxes & Fees").FontSize(9);
-    r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(9);
-});
+                // Base fare
+                col.Item().Row(r =>
+                {
+                    r.RelativeItem().Text("Esas Ucret / Base Fare").FontSize(9);
+                    r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(9);
+                });
+
+                // Taxes
+                col.Item().PaddingTop(3).Row(r =>
+                {
+                    r.RelativeItem().Text("Vergiler ve Diger Ucretler / Taxes & Fees").FontSize(9);
+                    r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(9);
+                });
                 col.Item().PaddingVertical(6).LineHorizontal(1).LineColor("#D1D5DB");
 
                 col.Item().Row(r =>
@@ -257,13 +266,13 @@ col.Item().PaddingTop(3).Row(r =>
                             dep.Item().PaddingTop(2).Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
                         });
 
-                        // Plane icon with dashes
+                        // Plane icon with dashed line
                         bodyRow.ConstantItem(80).AlignMiddle().AlignCenter().Column(mid =>
                         {
-                        mid.Item().AlignCenter()
-    .Text("------------>").Bold().FontSize(12).FontColor(RedColor);
-                            mid.Item().AlignCenter().Text("✈").FontSize(18).FontColor(RedColor);
-                            
+                            mid.Item().AlignCenter().PaddingBottom(4)
+                                .Text("- - - - - - - - -").FontSize(7).FontColor("#D1D5DB");
+                            mid.Item().AlignCenter().Width(24).Height(24)
+                                .Svg(PlaneIconSvg);
                         });
 
                         // Arrival
@@ -301,10 +310,10 @@ col.Item().PaddingTop(3).Row(r =>
             column.Item().Text("Genel Kurallar ve Bilgilendirmeler").Bold().FontSize(7).FontColor(GrayColor);
             column.Item().PaddingTop(3);
 
-            column.Item().Text(TicketConstants.DisclaimerTR).Bold().FontSize(6).FontColor("#9CA3AF").LineHeight(1.2f);
+            column.Item().Text(TicketConstants.DisclaimerTR).Bold().FontSize(6).FontColor("#4B5563").LineHeight(1.2f);
             column.Item().PaddingTop(3);
 
-            column.Item().Text(TicketConstants.DisclaimerEN).Bold().FontSize(6).FontColor("#9CA3AF").LineHeight(1.2f);
+            column.Item().Text(TicketConstants.DisclaimerEN).Bold().FontSize(6).FontColor("#4B5563").LineHeight(1.2f);
             column.Item().PaddingTop(4);
 
             column.Item().Text("Bilgi amaclidir, fatura yerine gecmez.")
