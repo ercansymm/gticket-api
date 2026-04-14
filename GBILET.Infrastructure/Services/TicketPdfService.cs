@@ -62,7 +62,7 @@ public class TicketPdfService : ITicketPdfService
     /// Load airline logo from wwwroot/images/airlines/{CODE}.png
     /// Returns null if not found — caller falls back to colored text badge
     /// </summary>
-    private byte[]? GetAirlineLogo(string airlineCode)
+    private  byte[]? GetAirlineLogo(string airlineCode)
     {
         if (string.IsNullOrWhiteSpace(airlineCode)) return null;
         var logoPath = Path.Combine(_airlineLogoBasePath, $"{airlineCode.ToUpperInvariant()}.png");
@@ -102,7 +102,7 @@ public class TicketPdfService : ITicketPdfService
         });
     }
 
-    private static void ComposeContent(IContainer container, TicketPdfDataDto data)
+    private  void ComposeContent(IContainer container, TicketPdfDataDto data)
     {
         container.Column(column =>
         {
@@ -200,7 +200,7 @@ public class TicketPdfService : ITicketPdfService
         });
     }
 
-    private static void ComposeFlightInfo(IContainer container, TicketPdfDataDto data)
+    private  void ComposeFlightInfo(IContainer container, TicketPdfDataDto data)
     {
         container.Column(column =>
         {
