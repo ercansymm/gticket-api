@@ -1,6 +1,7 @@
 using GBILET.Core.Models.Ticket;
 using GBILET.Core.Service.Ticket;
 using Microsoft.AspNetCore.Hosting;
+using SkiaSharp;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -326,10 +327,17 @@ public class TicketPdfService : ITicketPdfService
                         });
 
                         // Flight path connector: -------->
-                        bodyRow.ConstantItem(130).AlignMiddle().AlignCenter().Column(mid =>
-                        {
-                           mid.Item().AlignCenter().Text("– – – – – – – – – ›").FontSize(12).FontColor(RedColor);
-                        });
+                         bodyRow.ConstantItem(130).AlignMiddle().AlignCenter().Column(mid =>
+{
+    mid.Item().Height(20).Svg("""
+        <svg viewBox="0 0 130 20" xmlns="http://www.w3.org/2000/svg">
+            <line x1="5" y1="10" x2="115" y2="10" stroke="#E30A17" stroke-width="1.5" stroke-dasharray="6,3" />
+            <polygon points="120,10 112,6 112,14" fill="#E30A17" />
+        </svg>
+    """);
+});
+                        
+
 
                         // Arrival
                         bodyRow.RelativeItem().AlignRight().Column(arr =>
