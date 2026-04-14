@@ -26,6 +26,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 builder.Services.AddScoped<AirportSeeder>();
+builder.Services.AddScoped<AirlineSeeder>();
 
 builder.Services.AddCors(options =>
 {
@@ -111,6 +112,10 @@ using (var scope = app.Services.CreateScope())
     // === Havalimanı Seed ===
     var airportSeeder = scope.ServiceProvider.GetRequiredService<AirportSeeder>();
     await airportSeeder.SeedAsync();
+
+    // === Havayolu Seed ===
+    var airlineSeeder = scope.ServiceProvider.GetRequiredService<AirlineSeeder>();
+    await airlineSeeder.SeedAsync();
 
     try
     {
@@ -206,12 +211,11 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-await AirlineLogoChecker.CheckAsync(app);
-
 
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseResponseCompression();
+app.UseStaticFiles();
 app.UseCors("FrontendPolicy");
 app.UseRateLimiter();
 app.UseHttpsRedirection();

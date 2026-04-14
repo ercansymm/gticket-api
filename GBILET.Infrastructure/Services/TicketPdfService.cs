@@ -22,14 +22,13 @@ public class TicketPdfService : ITicketPdfService
         { "KK", "#005F9E" },
     };
 
-    // In-memory cache for downloaded airline logos (per service lifetime)
+    // In-memory cache for airline logos (per service lifetime)
     private readonly Dictionary<string, byte[]?> _logoCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly string _airlineLogoBasePath;
-    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
 
     public TicketPdfService(IWebHostEnvironment env)
     {
-        _airlineLogoBasePath = Path.Combine(env.WebRootPath ?? "", "images", "airlines");
+        _airlineLogoBasePath = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "images", "airlines");
     }
 
     public byte[] GeneratePdf(List<TicketPdfDataDto> passengers)
@@ -68,7 +67,8 @@ public class TicketPdfService : ITicketPdfService
     }
 
     /// <summary>
-    /// Get airline logo: first check local file, then download from Aviasales CDN, cache result
+    /// Get airline logo from local file, with in-memory cache.
+    /// Returns null if file doesn't exist (caller falls back to colored badge).
     /// </summary>
     private byte[]? GetAirlineLogo(string airlineCode)
     {
@@ -76,40 +76,14 @@ public class TicketPdfService : ITicketPdfService
 
         var upperCode = airlineCode.ToUpperInvariant();
 
-        // Check cache first
         if (_logoCache.TryGetValue(upperCode, out var cached))
             return cached;
 
         byte[]? logoBytes = null;
 
-        // 1. Try local file: wwwroot/images/airlines/{CODE}.png
         var localPath = Path.Combine(_airlineLogoBasePath, $"{upperCode}.png");
         if (File.Exists(localPath))
-        {
             logoBytes = File.ReadAllBytes(localPath);
-        }
-        else
-        {
-            // 2. Download from Aviasales CDN
-            try
-            {
-                var url = $"https://pics.avs.io/64/64/{upperCode}.png";
-                var response = _httpClient.GetAsync(url).GetAwaiter().GetResult();
-                if (response.IsSuccessStatusCode)
-                {
-                    logoBytes = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
-
-                    // Save locally for future use (best effort)
-                    try
-                    {
-                        Directory.CreateDirectory(_airlineLogoBasePath);
-                        File.WriteAllBytes(localPath, logoBytes);
-                    }
-                    catch { /* ignore save errors */ }
-                }
-            }
-            catch { /* network error — fall back to badge */ }
-        }
 
         _logoCache[upperCode] = logoBytes;
         return logoBytes;
