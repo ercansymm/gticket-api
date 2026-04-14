@@ -328,7 +328,7 @@ public class TicketPdfService : ITicketPdfService
                         // Flight path connector: -------->
                         bodyRow.ConstantItem(130).AlignMiddle().AlignCenter().Column(mid =>
                         {
-                            mid.Item().AlignCenter().Text("---------------------------------------------->").Bold().FontSize(14).FontColor(RedColor);
+                            mid.Item().AlignCenter().Text("------------------------------->").Bold().FontSize(14).FontColor(RedColor);
                         });
 
                         // Arrival
