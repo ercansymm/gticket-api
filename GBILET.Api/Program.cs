@@ -206,6 +206,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+await AirlineLogoChecker.CheckAsync(app);
+
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseResponseCompression();
