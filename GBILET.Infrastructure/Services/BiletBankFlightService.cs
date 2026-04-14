@@ -1381,6 +1381,14 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         var brandedFareItemId = request.BrandedFareItemId;
         var returnBrandedFareItemId = request.ReturnBrandedFareItemId;
 
+        // Bundle detection: if returnProductId equals productId after stripping,
+        // this is a RecommendationBox bundle — single ProductId covers both legs.
+        // Sending two IO_AllocationItem with the same ProductId causes BiletBank NRE.
+        var isBundle = !string.IsNullOrEmpty(returnProductId)
+            && string.Equals(productId, returnProductId, StringComparison.OrdinalIgnoreCase);
+        if (isBundle)
+            returnProductId = null; // single IO_AllocationItem is enough for bundles
+
         // Departure IO_AllocationItem (always present)
         var departureItem = $@"<trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(brandedFareItemId) ? $@"
                    <trev1:BrandedFareItemId>{brandedFareItemId}</trev1:BrandedFareItemId>" : @"
@@ -1392,7 +1400,7 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                    </trev1:SelectedServiceFee>
                 </trev1:IO_AllocationItem>";
 
-        // Return IO_AllocationItem (only for round-trip)
+        // Return IO_AllocationItem (only for independent round-trip, NOT bundles)
         var returnItem = !string.IsNullOrEmpty(returnProductId)
             ? $@"
                 <trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(returnBrandedFareItemId) ? $@"
@@ -1521,12 +1529,14 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             }
         }
 
-        // Passengers (T_Passenger) � TempTag degerlerini parse et
+        // Passengers (T_Passenger) — TempTag degerlerini parse et
         // BookingItems'tan PaxReferenceId'leri topla (TempTag ile eslestirmek icin)
+        // GroupBy handles duplicate PaxSequenceNo across multiple AirBookings (RT with 2 bookings)
         var paxRefLookup = response.AirBookings
             .SelectMany(ab => ab.BookingItems)
             .Where(bi => bi.PaxReferenceId != null)
-            .ToDictionary(bi => bi.PaxSequenceNo, bi => bi.PaxReferenceId);
+            .GroupBy(bi => bi.PaxSequenceNo)
+            .ToDictionary(g => g.Key, g => g.First().PaxReferenceId);
 
         foreach (var pax in doc.GetDescendants("T_Passenger"))
         {
