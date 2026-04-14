@@ -34,8 +34,8 @@ public class TicketPdfService : ITicketPdfService
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4);
-                    page.MarginTop(30);
-                    page.MarginBottom(30);
+                    page.MarginTop(25);
+                    page.MarginBottom(20);
                     page.MarginLeft(30);
                     page.MarginRight(30);
                     page.DefaultTextStyle(x => x.FontSize(10));
@@ -66,24 +66,25 @@ public class TicketPdfService : ITicketPdfService
 
                 row.RelativeItem().AlignRight().AlignMiddle().Column(info =>
                 {
-                    info.Item().Text("Zlatna Rota Turizm Seyahat Acentasi").Bold().FontSize(9);
-                    info.Item().PaddingTop(2).Text(text =>
+                    info.Item().AlignRight().Text("Zlatna Rota Turizm Seyahat Acentasi").Bold().FontSize(9);
+                    info.Item().PaddingTop(2).AlignRight().Text(text =>
                     {
                         text.Span("TURSAB: 18474").FontSize(8).FontColor(GrayColor);
                         text.Span("  |  ").FontSize(8).FontColor("#D1D5DB");
                         text.Span("destek@atabilet.com").FontSize(8).FontColor(GrayColor);
                     });
-                    info.Item().PaddingTop(2).Text("Acil Durum Bilet Hatti: 0532 015 26 38").FontSize(8).FontColor(GrayColor);
+                    info.Item().PaddingTop(2).AlignRight()
+                        .Text("Acil Durum Bilet Hatti: 0532 015 26 38").FontSize(8).FontColor(GrayColor);
                 });
             });
 
             // Red separator line
-            column.Item().PaddingVertical(8).LineHorizontal(2).LineColor(RedColor);
+            column.Item().PaddingVertical(6).LineHorizontal(2).LineColor(RedColor);
 
             // E-TICKET title
-            column.Item().AlignCenter().Text("E-BILET / E-TICKET").Bold().FontSize(16);
+            column.Item().AlignCenter().Text("E-BILET / E-TICKET").Bold().FontSize(14);
 
-            column.Item().PaddingBottom(10);
+            column.Item().PaddingBottom(8);
         });
     }
 
@@ -94,7 +95,7 @@ public class TicketPdfService : ITicketPdfService
             // Passenger & Booking Info Section
             column.Item().Element(c => ComposePassengerInfo(c, data));
 
-            column.Item().PaddingVertical(10);
+            column.Item().PaddingVertical(8);
 
             // Flight Info Section
             column.Item().Element(c => ComposeFlightInfo(c, data));
@@ -103,85 +104,85 @@ public class TicketPdfService : ITicketPdfService
 
     private static void ComposePassengerInfo(IContainer container, TicketPdfDataDto data)
     {
-        container.Border(1).BorderColor("#E5E7EB").Background(LightGrayColor).Padding(15).Row(row =>
+        container.Border(1).BorderColor("#E5E7EB").Background(LightGrayColor).Padding(12).Row(row =>
         {
             // Left column — Passenger details
             row.RelativeItem().Column(col =>
             {
-                col.Item().Text("YOLCU / PASSENGER").Bold().FontSize(9).FontColor(GrayColor);
-                col.Item().PaddingTop(2).Text(data.PassengerName).Bold().FontSize(12);
+                col.Item().Text("YOLCU / PASSENGER").Bold().FontSize(8).FontColor(GrayColor);
+                col.Item().PaddingTop(2).Text(data.PassengerName).Bold().FontSize(11);
 
-                col.Item().PaddingTop(10).Text("PNR NUMARASI / PNR NUMBER").Bold().FontSize(9).FontColor(GrayColor);
-                col.Item().PaddingTop(2).Text(data.Pnr).Bold().FontSize(12);
+                col.Item().PaddingTop(8).Text("PNR NUMARASI / PNR NUMBER").Bold().FontSize(8).FontColor(GrayColor);
+                col.Item().PaddingTop(2).Text(data.Pnr).Bold().FontSize(11);
 
-                col.Item().PaddingTop(10).Text("BILET NO / TICKET NUMBER").Bold().FontSize(9).FontColor(GrayColor);
-                col.Item().PaddingTop(2).Text(data.TicketNumber).FontSize(11);
+                col.Item().PaddingTop(8).Text("BILET NO / TICKET NUMBER").Bold().FontSize(8).FontColor(GrayColor);
+                col.Item().PaddingTop(2).Text(data.TicketNumber).FontSize(10);
 
-                col.Item().PaddingTop(10).Text("BILET OLUSTURMA TARIHI / TICKET ISSUE DATE").Bold().FontSize(9).FontColor(GrayColor);
-                col.Item().PaddingTop(2).Text(FormatDateTurkish(data.IssueDate)).FontSize(11);
+                col.Item().PaddingTop(8).Text("BILET OLUSTURMA TARIHI / TICKET ISSUE DATE").Bold().FontSize(8).FontColor(GrayColor);
+                col.Item().PaddingTop(2).Text(FormatDateTurkish(data.IssueDate)).FontSize(10);
 
                 // TC Kimlik No
                 if (!string.IsNullOrWhiteSpace(data.TcNo))
                 {
-                    col.Item().PaddingTop(10).Text("TC KIMLIK NO / ID NUMBER").Bold().FontSize(9).FontColor(GrayColor);
-                    col.Item().PaddingTop(2).Text(data.TcNo).FontSize(11);
+                    col.Item().PaddingTop(8).Text("TC KIMLIK NO / ID NUMBER").Bold().FontSize(8).FontColor(GrayColor);
+                    col.Item().PaddingTop(2).Text(data.TcNo).FontSize(10);
                 }
 
                 // Passport fields (international flights)
                 if (data.IsInternational)
                 {
-                    col.Item().PaddingTop(10).Text("PASAPORT NO / PASSPORT NO").Bold().FontSize(9).FontColor(GrayColor);
-                    col.Item().PaddingTop(2).Text(!string.IsNullOrWhiteSpace(data.PassportNo) ? data.PassportNo : "—").FontSize(11);
+                    col.Item().PaddingTop(8).Text("PASAPORT NO / PASSPORT NO").Bold().FontSize(8).FontColor(GrayColor);
+                    col.Item().PaddingTop(2).Text(!string.IsNullOrWhiteSpace(data.PassportNo) ? data.PassportNo : "—").FontSize(10);
 
                     if (!string.IsNullOrWhiteSpace(data.PassportCountry))
                     {
-                        col.Item().PaddingTop(6).Text("PASAPORT ULKESI / PASSPORT COUNTRY").Bold().FontSize(9).FontColor(GrayColor);
-                        col.Item().PaddingTop(2).Text(data.PassportCountry).FontSize(11);
+                        col.Item().PaddingTop(6).Text("PASAPORT ULKESI / PASSPORT COUNTRY").Bold().FontSize(8).FontColor(GrayColor);
+                        col.Item().PaddingTop(2).Text(data.PassportCountry).FontSize(10);
                     }
                 }
             });
 
-            row.ConstantItem(20);
+            row.ConstantItem(15);
 
             // Right column — Price info
             row.RelativeItem().Column(col =>
             {
-                col.Item().Text("UCRET BILGILERI / PRICE INFO").Bold().FontSize(9).FontColor(GrayColor);
+                col.Item().Text("UCRET BILGILERI / PRICE INFO").Bold().FontSize(8).FontColor(GrayColor);
 
                 // Per-flight fare breakdown
                 foreach (var item in data.FareItems)
                 {
-                    col.Item().PaddingTop(8).Text(item.Route).FontSize(8).FontColor("#374151");
+                    col.Item().PaddingTop(6).Text(item.Route).FontSize(7).FontColor("#374151");
                     col.Item().PaddingTop(2).Row(r =>
                     {
-                        r.RelativeItem().Text("Bilet Ucreti / Ticket Fare").FontSize(10);
-                        r.AutoItem().AlignRight().Text($"{item.Amount:N2} {item.Currency}").FontSize(10);
+                        r.RelativeItem().Text("Bilet Ucreti / Ticket Fare").FontSize(9);
+                        r.AutoItem().AlignRight().Text($"{item.Amount:N2} {item.Currency}").FontSize(9);
                     });
                 }
 
-                col.Item().PaddingTop(8);
+                col.Item().PaddingTop(6);
 
                 // Base fare
                 col.Item().Row(r =>
                 {
-                    r.RelativeItem().Text("Esas Ucret / Base Fare").FontSize(10);
-                    r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(10);
+                    r.RelativeItem().Text("Esas Ucret / Base Fare").FontSize(9);
+                    r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(9);
                 });
 
                 // Taxes
-                col.Item().PaddingTop(4).Row(r =>
+                col.Item().PaddingTop(3).Row(r =>
                 {
-                    r.RelativeItem().Text("Vergiler ve Diger Ucretler / Taxes & Fees").FontSize(10);
-                    r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(10);
+                    r.RelativeItem().Text("Vergiler ve Diger Ucretler / Taxes & Fees").FontSize(9);
+                    r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(9);
                 });
 
                 // Separator
-                col.Item().PaddingVertical(8).LineHorizontal(1).LineColor("#D1D5DB");
+                col.Item().PaddingVertical(6).LineHorizontal(1).LineColor("#D1D5DB");
 
                 col.Item().Row(r =>
                 {
-                    r.RelativeItem().Text("TOPLAM TUTAR / TOTAL FARE").Bold().FontSize(11);
-                    r.AutoItem().AlignRight().Text($"{data.TotalFare:N2} {data.Currency}").Bold().FontSize(13).FontColor(RedColor);
+                    r.RelativeItem().Text("TOPLAM TUTAR / TOTAL FARE").Bold().FontSize(10);
+                    r.AutoItem().AlignRight().Text($"{data.TotalFare:N2} {data.Currency}").Bold().FontSize(12).FontColor(RedColor);
                 });
             });
         });
@@ -192,8 +193,8 @@ public class TicketPdfService : ITicketPdfService
         container.Column(column =>
         {
             // Section header
-            column.Item().Text("UCUS BILGILERI / FLIGHT INFO").Bold().FontSize(12);
-            column.Item().PaddingTop(6);
+            column.Item().Text("UCUS BILGILERI / FLIGHT INFO").Bold().FontSize(11);
+            column.Item().PaddingTop(5);
 
             // Flight cards
             for (var i = 0; i < data.Flights.Count; i++)
@@ -201,74 +202,74 @@ public class TicketPdfService : ITicketPdfService
                 var flight = data.Flights[i];
 
                 if (i > 0)
-                    column.Item().PaddingTop(8);
+                    column.Item().PaddingTop(6);
 
-                // Flight card with border
-                column.Item().Border(1).BorderColor("#E5E7EB").Column(card =>
+                // ShowEntire() prevents the card from being split across pages
+                column.Item().ShowEntire().Border(1).BorderColor("#E5E7EB").Column(card =>
                 {
-                    // Card header with airline info
-                    card.Item().Background(DarkColor).Padding(10).Row(headerRow =>
+                    // Card header with airline info (dark background)
+                    card.Item().Background(DarkColor).PaddingHorizontal(10).PaddingVertical(8).Row(headerRow =>
                     {
-                        // Airline badge (colored rounded box with code)
+                        // Airline badge (colored box with code)
                         var airlineColor = AirlineColors.GetValueOrDefault(flight.AirlineCode, "#4B5563");
-                        headerRow.ConstantItem(32).Height(32).AlignCenter().AlignMiddle()
+                        headerRow.ConstantItem(28).Height(28).AlignCenter().AlignMiddle()
                             .Background(airlineColor).Padding(2)
                             .AlignCenter().AlignMiddle()
-                            .Text(flight.AirlineCode).Bold().FontSize(11).FontColor("#FFFFFF");
+                            .Text(flight.AirlineCode).Bold().FontSize(10).FontColor("#FFFFFF");
 
-                        headerRow.ConstantItem(10); // spacing
+                        headerRow.ConstantItem(8); // spacing
 
                         headerRow.RelativeItem().AlignMiddle().Column(hCol =>
                         {
-                            hCol.Item().Text($"{flight.AirlineName}").Bold().FontSize(11).FontColor("#FFFFFF");
-                            hCol.Item().Text($"{flight.FlightCode} - {flight.BookingClass}").FontSize(9).FontColor("#D1D5DB");
+                            hCol.Item().Text(flight.AirlineName).Bold().FontSize(10).FontColor("#FFFFFF");
+                            hCol.Item().Text($"{flight.FlightCode} - {flight.BookingClass}").FontSize(8).FontColor("#D1D5DB");
                         });
 
                         if (!string.IsNullOrWhiteSpace(flight.FareBasisName))
                         {
                             headerRow.AutoItem().AlignMiddle().AlignRight()
-                                .Text(flight.FareBasisName).FontSize(9).FontColor(RedColor)
+                                .Text(flight.FareBasisName).FontSize(8).FontColor(RedColor)
                                 .BackgroundColor("#2d2d2d");
                         }
                     });
 
                     // Card body — departure / arrow / arrival
-                    card.Item().Background("#FFFFFF").Padding(12).Row(bodyRow =>
+                    card.Item().Background("#FFFFFF").PaddingHorizontal(12).PaddingVertical(10).Row(bodyRow =>
                     {
                         // Departure
                         bodyRow.RelativeItem().Column(dep =>
                         {
                             dep.Item().Text("KALKIS / DEPARTURE").FontSize(7).FontColor(GrayColor);
-                            dep.Item().PaddingTop(4).Text(flight.DepartureTime).Bold().FontSize(18).FontColor(DarkColor);
-                            dep.Item().PaddingTop(2).Text(flight.OriginCity).Bold().FontSize(10);
-                            dep.Item().Text($"{flight.OriginAirport} ({flight.OriginCode})").FontSize(8).FontColor(GrayColor);
-                            dep.Item().PaddingTop(2).Text(flight.DepartureDate).FontSize(9).FontColor(GrayColor);
+                            dep.Item().PaddingTop(3).Text(flight.DepartureTime).Bold().FontSize(16).FontColor(DarkColor);
+                            dep.Item().PaddingTop(2).Text(flight.OriginCity).Bold().FontSize(9);
+                            dep.Item().Text($"{flight.OriginAirport} ({flight.OriginCode})").FontSize(7).FontColor(GrayColor);
+                            dep.Item().PaddingTop(2).Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
                         });
 
-                        // Arrow indicator
-                        bodyRow.ConstantItem(60).AlignMiddle().AlignCenter().Column(arrow =>
+                        // Arrow indicator — simple line with arrow
+                        bodyRow.ConstantItem(50).AlignMiddle().AlignCenter().Column(arrow =>
                         {
-                            arrow.Item().AlignCenter().Text(">>>").Bold().FontSize(14).FontColor(RedColor);
+                            arrow.Item().AlignCenter().Text("\u2192").Bold().FontSize(16).FontColor(RedColor);
                         });
 
                         // Arrival
                         bodyRow.RelativeItem().AlignRight().Column(arr =>
                         {
                             arr.Item().AlignRight().Text("VARIS / ARRIVAL").FontSize(7).FontColor(GrayColor);
-                            arr.Item().PaddingTop(4).AlignRight().Text(flight.ArrivalTime).Bold().FontSize(18).FontColor(DarkColor);
-                            arr.Item().PaddingTop(2).AlignRight().Text(flight.DestinationCity).Bold().FontSize(10);
-                            arr.Item().AlignRight().Text($"{flight.DestinationAirport} ({flight.DestinationCode})").FontSize(8).FontColor(GrayColor);
-                            arr.Item().PaddingTop(2).AlignRight().Text(flight.ArrivalDate).FontSize(9).FontColor(GrayColor);
+                            arr.Item().PaddingTop(3).AlignRight().Text(flight.ArrivalTime).Bold().FontSize(16).FontColor(DarkColor);
+                            arr.Item().PaddingTop(2).AlignRight().Text(flight.DestinationCity).Bold().FontSize(9);
+                            arr.Item().AlignRight().Text($"{flight.DestinationAirport} ({flight.DestinationCode})").FontSize(7).FontColor(GrayColor);
+                            arr.Item().PaddingTop(2).AlignRight().Text(flight.ArrivalDate).FontSize(8).FontColor(GrayColor);
                         });
                     });
 
                     // Card footer — baggage
-                    card.Item().Background(LightGrayColor).PaddingHorizontal(12).PaddingVertical(6).Row(footRow =>
+                    card.Item().Background(LightGrayColor).PaddingHorizontal(12).PaddingVertical(5).Row(footRow =>
                     {
                         footRow.RelativeItem().Text(text =>
                         {
-                            text.Span("Bagaj / Baggage: ").FontSize(9).FontColor(GrayColor);
-                            text.Span(flight.BaggageAllowance).Bold().FontSize(9);
+                            text.Span("Bagaj / Baggage: ").FontSize(8).FontColor(GrayColor);
+                            text.Span(flight.BaggageAllowance).Bold().FontSize(8);
                         });
                     });
                 });
@@ -281,19 +282,19 @@ public class TicketPdfService : ITicketPdfService
         container.Column(column =>
         {
             column.Item().LineHorizontal(1).LineColor("#D1D5DB");
-            column.Item().PaddingTop(6);
-
-            column.Item().Text("Genel Kurallar ve Bilgilendirmeler").Bold().FontSize(8).FontColor(GrayColor);
             column.Item().PaddingTop(4);
 
-            column.Item().Text(TicketConstants.DisclaimerTR).Bold().FontSize(7).FontColor("#9CA3AF").LineHeight(1.3f);
-            column.Item().PaddingTop(4);
+            column.Item().Text("Genel Kurallar ve Bilgilendirmeler").Bold().FontSize(7).FontColor(GrayColor);
+            column.Item().PaddingTop(3);
 
-            column.Item().Text(TicketConstants.DisclaimerEN).Bold().FontSize(7).FontColor("#9CA3AF").LineHeight(1.3f);
-            column.Item().PaddingTop(6);
+            column.Item().Text(TicketConstants.DisclaimerTR).Bold().FontSize(6).FontColor("#9CA3AF").LineHeight(1.2f);
+            column.Item().PaddingTop(3);
+
+            column.Item().Text(TicketConstants.DisclaimerEN).Bold().FontSize(6).FontColor("#9CA3AF").LineHeight(1.2f);
+            column.Item().PaddingTop(4);
 
             column.Item().Text("Bilgi amaclidir, fatura yerine gecmez.")
-                .FontSize(8).FontColor(RedColor).Italic();
+                .FontSize(7).FontColor(RedColor).Italic();
         });
     }
 
