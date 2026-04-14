@@ -168,27 +168,18 @@ public class TicketPdfService : ITicketPdfService
                 }
 
                 col.Item().PaddingTop(6);
+// YENİ — if kontrolünü kaldır, her zaman göster:
+col.Item().Row(r =>
+{
+    r.RelativeItem().Text("Esas Ucret / Base Fare").FontSize(9);
+    r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(9);
+});
 
-                // Base fare — hide if zero
-                if (data.BaseFare > 0)
-                {
-                    col.Item().Row(r =>
-                    {
-                        r.RelativeItem().Text("Esas Ucret / Base Fare").FontSize(9);
-                        r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(9);
-                    });
-                }
-
-                // Taxes — hide if zero
-                if (data.Taxes > 0)
-                {
-                    col.Item().PaddingTop(3).Row(r =>
-                    {
-                        r.RelativeItem().Text("Vergiler ve Diger Ucretler / Taxes & Fees").FontSize(9);
-                        r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(9);
-                    });
-                }
-
+col.Item().PaddingTop(3).Row(r =>
+{
+    r.RelativeItem().Text("Vergiler ve Diger Ucretler / Taxes & Fees").FontSize(9);
+    r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(9);
+});
                 col.Item().PaddingVertical(6).LineHorizontal(1).LineColor("#D1D5DB");
 
                 col.Item().Row(r =>
@@ -269,15 +260,10 @@ public class TicketPdfService : ITicketPdfService
                         // Plane icon with dashes
                         bodyRow.ConstantItem(80).AlignMiddle().AlignCenter().Column(mid =>
                         {
-                            mid.Item().AlignCenter().Row(lineRow =>
-                            {
-                                lineRow.AutoItem().AlignMiddle().PaddingRight(3)
-                                    .Text("\u2500\u2500\u2500").FontSize(9).FontColor("#D1D5DB");
-                                lineRow.AutoItem().AlignMiddle()
-                                    .Text("\u2708").FontSize(18).FontColor(RedColor);
-                                lineRow.AutoItem().AlignMiddle().PaddingLeft(3)
-                                    .Text("\u2500\u2500\u2500").FontSize(9).FontColor("#D1D5DB");
-                            });
+                        mid.Item().AlignCenter()
+    .Text("------------>").Bold().FontSize(12).FontColor(RedColor);
+                            mid.Item().AlignCenter().Text("✈").FontSize(18).FontColor(RedColor);
+                            
                         });
 
                         // Arrival
