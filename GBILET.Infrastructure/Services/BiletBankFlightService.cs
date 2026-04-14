@@ -1374,11 +1374,18 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
     {
         var serviceFee = request.SelectedServiceFee.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
+        // Strip "_ret_*" suffix from ProductIds — mapper adds it for frontend uniqueness,
+        // but BiletBank expects pure GUIDs
+        var productId = StripReturnSuffix(request.ProductId);
+        var returnProductId = StripReturnSuffix(request.ReturnProductId);
+        var brandedFareItemId = request.BrandedFareItemId;
+        var returnBrandedFareItemId = request.ReturnBrandedFareItemId;
+
         // Departure IO_AllocationItem (always present)
-        var departureItem = $@"<trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(request.BrandedFareItemId) ? $@"
-                   <trev1:BrandedFareItemId>{request.BrandedFareItemId}</trev1:BrandedFareItemId>" : @"
+        var departureItem = $@"<trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(brandedFareItemId) ? $@"
+                   <trev1:BrandedFareItemId>{brandedFareItemId}</trev1:BrandedFareItemId>" : @"
                    <trev1:BrandedFareItemId i:nil=""true""/>")}
-                   <trev1:ProductId>{request.ProductId}</trev1:ProductId>
+                   <trev1:ProductId>{productId}</trev1:ProductId>
                    <trev1:SelectedServiceFee>
                       <trev1:Amount>{serviceFee}</trev1:Amount>
                       <trev1:ProductItemServiceFee i:nil=""true""/>
@@ -1386,12 +1393,12 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                 </trev1:IO_AllocationItem>";
 
         // Return IO_AllocationItem (only for round-trip)
-        var returnItem = !string.IsNullOrEmpty(request.ReturnProductId)
+        var returnItem = !string.IsNullOrEmpty(returnProductId)
             ? $@"
-                <trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(request.ReturnBrandedFareItemId) ? $@"
-                   <trev1:BrandedFareItemId>{request.ReturnBrandedFareItemId}</trev1:BrandedFareItemId>" : @"
+                <trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(returnBrandedFareItemId) ? $@"
+                   <trev1:BrandedFareItemId>{returnBrandedFareItemId}</trev1:BrandedFareItemId>" : @"
                    <trev1:BrandedFareItemId i:nil=""true""/>")}
-                   <trev1:ProductId>{request.ReturnProductId}</trev1:ProductId>
+                   <trev1:ProductId>{returnProductId}</trev1:ProductId>
                    <trev1:SelectedServiceFee>
                       <trev1:Amount>{serviceFee}</trev1:Amount>
                       <trev1:ProductItemServiceFee i:nil=""true""/>
@@ -1422,6 +1429,17 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
    </tem:Allocate>
 </soapenv:Body>
 </soapenv:Envelope>";
+    }
+
+    /// <summary>
+    /// Strips the "_ret_*" suffix that FlightSearchMapper appends to return-leg ProductIds
+    /// for frontend uniqueness. BiletBank expects pure GUIDs.
+    /// </summary>
+    private static string? StripReturnSuffix(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+        var idx = value.IndexOf("_ret_", StringComparison.Ordinal);
+        return idx > 0 ? value[..idx] : value;
     }
 
     private static AllocateResponse ParseAllocateResponse(XDocument doc)
