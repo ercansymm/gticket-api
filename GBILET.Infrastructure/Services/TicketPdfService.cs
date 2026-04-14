@@ -163,6 +163,8 @@ public class TicketPdfService : ITicketPdfService
             column.Item().Element(c => ComposePassengerInfo(c, data));
             column.Item().PaddingVertical(8);
             column.Item().Element(c => ComposeFlightInfo(c, data));
+            column.Item().PaddingTop(10);
+            column.Item().Element(ComposeDisclaimer);
         });
     }
 
@@ -186,9 +188,9 @@ public class TicketPdfService : ITicketPdfService
                 col.Item().PaddingTop(8).Text("BILET NO / TICKET NUMBER").Bold().FontSize(8).FontColor(GrayColor);
                 col.Item().PaddingTop(2).Text(data.TicketNumber).FontSize(10);
 
-                // ── CHANGE #2: Numeric date format with time (dd.MM.yyyy HH:mm) ──
+                // ── Bilet oluşturma tarihi: PDF üretim anı (DateTime.Now) ──
                 col.Item().PaddingTop(8).Text("BILET OLUSTURMA TARIHI / TICKET ISSUE DATE").Bold().FontSize(8).FontColor(GrayColor);
-                col.Item().PaddingTop(2).Text(FormatDateNumeric(data.IssueDate)).FontSize(10);
+                col.Item().PaddingTop(2).Text(FormatDateNumeric(DateTime.Now)).FontSize(10);
 
                 if (!string.IsNullOrWhiteSpace(data.TcNo))
                 {
@@ -279,65 +281,73 @@ public class TicketPdfService : ITicketPdfService
                         .AlignCenter()
                         .Text(flightLabel).Bold().FontSize(9).FontColor("#FFFFFF");
 
-                    // ── 2. Main body: Logo + Kalkış | Dikey Çizgi | Varış ──
-                    card.Item().Background("#FFFFFF").PaddingHorizontal(12).PaddingVertical(10).Row(bodyRow =>
+                    // ── 2. Airline row: logo + name + flight code ──
+                    card.Item().Background("#FFFFFF").BorderBottom(1).BorderColor("#E5E7EB")
+                        .PaddingHorizontal(12).PaddingVertical(8).Row(airlineRow =>
                     {
-                        // ─── Logo ───
                         var logoBytes = GetAirlineLogo(flight.AirlineCode);
 
                         if (logoBytes != null)
                         {
-                            bodyRow.ConstantItem(40).Height(40)
+                            airlineRow.ConstantItem(32).Height(32)
                                 .AlignMiddle()
                                 .Image(logoBytes).FitArea();
                         }
                         else
                         {
                             var clr = AirlineColors.GetValueOrDefault(flight.AirlineCode, "#4B5563");
-                            bodyRow.ConstantItem(40).Height(40).AlignCenter().AlignMiddle()
+                            airlineRow.ConstantItem(32).Height(32).AlignCenter().AlignMiddle()
                                 .Background(clr).Padding(2)
                                 .AlignCenter().AlignMiddle()
-                                .Text(flight.AirlineCode).Bold().FontSize(11).FontColor("#FFFFFF");
+                                .Text(flight.AirlineCode).Bold().FontSize(10).FontColor("#FFFFFF");
                         }
 
-                        bodyRow.ConstantItem(10); // gap after logo
+                        airlineRow.ConstantItem(8);
 
-                        // ─── Kalkış / Departure column (sağa yaslanmış, çizgiye yakın) ───
-                        bodyRow.RelativeItem().AlignRight().PaddingRight(6).Column(dep =>
+                        airlineRow.RelativeItem().AlignMiddle().Column(hCol =>
                         {
-                            dep.Item().AlignRight().Text("KALKIS / DEPARTURE").FontSize(7).FontColor(GrayColor);
-                            dep.Item().PaddingTop(3).AlignRight().Text(flight.DepartureTime).Bold().FontSize(18).FontColor(DarkColor);
-                            dep.Item().PaddingTop(1).AlignRight().Text($"{flight.OriginCity} ({flight.OriginCode})").Bold().FontSize(9);
-                            dep.Item().AlignRight().Text(flight.OriginAirport).FontSize(7).FontColor(GrayColor);
-                            dep.Item().PaddingTop(2).AlignRight().Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
-
-                            // Airline & flight info under departure
-                            dep.Item().PaddingTop(4).AlignRight().Text(text =>
+                            hCol.Item().Text(flight.AirlineName).Bold().FontSize(10).FontColor(DarkColor);
+                            hCol.Item().Text(text =>
                             {
-                                text.Span(flight.AirlineName).Bold().FontSize(8).FontColor(DarkColor);
-                                text.Span($"  {flight.FlightCode}").FontSize(8).FontColor(GrayColor);
+                                text.Span(flight.FlightCode).FontSize(8).FontColor(GrayColor);
                                 if (!string.IsNullOrWhiteSpace(flight.BookingClass))
                                     text.Span($" - {flight.BookingClass}").FontSize(8).FontColor(GrayColor);
                             });
-
-                            if (!string.IsNullOrWhiteSpace(flight.FareBasisName))
-                            {
-                                dep.Item().PaddingTop(2).AlignRight().Text(flight.FareBasisName).FontSize(7).FontColor("#374151");
-                            }
                         });
 
-                        // ─── Dikey siyah kalın çizgi (vertical divider) ───
-                        bodyRow.ConstantItem(16).AlignCenter().PaddingVertical(2)
-                            .LineVertical(2).LineColor(DarkColor);
-
-                        // ─── Varış / Arrival column ───
-                        bodyRow.RelativeItem().Column(arr =>
+                        if (!string.IsNullOrWhiteSpace(flight.FareBasisName))
                         {
-                            arr.Item().Text("VARIS / ARRIVAL").FontSize(7).FontColor(GrayColor);
-                            arr.Item().PaddingTop(3).Text(flight.ArrivalTime).Bold().FontSize(18).FontColor(DarkColor);
-                            arr.Item().PaddingTop(1).Text($"{flight.DestinationCity} ({flight.DestinationCode})").Bold().FontSize(9);
-                            arr.Item().Text(flight.DestinationAirport).FontSize(7).FontColor(GrayColor);
-                            arr.Item().PaddingTop(2).Text(flight.ArrivalDate).FontSize(8).FontColor(GrayColor);
+                            airlineRow.AutoItem().AlignMiddle().AlignRight()
+                                .Background("#F3F4F6").Padding(4)
+                                .Text(flight.FareBasisName).FontSize(8).FontColor(DarkColor);
+                        }
+                    });
+
+                    // ── 3. Flight times: Kalkış | Kırmızı Çizgi | Varış (ortalı) ──
+                    card.Item().Background("#FFFFFF").PaddingHorizontal(12).PaddingVertical(10).Row(bodyRow =>
+                    {
+                        // ─── Kalkış / Departure column (ortalı) ───
+                        bodyRow.RelativeItem().AlignCenter().Column(dep =>
+                        {
+                            dep.Item().AlignCenter().Text("KALKIS / DEPARTURE").FontSize(7).FontColor(GrayColor);
+                            dep.Item().PaddingTop(3).AlignCenter().Text(flight.DepartureTime).Bold().FontSize(18).FontColor(DarkColor);
+                            dep.Item().PaddingTop(1).AlignCenter().Text($"{flight.OriginCity} ({flight.OriginCode})").Bold().FontSize(9);
+                            dep.Item().AlignCenter().Text(flight.OriginAirport).FontSize(7).FontColor(GrayColor);
+                            dep.Item().PaddingTop(2).AlignCenter().Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
+                        });
+
+                        // ─── Dikey kırmızı kalın çizgi (vertical divider) ───
+                        bodyRow.ConstantItem(16).AlignCenter().PaddingVertical(2)
+                            .LineVertical(2).LineColor(RedColor);
+
+                        // ─── Varış / Arrival column (ortalı) ───
+                        bodyRow.RelativeItem().AlignCenter().Column(arr =>
+                        {
+                            arr.Item().AlignCenter().Text("VARIS / ARRIVAL").FontSize(7).FontColor(GrayColor);
+                            arr.Item().PaddingTop(3).AlignCenter().Text(flight.ArrivalTime).Bold().FontSize(18).FontColor(DarkColor);
+                            arr.Item().PaddingTop(1).AlignCenter().Text($"{flight.DestinationCity} ({flight.DestinationCode})").Bold().FontSize(9);
+                            arr.Item().AlignCenter().Text(flight.DestinationAirport).FontSize(7).FontColor(GrayColor);
+                            arr.Item().PaddingTop(2).AlignCenter().Text(flight.ArrivalDate).FontSize(8).FontColor(GrayColor);
                         });
                     });
 
@@ -378,10 +388,10 @@ public class TicketPdfService : ITicketPdfService
 </svg>";
 
     // ═══════════════════════════════════════════════════════════
-    //  FOOTER
+    //  DISCLAIMER (content altında, footer değil)
     // ═══════════════════════════════════════════════════════════
 
-    private static void ComposeFooter(IContainer container)
+    private static void ComposeDisclaimer(IContainer container)
     {
         container.Column(column =>
         {
@@ -403,6 +413,15 @@ public class TicketPdfService : ITicketPdfService
     }
 
     // ═══════════════════════════════════════════════════════════
+    //  FOOTER (minimal — sadece sayfa altı boşluk)
+    // ═══════════════════════════════════════════════════════════
+
+    private static void ComposeFooter(IContainer container)
+    {
+        // Footer artık boş — disclaimer content içinde
+    }
+
+    // ═══════════════════════════════════════════════════════════
     //  DATE FORMATTING
     // ═══════════════════════════════════════════════════════════
 
@@ -414,4 +433,16 @@ public class TicketPdfService : ITicketPdfService
         return date.ToString("dd.MM.yyyy HH:mm");
     }
 
+    /// <summary>
+    /// Legacy Turkish date format (kept for other potential usages)
+    /// </summary>
+    private static string FormatDateTurkish(DateTime date)
+    {
+        var months = new[]
+        {
+            "", "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran",
+            "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik"
+        };
+        return $"{date.Day} {months[date.Month]} {date.Year}";
+    }
 }
