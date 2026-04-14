@@ -14,26 +14,17 @@ public class TicketPdfService : ITicketPdfService
     private const string GrayColor = "#6B7280";
     private const string LightGrayColor = "#F5F5F5";
 
-    // Plane SVG icon for flight direction indicator
-    private const string PlaneIconSvg = """
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#DC2626">
-          <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-        </svg>
-        """;
-
-    // Airline brand colors for badge fallback (when logo PNG not found)
     private static readonly Dictionary<string, string> AirlineColors = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "TK", "#E31E24" },
-        { "PC", "#FFD200" },
-        { "XQ", "#FF6600" },
-        { "AJ", "#003DA5" },
-        { "VF", "#00529B" },
-        { "6Y", "#003DA5" },
+        { "TK", "#E31E24" }, { "PC", "#FFD200" }, { "XQ", "#FF6600" },
+        { "AJ", "#003DA5" }, { "VF", "#00529B" }, { "6Y", "#003DA5" },
         { "KK", "#005F9E" },
     };
 
+    // In-memory cache for downloaded airline logos (per service lifetime)
+    private readonly Dictionary<string, byte[]?> _logoCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly string _airlineLogoBasePath;
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
 
     public TicketPdfService(IWebHostEnvironment env)
     {
@@ -42,6 +33,16 @@ public class TicketPdfService : ITicketPdfService
 
     public byte[] GeneratePdf(List<TicketPdfDataDto> passengers)
     {
+        // Pre-download all airline logos before generating PDF
+        var airlineCodes = passengers
+            .SelectMany(p => p.Flights)
+            .Select(f => f.AirlineCode)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var code in airlineCodes)
+            GetAirlineLogo(code);
+
         var document = Document.Create(container =>
         {
             foreach (var data in passengers)
@@ -66,15 +67,56 @@ public class TicketPdfService : ITicketPdfService
     }
 
     /// <summary>
-    /// Load airline logo from wwwroot/images/airlines/{CODE}.png
-    /// Returns null if not found — caller falls back to colored text badge
+    /// Get airline logo: first check local file, then download from Kiwi CDN, cache result
     /// </summary>
-    private  byte[]? GetAirlineLogo(string airlineCode)
+    private byte[]? GetAirlineLogo(string airlineCode)
     {
         if (string.IsNullOrWhiteSpace(airlineCode)) return null;
-        var logoPath = Path.Combine(_airlineLogoBasePath, $"{airlineCode.ToUpperInvariant()}.png");
-        return File.Exists(logoPath) ? File.ReadAllBytes(logoPath) : null;
+
+        var upperCode = airlineCode.ToUpperInvariant();
+
+        // Check cache first
+        if (_logoCache.TryGetValue(upperCode, out var cached))
+            return cached;
+
+        byte[]? logoBytes = null;
+
+        // 1. Try local file: wwwroot/images/airlines/{CODE}.png
+        var localPath = Path.Combine(_airlineLogoBasePath, $"{upperCode}.png");
+        if (File.Exists(localPath))
+        {
+            logoBytes = File.ReadAllBytes(localPath);
+        }
+        else
+        {
+            // 2. Download from Kiwi CDN
+            try
+            {
+                var url = $"https://images.kiwi.com/airlines/64x64/{upperCode}.png";
+                var response = _httpClient.GetAsync(url).GetAwaiter().GetResult();
+                if (response.IsSuccessStatusCode)
+                {
+                    logoBytes = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+
+                    // Save locally for future use (best effort)
+                    try
+                    {
+                        Directory.CreateDirectory(_airlineLogoBasePath);
+                        File.WriteAllBytes(localPath, logoBytes);
+                    }
+                    catch { /* ignore save errors */ }
+                }
+            }
+            catch { /* network error — fall back to badge */ }
+        }
+
+        _logoCache[upperCode] = logoBytes;
+        return logoBytes;
     }
+
+    // ═══════════════════════════════════════════════════════════
+    //  HEADER
+    // ═══════════════════════════════════════════════════════════
 
     private static void ComposeHeader(IContainer container, TicketPdfDataDto data)
     {
@@ -109,7 +151,11 @@ public class TicketPdfService : ITicketPdfService
         });
     }
 
-    private  void ComposeContent(IContainer container, TicketPdfDataDto data)
+    // ═══════════════════════════════════════════════════════════
+    //  CONTENT
+    // ═══════════════════════════════════════════════════════════
+
+    private void ComposeContent(IContainer container, TicketPdfDataDto data)
     {
         container.Column(column =>
         {
@@ -119,11 +165,15 @@ public class TicketPdfService : ITicketPdfService
         });
     }
 
+    // ═══════════════════════════════════════════════════════════
+    //  PASSENGER + PRICE INFO
+    // ═══════════════════════════════════════════════════════════
+
     private static void ComposePassengerInfo(IContainer container, TicketPdfDataDto data)
     {
         container.Border(1).BorderColor("#E5E7EB").Background(LightGrayColor).Padding(12).Row(row =>
         {
-            // Left — passenger details
+            // Left — passenger
             row.RelativeItem().Column(col =>
             {
                 col.Item().Text("YOLCU / PASSENGER").Bold().FontSize(8).FontColor(GrayColor);
@@ -147,7 +197,7 @@ public class TicketPdfService : ITicketPdfService
                 if (data.IsInternational)
                 {
                     col.Item().PaddingTop(8).Text("PASAPORT NO / PASSPORT NO").Bold().FontSize(8).FontColor(GrayColor);
-                    col.Item().PaddingTop(2).Text(!string.IsNullOrWhiteSpace(data.PassportNo) ? data.PassportNo : "\u2014").FontSize(10);
+                    col.Item().PaddingTop(2).Text(!string.IsNullOrWhiteSpace(data.PassportNo) ? data.PassportNo : "-").FontSize(10);
 
                     if (!string.IsNullOrWhiteSpace(data.PassportCountry))
                     {
@@ -159,7 +209,7 @@ public class TicketPdfService : ITicketPdfService
 
             row.ConstantItem(15);
 
-            // Right — price info
+            // Right — price
             row.RelativeItem().Column(col =>
             {
                 col.Item().Text("UCRET BILGILERI / PRICE INFO").Bold().FontSize(8).FontColor(GrayColor);
@@ -176,19 +226,18 @@ public class TicketPdfService : ITicketPdfService
 
                 col.Item().PaddingTop(6);
 
-                // Base fare
                 col.Item().Row(r =>
                 {
                     r.RelativeItem().Text("Esas Ucret / Base Fare").FontSize(9);
                     r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(9);
                 });
 
-                // Taxes
                 col.Item().PaddingTop(3).Row(r =>
                 {
                     r.RelativeItem().Text("Vergiler ve Diger Ucretler / Taxes & Fees").FontSize(9);
                     r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(9);
                 });
+
                 col.Item().PaddingVertical(6).LineHorizontal(1).LineColor("#D1D5DB");
 
                 col.Item().Row(r =>
@@ -200,7 +249,11 @@ public class TicketPdfService : ITicketPdfService
         });
     }
 
-    private  void ComposeFlightInfo(IContainer container, TicketPdfDataDto data)
+    // ═══════════════════════════════════════════════════════════
+    //  FLIGHT INFO — redesigned cards
+    // ═══════════════════════════════════════════════════════════
+
+    private void ComposeFlightInfo(IContainer container, TicketPdfDataDto data)
     {
         container.Column(column =>
         {
@@ -214,46 +267,52 @@ public class TicketPdfService : ITicketPdfService
                 if (i > 0)
                     column.Item().PaddingTop(6);
 
+                var flightLabel = i == 0 ? "GIDIS UCUSU / OUTBOUND" : "DONUS UCUSU / RETURN";
+
                 column.Item().ShowEntire().Border(1).BorderColor("#E5E7EB").Column(card =>
                 {
-                    // ── Card header: dark bg with airline logo + name ──
-                    card.Item().Background(DarkColor).PaddingHorizontal(10).PaddingVertical(8).Row(headerRow =>
+                    // ── 1. Dark bar: GIDIS / DONUS label only ──
+                    card.Item().Background(DarkColor).PaddingVertical(6)
+                        .AlignCenter()
+                        .Text(flightLabel).Bold().FontSize(9).FontColor("#FFFFFF");
+
+                    // ── 2. Airline row: logo + name + flight code (white bg) ──
+                    card.Item().Background("#FFFFFF").BorderBottom(1).BorderColor("#E5E7EB")
+                        .PaddingHorizontal(12).PaddingVertical(8).Row(airlineRow =>
                     {
                         var logoBytes = GetAirlineLogo(flight.AirlineCode);
 
                         if (logoBytes != null)
                         {
-                            // Real PNG logo
-                            headerRow.ConstantItem(28).Height(28)
+                            airlineRow.ConstantItem(26).Height(26)
                                 .Image(logoBytes).FitArea();
                         }
                         else
                         {
-                            // Fallback: colored text badge
-                            var airlineColor = AirlineColors.GetValueOrDefault(flight.AirlineCode, "#4B5563");
-                            headerRow.ConstantItem(28).Height(28).AlignCenter().AlignMiddle()
-                                .Background(airlineColor).Padding(2)
+                            var clr = AirlineColors.GetValueOrDefault(flight.AirlineCode, "#4B5563");
+                            airlineRow.ConstantItem(26).Height(26).AlignCenter().AlignMiddle()
+                                .Background(clr).Padding(1)
                                 .AlignCenter().AlignMiddle()
-                                .Text(flight.AirlineCode).Bold().FontSize(10).FontColor("#FFFFFF");
+                                .Text(flight.AirlineCode).Bold().FontSize(9).FontColor("#FFFFFF");
                         }
 
-                        headerRow.ConstantItem(8);
+                        airlineRow.ConstantItem(8);
 
-                        headerRow.RelativeItem().AlignMiddle().Column(hCol =>
+                        airlineRow.RelativeItem().AlignMiddle().Column(hCol =>
                         {
-                            hCol.Item().Text(flight.AirlineName).Bold().FontSize(10).FontColor("#FFFFFF");
-                            hCol.Item().Text($"{flight.FlightCode} - {flight.BookingClass}").FontSize(8).FontColor("#D1D5DB");
+                            hCol.Item().Text(flight.AirlineName).Bold().FontSize(10).FontColor(DarkColor);
+                            hCol.Item().Text($"{flight.FlightCode} - {flight.BookingClass}").FontSize(8).FontColor(GrayColor);
                         });
 
                         if (!string.IsNullOrWhiteSpace(flight.FareBasisName))
                         {
-                            headerRow.AutoItem().AlignMiddle().AlignRight()
-                                .Text(flight.FareBasisName).FontSize(8).FontColor(RedColor)
-                                .BackgroundColor("#2d2d2d");
+                            airlineRow.AutoItem().AlignMiddle().AlignRight()
+                                .Background("#F3F4F6").Padding(4)
+                                .Text(flight.FareBasisName).FontSize(8).FontColor(DarkColor);
                         }
                     });
 
-                    // ── Card body: departure ✈ arrival ──
+                    // ── 3. Flight times: departure — arc connector — arrival ──
                     card.Item().Background("#FFFFFF").PaddingHorizontal(12).PaddingVertical(10).Row(bodyRow =>
                     {
                         // Departure
@@ -266,11 +325,21 @@ public class TicketPdfService : ITicketPdfService
                             dep.Item().PaddingTop(2).Text(flight.DepartureDate).FontSize(8).FontColor(GrayColor);
                         });
 
-                        // Red dashed line separator
-                        bodyRow.ConstantItem(80).AlignMiddle().AlignCenter().Column(mid =>
+                        // Flight path connector: dot ---- arrow
+                        bodyRow.ConstantItem(90).AlignMiddle().AlignCenter().Column(mid =>
                         {
-                            mid.Item().AlignCenter()
-                                .Text("— — — — —").FontSize(9).FontColor(RedColor);
+                            mid.Item().AlignCenter().Row(connRow =>
+                            {
+                                // Origin dot
+                                connRow.AutoItem().AlignMiddle().PaddingRight(2)
+                                    .Text("\u25CF").FontSize(6).FontColor(RedColor);
+                                // Dashed line
+                                connRow.AutoItem().AlignMiddle()
+                                    .Text("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500").FontSize(8).FontColor("#D1D5DB");
+                                // Arrow tip
+                                connRow.AutoItem().AlignMiddle().PaddingLeft(1)
+                                    .Text("\u25B6").FontSize(6).FontColor(RedColor);
+                            });
                         });
 
                         // Arrival
@@ -284,7 +353,7 @@ public class TicketPdfService : ITicketPdfService
                         });
                     });
 
-                    // ── Card footer: baggage ──
+                    // ── 4. Footer: baggage ──
                     card.Item().Background(LightGrayColor).PaddingHorizontal(12).PaddingVertical(5).Row(footRow =>
                     {
                         footRow.RelativeItem().Text(text =>
@@ -297,6 +366,12 @@ public class TicketPdfService : ITicketPdfService
             }
         });
     }
+
+
+
+    // ═══════════════════════════════════════════════════════════
+    //  FOOTER
+    // ═══════════════════════════════════════════════════════════
 
     private static void ComposeFooter(IContainer container)
     {
