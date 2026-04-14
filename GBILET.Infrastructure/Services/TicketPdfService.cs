@@ -286,10 +286,10 @@ public class TicketPdfService : ITicketPdfService
             column.Item().Text("Genel Kurallar ve Bilgilendirmeler").Bold().FontSize(8).FontColor(GrayColor);
             column.Item().PaddingTop(4);
 
-            column.Item().Text(TicketConstants.DisclaimerTR).FontSize(7).FontColor("#9CA3AF").LineHeight(1.3f);
+            column.Item().Text(TicketConstants.DisclaimerTR).Bold().FontSize(7).FontColor("#9CA3AF").LineHeight(1.3f);
             column.Item().PaddingTop(4);
 
-            column.Item().Text(TicketConstants.DisclaimerEN).FontSize(7).FontColor("#9CA3AF").LineHeight(1.3f);
+            column.Item().Text(TicketConstants.DisclaimerEN).Bold().FontSize(7).FontColor("#9CA3AF").LineHeight(1.3f);
             column.Item().PaddingTop(6);
 
             column.Item().Text("Bilgi amaclidir, fatura yerine gecmez.")

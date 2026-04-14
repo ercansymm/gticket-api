@@ -31,11 +31,11 @@ public class TicketController : ControllerBase
     }
 
     [HttpGet("pdf/{shoppingFileId}")]
-    public async Task<IActionResult> GetPdf(string shoppingFileId)
+    public async Task<IActionResult> GetPdf(string shoppingFileId, [FromQuery] int? sequenceNo = null)
     {
         try
         {
-            _logger.LogInformation("Generating e-ticket PDF for shoppingFileId: {ShoppingFileId}", shoppingFileId);
+            _logger.LogInformation("Generating e-ticket PDF for shoppingFileId: {ShoppingFileId}, sequenceNo: {SequenceNo}", shoppingFileId, sequenceNo);
 
             var booking = await _bookingRepository.GetByShoppingFileIdAsync(shoppingFileId);
             if (booking == null)
@@ -105,8 +105,16 @@ public class TicketController : ControllerBase
                 })
                 .ToList();
 
-            // Build per-passenger data list
+            // Build per-passenger data list (filter by sequenceNo if provided)
             var allPassengers = booking.Passengers.OrderBy(p => p.SequenceNo).ToList();
+            if (sequenceNo.HasValue)
+            {
+                allPassengers = allPassengers.Where(p => p.SequenceNo == sequenceNo.Value).ToList();
+                if (allPassengers.Count == 0)
+                {
+                    return NotFound(new { error = "Belirtilen yolcu bulunamadi." });
+                }
+            }
             var passengerDataList = allPassengers.Select(pax => new TicketPdfDataDto
             {
                 PassengerName = $"{pax.FirstName} {pax.LastName}",
