@@ -12,6 +12,7 @@ public class Booking
     public Guid? UserId { get; set; }
     public Guid? BiletBankFileId { get; set; }
     public string? PNR { get; set; }
+    public string? InternalPnr { get; set; }
     public string Status { get; set; } = "Created";
     public decimal? GrandTotal { get; set; }
     public string? Currency { get; set; } = "TRY";
@@ -70,4 +71,11 @@ public class Booking
     public List<FareDetail> FareDetails { get; set; } = new();
     public BillingInfo? BillingInfo { get; set; }
     public List<BookingLog> BookingLogs { get; set; } = new();
+
+
+    
+     
+    
+
+
 }

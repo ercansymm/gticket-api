@@ -45,6 +45,7 @@ public class BiletBankFlightService : IFlightService
     private readonly string _password;
     private readonly string _username;
     private readonly string _proxyUrl;
+    private readonly string _clientIp;
 
     public BiletBankFlightService(
         HttpClient httpClient,
@@ -60,6 +61,7 @@ public class BiletBankFlightService : IFlightService
         _password = configuration["BiletBank:Password"]!;
         _username = configuration["BiletBank:Username"]!;
         _proxyUrl = configuration["BiletBank:Url"]!;
+        _clientIp = configuration["BiletBank:ClientIP"] ?? "";
     }
 
     public async Task<AirSearchResponse> SearchFlightAsync(SearchRequest request)
@@ -360,8 +362,9 @@ public class BiletBankFlightService : IFlightService
     }
 
     /// <summary>
-    /// Telefon numaras�n� BiletBank'�n bekledi�i +90XXXXXXXXXX format�na d�n��t�r�r.
-    /// Kabul edilen giri�ler: 5351234567, 05351234567, 905351234567, 90-5351234567, +90-5351234567, +905351234567
+    /// Normalizes phone to +90XXXXXXXXXX (no dash). Called early in the flow to standardize input.
+    /// Final SOAP XML formatting is done by FormatPhoneForBiletBank which adds the dash (+90-XXXXXXXXXX).
+    /// Accepted inputs: 5351234567, 05351234567, 905351234567, 90-5351234567, +90-5351234567, +905351234567
     /// </summary>
     private static string NormalizePhone(string? phone)
     {
@@ -397,8 +400,7 @@ xmlns:trev1=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Authent
 <tem:Login>
 <tem:request>
 <trev1:Form>
-<trev1:ChannelCode>2</trev1:ChannelCode>
-<trev1:ClientIP></trev1:ClientIP>
+<trev1:ClientIP>{_clientIp}</trev1:ClientIP>
 <trev1:ClientName>{_clientName}</trev1:ClientName>
 <trev1:Password>{_password}</trev1:Password>
 <trev1:Username>{_username}</trev1:Username>
@@ -763,7 +765,6 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
          <trev:ExtraParamList>
             <trev:ExtendedData>
                <trev:Name>BrandedFareVersion</trev:Name>
-               <trev:Type>true</trev:Type>
                <trev:Value>v2</trev:Value>
             </trev:ExtendedData>
             <trev:ExtendedData>
@@ -2146,11 +2147,12 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
          <trev:ExtraParamList>
             <trev:ExtendedData>
                <trev:Name>IntendedShoppingFileId</trev:Name>
+               <trev:Type>True</trev:Type>
                <trev:Value>{shoppingFileId}</trev:Value>
             </trev:ExtendedData>
             <trev:ExtendedData>
                <trev:Name>DoReservation</trev:Name>
-               <trev:Value>true</trev:Value>
+               <trev:Value>True</trev:Value>
             </trev:ExtendedData>
          </trev:ExtraParamList>
           <trev1:Form>{(!string.IsNullOrEmpty(brandedFareItemId) ? $@"
@@ -2160,6 +2162,10 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
                    <trev1:ProductId>{productId}</trev1:ProductId>
                 </trev1:IO_Air_Branded_Form>
              </trev1:Branded>" : "")}
+             <trev1:CIPRequest/>
+             <trev1:ExtraForm>
+                <trev1:SelectedServiceFee>0</trev1:SelectedServiceFee>
+             </trev1:ExtraForm>
              <trev1:ProductIds xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                 <arr:guid>{productId}</arr:guid>
              </trev1:ProductIds>

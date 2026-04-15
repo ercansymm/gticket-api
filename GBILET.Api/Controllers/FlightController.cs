@@ -1,4 +1,5 @@
 ﻿using GBILET.Core.Entities;
+using GBILET.Core.Helpers;
 using GBILET.Core.Models.Flight;
 using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
@@ -985,6 +986,10 @@ public class FlightController : ControllerBase
                                         _logger.LogWarning(readEx, "[3DCallback] ReadShoppingFile failed — keeping existing segments.");
                                     }
 
+                                    // InternalPnr uret ve kaydet
+                                    var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
+                                    await _bookingRepository.UpdateInternalPnrAsync(bookingId.Value, internalPnr);
+
                                     await _bookingRepository.UpdateStatusAsync(bookingId.Value, finalizeResult.Status ?? "Ticketed");
                                     if (!string.IsNullOrEmpty(finalizeResult.BookingCode))
                                         await _bookingRepository.UpdatePnrAsync(bookingId.Value, finalizeResult.BookingCode);
@@ -1102,6 +1107,11 @@ public class FlightController : ControllerBase
                             if (pax != null)
                                 pax.TicketNumber = ticket.TicketNumber;
                         }
+
+                        // InternalPnr uret ve kaydet
+                        var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
+                        booking.InternalPnr = internalPnr;
+                        await _bookingRepository.UpdateInternalPnrAsync(request.BookingId.Value, internalPnr);
 
                         await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, booking.Status);
                         await _bookingRepository.AddLogAsync(new BookingLog
@@ -1329,6 +1339,74 @@ public class FlightController : ControllerBase
                     s.DepartureTime,
                     s.ArrivalDate,
                     s.ArrivalTime
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("booking/lookup/{pnr}/{lastName}")]
+    public async Task<IActionResult> LookupBookingByPnrAndLastName(string pnr, string lastName)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(pnr) || string.IsNullOrWhiteSpace(lastName))
+                return BadRequest(new { error = "PNR ve soyad alanlari zorunludur." });
+
+            var booking = await _bookingRepository.GetByInternalPnrAndLastNameAsync(pnr.Trim().ToUpper(), lastName.Trim().ToUpper());
+            if (booking == null)
+                return NotFound(new { error = "Girilen PNR ve soyad ile eslesen rezervasyon bulunamadi." });
+
+            return Ok(new
+            {
+                booking.Id,
+                PNR = booking.InternalPnr,
+                booking.Status,
+                booking.GrandTotal,
+                booking.Currency,
+                booking.IsFinalized,
+                booking.Origin,
+                booking.Destination,
+                booking.AirlineCode,
+                booking.FlightNumber,
+                booking.AdultCount,
+                booking.ChildCount,
+                booking.InfantCount,
+                booking.CreatedAt,
+                booking.BookedAt,
+                booking.PaidAt,
+                booking.TicketedAt,
+                isGuest = booking.UserId == null,
+                passengers = booking.Passengers.Select(p => new
+                {
+                    p.SequenceNo,
+                    p.Type,
+                    p.FirstName,
+                    p.LastName,
+                    p.Gender,
+                    p.TicketNumber
+                }),
+                segments = booking.FlightSegments.Select(s => new
+                {
+                    s.MarketingAirline,
+                    s.FlightNumber,
+                    s.OriginCode,
+                    s.DestinationCode,
+                    s.DepartureDate,
+                    s.DepartureTime,
+                    s.ArrivalDate,
+                    s.ArrivalTime
+                }),
+                fareDetails = booking.FareDetails.Select(f => new
+                {
+                    f.BaseFare,
+                    f.TotalTax,
+                    f.ServiceFee,
+                    f.GrandTotal,
+                    f.Currency
                 })
             });
         }
@@ -2155,6 +2233,11 @@ public class FlightController : ControllerBase
                             Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] ERROR: {readEx.Message}\n{readEx.StackTrace}");
                             _logger.LogWarning(readEx, "[BookFlight] ReadShoppingFile failed — keeping allocate segments.");
                         }
+
+                        // InternalPnr uret ve kaydet
+                        var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
+                        booking.InternalPnr = internalPnr;
+                        await _bookingRepository.UpdateInternalPnrAsync(savedBookingId.Value, internalPnr);
 
                         await _bookingRepository.UpdateStatusAsync(savedBookingId.Value, response.Status!);
                         await _bookingRepository.AddLogAsync(new BookingLog
