@@ -39,6 +39,17 @@ public class BookingRepository : IBookingRepository
             .FirstOrDefaultAsync(b => b.PNR == pnr);
     }
 
+    public async Task<Booking?> GetByInternalPnrAndLastNameAsync(string internalPnr, string lastName)
+    {
+        return await _db.Bookings
+            .Include(b => b.Passengers)
+            .Include(b => b.FlightSegments)
+            .Include(b => b.FareDetails)
+            .FirstOrDefaultAsync(b =>
+                b.InternalPnr == internalPnr &&
+                b.Passengers.Any(p => p.LastName.ToUpper() == lastName.ToUpper()));
+    }
+
     public async Task<Booking?> GetByShoppingFileIdAsync(string shoppingFileId)
     {
         if (!Guid.TryParse(shoppingFileId, out var fileId))
@@ -74,6 +85,26 @@ public class BookingRepository : IBookingRepository
             await _db.SaveChangesAsync();
         }
     }
+
+
+  public async Task<bool> InternalPnrExistsAsync(string internalPnr)
+  {
+      return await _db.Bookings.AnyAsync(b => b.InternalPnr == internalPnr);
+  }
+
+
+  public async Task UpdateInternalPnrAsync(Guid bookingId, string internalPnr)
+  {
+      var booking = await _db.Bookings.FindAsync(bookingId);
+      if (booking != null)
+      {
+          booking.InternalPnr = internalPnr;
+          booking.UpdatedAt = DateTime.UtcNow;
+          await _db.SaveChangesAsync();
+      }
+  }
+
+
 
     public async Task AddLogAsync(BookingLog log)
     {
