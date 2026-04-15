@@ -118,7 +118,7 @@ public class TicketController : ControllerBase
             var passengerDataList = allPassengers.Select(pax => new TicketPdfDataDto
             {
                 PassengerName = $"{pax.FirstName} {pax.LastName}",
-                Pnr = booking.PNR ?? "—",
+                Pnr = booking.InternalPnr ?? booking.PNR ?? "—",
                 TicketNumber = pax.TicketNumber ?? "—",
                 IssueDate = booking.TicketedAt ?? booking.PaidAt ?? booking.CreatedAt,
                 TcNo = pax.CitizenNo,

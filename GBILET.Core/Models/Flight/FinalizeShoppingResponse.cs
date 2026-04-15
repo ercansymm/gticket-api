@@ -16,6 +16,11 @@ public class FinalizeShoppingResponse
     public string? BookingCode { get; set; }
 
     /// <summary>
+    /// Bizim urettigimiz internal PNR kodu
+    /// </summary>
+    public string? InternalPnr { get; set; }
+
+    /// <summary>
     /// Biletleme durumu (Ticketed, Confirmed, Failed vb.)
     /// </summary>
     public string? Status { get; set; }

@@ -895,6 +895,7 @@ public class FlightController : ControllerBase
                 string? pnr = result.PNR;
                 bool finalizeAttempted = false;
                 bool finalizeSuccess = false;
+                string? internalPnrForRedirect = null;
 
                 if (!string.IsNullOrEmpty(productId))
                 {
@@ -989,6 +990,7 @@ public class FlightController : ControllerBase
                                     // InternalPnr uret ve kaydet
                                     var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
                                     await _bookingRepository.UpdateInternalPnrAsync(bookingId.Value, internalPnr);
+                                    internalPnrForRedirect = internalPnr;
 
                                     await _bookingRepository.UpdateStatusAsync(bookingId.Value, finalizeResult.Status ?? "Ticketed");
                                     if (!string.IsNullOrEmpty(finalizeResult.BookingCode))
@@ -1017,7 +1019,7 @@ public class FlightController : ControllerBase
                 }
 
                 // Frontend'e basarili redirect
-                var successUrl = $"{_frontendUrl}/payment/result?status=success&bookingId={bookingId}&pnr={Uri.EscapeDataString(pnr ?? "")}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={finalizeSuccess}";
+                var successUrl = $"{_frontendUrl}/payment/result?status=success&bookingId={bookingId}&pnr={Uri.EscapeDataString(internalPnrForRedirect ?? pnr ?? "")}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={finalizeSuccess}";
                 return Redirect(successUrl);
             }
             else
@@ -1112,6 +1114,7 @@ public class FlightController : ControllerBase
                         var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
                         booking.InternalPnr = internalPnr;
                         await _bookingRepository.UpdateInternalPnrAsync(request.BookingId.Value, internalPnr);
+                        result.InternalPnr = internalPnr;
 
                         await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, booking.Status);
                         await _bookingRepository.AddLogAsync(new BookingLog
@@ -2238,6 +2241,7 @@ public class FlightController : ControllerBase
                         var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
                         booking.InternalPnr = internalPnr;
                         await _bookingRepository.UpdateInternalPnrAsync(savedBookingId.Value, internalPnr);
+                        response.InternalPnr = internalPnr;
 
                         await _bookingRepository.UpdateStatusAsync(savedBookingId.Value, response.Status!);
                         await _bookingRepository.AddLogAsync(new BookingLog

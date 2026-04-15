@@ -1,8 +1,8 @@
 namespace GBILET.Core.Models.Flight;
 
 /// <summary>
-/// Otomatik booking akýþýnýn her adýmýnýn sonucunu döner.
-/// Hangi adýmda durduðu, baþarýlý mý, hata varsa ne olduðu bilgisi içerir.
+/// Otomatik booking akï¿½ï¿½ï¿½nï¿½n her adï¿½mï¿½nï¿½n sonucunu dï¿½ner.
+/// Hangi adï¿½mda durduï¿½u, baï¿½arï¿½lï¿½ mï¿½, hata varsa ne olduï¿½u bilgisi iï¿½erir.
 /// </summary>
 public class BookFlightResponse
 {
@@ -10,7 +10,7 @@ public class BookFlightResponse
     public string? ErrorMessage { get; set; }
 
     /// <summary>
-    /// Son tamamlanan adým: Search, Allocate, UpdatePassengers, PreBooking, Payment, Finalize
+    /// Son tamamlanan adï¿½m: Search, Allocate, UpdatePassengers, PreBooking, Payment, Finalize
     /// </summary>
     public string? CompletedStep { get; set; }
 
@@ -27,6 +27,7 @@ public class BookFlightResponse
 
     // ?? PreBooking ??
     public string? PNR { get; set; }
+    public string? InternalPnr { get; set; }
     public string? Status { get; set; }
     public decimal TotalFare { get; set; }
     public decimal BaseFare { get; set; }
@@ -53,7 +54,7 @@ public class BookFlightResponse
     public bool IsFinalized { get; set; }
     public List<TicketInfo> Tickets { get; set; } = [];
 
-    // ?? Seçilen uçuþ bilgisi ??
+    // ?? Seï¿½ilen uï¿½uï¿½ bilgisi ??
     public string? FlightNumber { get; set; }
     public string? MarketingAirline { get; set; }
     public string? Origin { get; set; }
@@ -61,6 +62,6 @@ public class BookFlightResponse
     public string? DepartureDay { get; set; }
     public string? DepartureTime { get; set; }
 
-    // ?? Adým detaylarý (debug) ??
+    // ?? Adï¿½m detaylarï¿½ (debug) ??
     public List<string> Steps { get; set; } = [];
 }
