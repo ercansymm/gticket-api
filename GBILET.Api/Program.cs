@@ -1,4 +1,5 @@
-﻿using GBILET.Core.Service;
+﻿using GBILET.Core.Interfaces;
+using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
 using GBILET.Core.Service.Ticket;
 using GBILET.Core.Helpers;
@@ -87,6 +88,11 @@ builder.Services.AddScoped<IAirlineRepository, AirlineRepository>();
 builder.Services.AddScoped<IAirportRepository, AirportRepository>();
 builder.Services.AddScoped<IPopularRouteRepository, PopularRouteRepository>();
 builder.Services.AddScoped<ITicketPdfService, TicketPdfService>();
+
+builder.Services.AddHttpClient<ICurrencyService, CurrencyService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
 
 builder.Services.AddMemoryCache();
 

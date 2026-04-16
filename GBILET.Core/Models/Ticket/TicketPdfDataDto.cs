@@ -17,6 +17,31 @@ public class TicketPdfDataDto
     public decimal TotalFare { get; set; }
     public string Currency { get; set; } = "TRY";
 
+    /// <summary>
+    /// Kullanicinin sectigi gosterim para birimi. null veya "TRY" ise donusum yapilmaz.
+    /// </summary>
+    public string? DisplayCurrency { get; set; }
+
+    /// <summary>
+    /// Gosterim para birimindeki toplam tutar.
+    /// </summary>
+    public decimal? DisplayTotalFare { get; set; }
+
+    /// <summary>
+    /// Gosterim para birimindeki baz ucret.
+    /// </summary>
+    public decimal? DisplayBaseFare { get; set; }
+
+    /// <summary>
+    /// Gosterim para birimindeki vergi tutari.
+    /// </summary>
+    public decimal? DisplayTaxes { get; set; }
+
+    /// <summary>
+    /// Doviz kuru (1 DisplayCurrency = X TRY).
+    /// </summary>
+    public decimal? ExchangeRate { get; set; }
+
     public List<TicketFareItemDto> FareItems { get; set; } = [];
     public List<TicketFlightDto> Flights { get; set; } = [];
 
