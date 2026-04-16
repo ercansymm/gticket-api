@@ -67,8 +67,9 @@ public class TicketPdfService : ITicketPdfService
     }
 
     /// <summary>
-    /// Get airline logo from local file, with in-memory cache.
-    /// Returns null if file doesn't exist (caller falls back to colored badge).
+    /// Get airline logo (icon-only, no wordmark) from images.kiwi.com CDN with in-memory cache.
+    /// Falls back to local wwwroot/images/airlines/{CODE}.png if CDN fails.
+    /// Returns null if nothing works (caller falls back to colored badge).
     /// </summary>
     private byte[]? GetAirlineLogo(string airlineCode)
     {
@@ -81,9 +82,27 @@ public class TicketPdfService : ITicketPdfService
 
         byte[]? logoBytes = null;
 
-        var localPath = Path.Combine(_airlineLogoBasePath, $"{upperCode}.png");
-        if (File.Exists(localPath))
-            logoBytes = File.ReadAllBytes(localPath);
+        // 1. Try kiwi.com CDN (icon-only, no wordmark, covers all IATA codes)
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            var cdnUrl = $"https://images.kiwi.com/airlines/64x64/{upperCode}.png";
+            var response = http.GetAsync(cdnUrl).GetAwaiter().GetResult();
+            if (response.IsSuccessStatusCode)
+                logoBytes = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Ignore and fall back to local file
+        }
+
+        // 2. Fall back to local file
+        if (logoBytes == null)
+        {
+            var localPath = Path.Combine(_airlineLogoBasePath, $"{upperCode}.png");
+            if (File.Exists(localPath))
+                logoBytes = File.ReadAllBytes(localPath);
+        }
 
         _logoCache[upperCode] = logoBytes;
         return logoBytes;
