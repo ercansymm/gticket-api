@@ -4,3 +4,4 @@ Fontend buraya bağlanır
 Bu adrese gelen istekler burada karşılanır ve gerekli işlemler yapıldıktan sonra sonuç döndürülür.
 button (kaydet) tıklandığında bu adrese bir istek gönderilir ve burada karşılanır. 
 
+           
