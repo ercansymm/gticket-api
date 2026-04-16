@@ -190,6 +190,14 @@ public class TicketPdfService : ITicketPdfService
             // Right — price
             row.RelativeItem().Column(col =>
             {
+                // Gosterim para birimi: DisplayCurrency varsa onu kullan, yoksa TRY
+                var showCur = !string.IsNullOrWhiteSpace(data.DisplayCurrency) && data.DisplayCurrency != "TRY"
+                    ? data.DisplayCurrency
+                    : data.Currency;
+                var showBase = data.DisplayBaseFare ?? data.BaseFare;
+                var showTax = data.DisplayTaxes ?? data.Taxes;
+                var showTotal = data.DisplayTotalFare ?? data.TotalFare;
+
                 col.Item().Text("UCRET BILGILERI / PRICE INFO").Bold().FontSize(8).FontColor(GrayColor);
 
                 foreach (var item in data.FareItems)
@@ -207,23 +215,30 @@ public class TicketPdfService : ITicketPdfService
                 col.Item().Row(r =>
                 {
                     r.RelativeItem().Text("Esas Ucret / Base Fare").FontSize(9);
-                    r.AutoItem().AlignRight().Text($"{data.BaseFare:N2} {data.Currency}").FontSize(9);
+                    r.AutoItem().AlignRight().Text($"{showBase:N2} {showCur}").FontSize(9);
                 });
 
                 col.Item().PaddingTop(3).Row(r =>
                 {
                     r.RelativeItem().Text("Vergiler ve Diger Ucretler / Taxes & Fees").FontSize(9);
-                    r.AutoItem().AlignRight().Text($"{data.Taxes:N2} {data.Currency}").FontSize(9);
+                    r.AutoItem().AlignRight().Text($"{showTax:N2} {showCur}").FontSize(9);
                 });
 
                 col.Item().PaddingVertical(6).LineHorizontal(1).LineColor("#D1D5DB");
 
-                // ── CHANGE #1: Total tutar siyah bold (kırmızı değil) ──
+                // Total tutar
                 col.Item().Row(r =>
                 {
                     r.RelativeItem().Text("TOPLAM TUTAR / TOTAL FARE").Bold().FontSize(10);
-                    r.AutoItem().AlignRight().Text($"{data.TotalFare:N2} {data.Currency}").Bold().FontSize(12).FontColor(DarkColor);
+                    r.AutoItem().AlignRight().Text($"{showTotal:N2} {showCur}").Bold().FontSize(12).FontColor(DarkColor);
                 });
+
+                // Farkli para biriminde gosterim yapildiysa TRY odeme notu ekle
+                if (!string.IsNullOrWhiteSpace(data.DisplayCurrency) && data.DisplayCurrency != "TRY")
+                {
+                    col.Item().PaddingTop(4).Text($"Odeme {data.TotalFare:N2} TRY olarak tahsil edilmistir.")
+                        .FontSize(7).FontColor(GrayColor).Italic();
+                }
             });
         });
     }
