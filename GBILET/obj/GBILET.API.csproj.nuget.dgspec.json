@@ -1,86 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET\\GBILET.API.csproj": {}
+    "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET\\GBILET.API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Application\\GBILET.Application.csproj": {
+    "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Core\\GBILET.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Application\\GBILET.Application.csproj",
-        "projectName": "GBILET.Application",
-        "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Application\\GBILET.Application.csproj",
+        "projectUniqueName": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Core\\GBILET.Core.csproj",
+        "projectName": "GBILET.Core",
+        "projectPath": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Core\\GBILET.Core.csproj",
         "packagesPath": "C:\\Users\\ercan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Application\\obj\\",
-        "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
-        "configFilePaths": [
-          "C:\\Users\\ercan\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
-        ],
-        "originalTargetFrameworks": [
-          "net8.0"
-        ],
-        "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "https://api.nuget.org/v3/index.json": {}
-        },
-        "frameworks": {
-          "net8.0": {
-            "targetAlias": "net8.0",
-            "projectReferences": {
-              "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Domain\\GBILET.Domain.csproj": {
-                "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Domain\\GBILET.Domain.csproj"
-              }
-            }
-          }
-        },
-        "warningProperties": {
-          "warnAsError": [
-            "NU1605"
-          ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.300"
-      },
-      "frameworks": {
-        "net8.0": {
-          "targetAlias": "net8.0",
-          "imports": [
-            "net461",
-            "net462",
-            "net47",
-            "net471",
-            "net472",
-            "net48",
-            "net481"
-          ],
-          "assetTargetFallback": true,
-          "warn": true,
-          "frameworkReferences": {
-            "Microsoft.NETCore.App": {
-              "privateAssets": "all"
-            }
-          },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
-        }
-      }
-    },
-    "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Domain\\GBILET.Domain.csproj": {
-      "version": "1.0.0",
-      "restore": {
-        "projectUniqueName": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Domain\\GBILET.Domain.csproj",
-        "projectName": "GBILET.Domain",
-        "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Domain\\GBILET.Domain.csproj",
-        "packagesPath": "C:\\Users\\ercan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Domain\\obj\\",
+        "outputPath": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -118,6 +49,44 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
+          "dependencies": {
+            "AWSSDK.S3": {
+              "target": "Package",
+              "version": "[4.0.16.4, )"
+            },
+            "BCrypt.Net-Next": {
+              "target": "Package",
+              "version": "[4.0.3, )"
+            },
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
+              "target": "Package",
+              "version": "[8.0.11, )"
+            },
+            "Microsoft.Extensions.Configuration.Abstractions": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.Extensions.DependencyInjection.Abstractions": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.IdentityModel.Tokens": {
+              "target": "Package",
+              "version": "[8.2.1, )"
+            },
+            "Otp.NET": {
+              "target": "Package",
+              "version": "[1.4.1, )"
+            },
+            "QRCoder": {
+              "target": "Package",
+              "version": "[1.8.0, )"
+            },
+            "System.IdentityModel.Tokens.Jwt": {
+              "target": "Package",
+              "version": "[8.2.1, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -134,18 +103,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj": {
+    "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj",
         "projectName": "GBILET.Infrastructure",
-        "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj",
+        "projectPath": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj",
         "packagesPath": "C:\\Users\\ercan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\obj\\",
+        "outputPath": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -166,11 +135,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Application\\GBILET.Application.csproj": {
-                "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Application\\GBILET.Application.csproj"
-              },
-              "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Domain\\GBILET.Domain.csproj": {
-                "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Domain\\GBILET.Domain.csproj"
+              "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Core\\GBILET.Core.csproj": {
+                "projectPath": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Core\\GBILET.Core.csproj"
               }
             }
           }
@@ -190,6 +156,44 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2026.2.4, )"
+            },
+            "SkiaSharp": {
+              "target": "Package",
+              "version": "[2.88.9, )"
+            },
+            "System.ServiceModel.Http": {
+              "target": "Package",
+              "version": "[8.*, )"
+            },
+            "System.ServiceModel.NetTcp": {
+              "target": "Package",
+              "version": "[8.*, )"
+            },
+            "System.ServiceModel.Primitives": {
+              "target": "Package",
+              "version": "[8.*, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -206,18 +210,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET\\GBILET.API.csproj": {
+    "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET\\GBILET.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET\\GBILET.API.csproj",
+        "projectUniqueName": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET\\GBILET.API.csproj",
         "projectName": "GBILET.API",
-        "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET\\GBILET.API.csproj",
+        "projectPath": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET\\GBILET.API.csproj",
         "packagesPath": "C:\\Users\\ercan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET\\obj\\",
+        "outputPath": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -238,11 +242,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Application\\GBILET.Application.csproj": {
-                "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Application\\GBILET.Application.csproj"
-              },
-              "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj": {
-                "projectPath": "C:\\Users\\ercan\\Desktop\\GTRAVEL\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj"
+              "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj": {
+                "projectPath": "C:\\Users\\ercan\\Desktop\\G-Ticket-Project\\GBILET\\GBILET.Infrastructure\\GBILET.Infrastructure.csproj"
               }
             }
           }
@@ -291,7 +292,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.312/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
