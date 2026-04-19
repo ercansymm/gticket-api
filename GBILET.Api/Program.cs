@@ -10,6 +10,11 @@ using Microsoft.AspNetCore.ResponseCompression;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using QuestPDF.Infrastructure;
+using GBILET.Core.Service.Admin;
+using GBILET.Infrastructure.Services.Admin;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
 
 // PostgreSQL: DateTimeKind.Unspecified olan DateTime değerlerini kabul et
 // Npgsql 6+ varsayılan olarak sadece UTC kabul eder; bu switch legacy davranışı etkinleştirir
@@ -29,16 +34,21 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<AirportSeeder>();
 builder.Services.AddScoped<AirlineSeeder>();
 
-builder.Services.AddCors(options =>
+    builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:5173"
+                "http://localhost:3000",      // gticket-front (müşteri)
+                "http://localhost:5173",      // gticket-front Vite
+                "http://localhost:3001",      // gticket-admin (admin panel dev)
+                "https://atabilet.com",       // production müşteri
+                "https://www.atabilet.com",
+                "https://admin.atabilet.com"  // production admin
               )
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();            // Cookie'ler için ŞART
     });
 });
 
@@ -60,6 +70,34 @@ builder.Services.AddRateLimiter(options =>
         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         limiterOptions.QueueLimit = 20;
     });
+
+
+    // YENİ — Admin login için sıkı policy: 5 deneme / 15dk / IP
+    options.AddPolicy("admin-login", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(15),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        });
+    });
+
+    // YENİ — Genel admin API: 100 req/dk per IP
+    options.AddPolicy("admin-general", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 100,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 10
+        });
+    });
+
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.ContentType = "application/json";
@@ -78,6 +116,54 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+// ============================================================
+// JWT Authentication — token cookie'den okunur (httpOnly + Secure)
+// ============================================================
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+        var jwtConfig = jwtSection.Get<JwtOptions>() ?? throw new InvalidOperationException("Jwt config missing");
+
+        // Public key'i yükle
+        var publicKeyPath = builder.Configuration["Jwt:PublicKeyPath"]
+            ?? throw new InvalidOperationException("Jwt:PublicKeyPath not configured");
+
+        if (!File.Exists(publicKeyPath))
+            throw new FileNotFoundException($"JWT public key not found at {publicKeyPath}");
+
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(File.ReadAllText(publicKeyPath));
+        var signingKey = new RsaSecurityKey(rsa);
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtConfig.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtConfig.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = signingKey,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        // Token Bearer header yerine cookie'den okusun
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (context.Request.Cookies.TryGetValue("atabilet_access_token", out var token)
+                    && !string.IsNullOrEmpty(token))
+                {
+                    context.Token = token;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<GTicketDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -93,6 +179,16 @@ builder.Services.AddHttpClient<ICurrencyService, CurrencyService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
 });
+
+// ============================================================
+// ADMIN PANEL — Auth & Services
+// ============================================================
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddSingleton<ITokenService, TokenService>(); // RSA key'ler bir kez yüklensin
+builder.Services.AddSingleton<ITotpService, TotpService>();   // Stateless
+builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 
 builder.Services.AddMemoryCache();
 
@@ -216,7 +312,6 @@ using (var scope = app.Services.CreateScope())
         // Kolon zaten varsa yut
     }
 }
-
 
 app.UseSwagger();
 app.UseSwaggerUI();

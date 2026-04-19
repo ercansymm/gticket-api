@@ -8,7 +8,6 @@
     ".NETCoreApp,Version=v8.0": {
       "GBILET.API/1.0.0": {
         "dependencies": {
-          "GBILET.Application": "1.0.0",
           "GBILET.Infrastructure": "1.0.0",
           "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": "1.22.1",
           "Swashbuckle.AspNetCore": "6.6.2"
@@ -17,7 +16,197 @@
           "GBILET.API.dll": {}
         }
       },
+      "AWSSDK.Core/4.0.3.8": {
+        "runtime": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.3.8"
+          }
+        }
+      },
+      "AWSSDK.S3/4.0.16.4": {
+        "dependencies": {
+          "AWSSDK.Core": "4.0.3.8"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.16.4"
+          }
+        }
+      },
+      "BCrypt.Net-Next/4.0.3": {
+        "runtime": {
+          "lib/net6.0/BCrypt.Net-Next.dll": {
+            "assemblyVersion": "4.0.3.0",
+            "fileVersion": "4.0.3.0"
+          }
+        }
+      },
+      "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.11": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "7.1.2"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll": {
+            "assemblyVersion": "8.0.11.0",
+            "fileVersion": "8.0.1124.52116"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore/8.0.0": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Abstractions": "8.0.0",
+          "Microsoft.EntityFrameworkCore.Analyzers": "8.0.0",
+          "Microsoft.Extensions.Caching.Memory": "8.0.0",
+          "Microsoft.Extensions.Logging": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.EntityFrameworkCore.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Abstractions/8.0.0": {
+        "runtime": {
+          "lib/net8.0/Microsoft.EntityFrameworkCore.Abstractions.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Analyzers/8.0.0": {},
+      "Microsoft.EntityFrameworkCore.Relational/8.0.0": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "8.0.0",
+          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.EntityFrameworkCore.Relational.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
       "Microsoft.Extensions.ApiDescription.Server/6.0.5": {},
+      "Microsoft.Extensions.Caching.Abstractions/8.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "8.0.0"
+        }
+      },
+      "Microsoft.Extensions.Caching.Memory/8.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Caching.Abstractions": "8.0.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Options": "8.0.0",
+          "Microsoft.Extensions.Primitives": "8.0.0"
+        }
+      },
+      "Microsoft.Extensions.Configuration.Abstractions/8.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "8.0.0"
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection/8.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0"
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.0": {},
+      "Microsoft.Extensions.Logging/8.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection": "8.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Options": "8.0.0"
+        }
+      },
+      "Microsoft.Extensions.Logging.Abstractions/8.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0"
+        }
+      },
+      "Microsoft.Extensions.ObjectPool/8.0.10": {
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.ObjectPool.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.1024.46804"
+          }
+        }
+      },
+      "Microsoft.Extensions.Options/8.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Primitives": "8.0.0"
+        }
+      },
+      "Microsoft.Extensions.Primitives/8.0.0": {},
+      "Microsoft.IdentityModel.Abstractions/8.2.1": {
+        "runtime": {
+          "lib/net8.0/Microsoft.IdentityModel.Abstractions.dll": {
+            "assemblyVersion": "8.2.1.0",
+            "fileVersion": "8.2.1.51115"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.JsonWebTokens/8.2.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.2.1"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.IdentityModel.JsonWebTokens.dll": {
+            "assemblyVersion": "8.2.1.0",
+            "fileVersion": "8.2.1.51115"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Logging/8.2.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Abstractions": "8.2.1"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.IdentityModel.Logging.dll": {
+            "assemblyVersion": "8.2.1.0",
+            "fileVersion": "8.2.1.51115"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Protocols/7.1.2": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Logging": "8.2.1",
+          "Microsoft.IdentityModel.Tokens": "8.2.1"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.IdentityModel.Protocols.dll": {
+            "assemblyVersion": "7.1.2.0",
+            "fileVersion": "7.1.2.41121"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Protocols.OpenIdConnect/7.1.2": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols": "7.1.2",
+          "System.IdentityModel.Tokens.Jwt": "8.2.1"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
+            "assemblyVersion": "7.1.2.0",
+            "fileVersion": "7.1.2.41121"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Tokens/8.2.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Logging": "8.2.1"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.IdentityModel.Tokens.dll": {
+            "assemblyVersion": "8.2.1.0",
+            "fileVersion": "8.2.1.51115"
+          }
+        }
+      },
       "Microsoft.OpenApi/1.6.14": {
         "runtime": {
           "lib/netstandard2.0/Microsoft.OpenApi.dll": {
@@ -27,6 +216,191 @@
         }
       },
       "Microsoft.VisualStudio.Azure.Containers.Tools.Targets/1.22.1": {},
+      "Npgsql/8.0.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/Npgsql.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.0.0"
+          }
+        }
+      },
+      "Npgsql.EntityFrameworkCore.PostgreSQL/8.0.0": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "8.0.0",
+          "Microsoft.EntityFrameworkCore.Abstractions": "8.0.0",
+          "Microsoft.EntityFrameworkCore.Relational": "8.0.0",
+          "Npgsql": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.0.0"
+          }
+        }
+      },
+      "QuestPDF/2026.2.4": {
+        "runtime": {
+          "lib/net8.0/QuestPDF.dll": {
+            "assemblyVersion": "2026.2.4.0",
+            "fileVersion": "2026.2.4.0"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/linux-arm64/native/libQuestPdfSkia.so": {
+            "rid": "linux-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-arm64/native/libqpdf.so": {
+            "rid": "linux-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-musl-x64/native/libQuestPdfSkia.so": {
+            "rid": "linux-musl-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-musl-x64/native/libqpdf.so": {
+            "rid": "linux-musl-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-x64/native/libQuestPdfSkia.so": {
+            "rid": "linux-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-x64/native/libqpdf.so": {
+            "rid": "linux-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/osx-arm64/native/libQuestPdfSkia.dylib": {
+            "rid": "osx-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/osx-arm64/native/libqpdf.dylib": {
+            "rid": "osx-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/osx-x64/native/libQuestPdfSkia.dylib": {
+            "rid": "osx-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/osx-x64/native/libqpdf.dylib": {
+            "rid": "osx-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/QuestPdfSkia.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/libgcc_s_seh-1.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/libstdc++-6.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/libwinpthread-1.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "1.0.0.0"
+          },
+          "runtimes/win-x64/native/qpdf.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/zlib1.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x86/native/QuestPdfSkia.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x86/native/libgcc_s_dw2-1.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x86/native/libstdc++-6.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x86/native/libwinpthread-1.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "1.0.0.0"
+          },
+          "runtimes/win-x86/native/qpdf.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x86/native/zlib1.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
+      "SkiaSharp/2.88.9": {
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Win32": "2.88.9",
+          "SkiaSharp.NativeAssets.macOS": "2.88.9"
+        },
+        "runtime": {
+          "lib/net6.0/SkiaSharp.dll": {
+            "assemblyVersion": "2.88.0.0",
+            "fileVersion": "2.88.9.0"
+          }
+        }
+      },
+      "SkiaSharp.NativeAssets.macOS/2.88.9": {
+        "runtimeTargets": {
+          "runtimes/osx/native/libSkiaSharp.dylib": {
+            "rid": "osx",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
+      "SkiaSharp.NativeAssets.Win32/2.88.9": {
+        "runtimeTargets": {
+          "runtimes/win-arm64/native/libSkiaSharp.dll": {
+            "rid": "win-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/libSkiaSharp.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x86/native/libSkiaSharp.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
       "Swashbuckle.AspNetCore/6.6.2": {
         "dependencies": {
           "Microsoft.Extensions.ApiDescription.Server": "6.0.5",
@@ -65,20 +439,279 @@
           }
         }
       },
-      "GBILET.Application/1.0.0": {
+      "System.IdentityModel.Tokens.Jwt/8.2.1": {
         "dependencies": {
-          "GBILET.Domain": "1.0.0"
+          "Microsoft.IdentityModel.JsonWebTokens": "8.2.1",
+          "Microsoft.IdentityModel.Tokens": "8.2.1"
         },
         "runtime": {
-          "GBILET.Application.dll": {
-            "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.0.0"
+          "lib/net8.0/System.IdentityModel.Tokens.Jwt.dll": {
+            "assemblyVersion": "8.2.1.0",
+            "fileVersion": "8.2.1.51115"
           }
         }
       },
-      "GBILET.Domain/1.0.0": {
+      "System.Security.Cryptography.Pkcs/8.0.1": {
         "runtime": {
-          "GBILET.Domain.dll": {
+          "lib/net8.0/System.Security.Cryptography.Pkcs.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.1024.46610"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net8.0/System.Security.Cryptography.Pkcs.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.1024.46610"
+          }
+        }
+      },
+      "System.Security.Cryptography.Xml/8.0.2": {
+        "dependencies": {
+          "System.Security.Cryptography.Pkcs": "8.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/System.Security.Cryptography.Xml.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.1024.46610"
+          }
+        }
+      },
+      "System.ServiceModel.Http/8.1.2": {
+        "dependencies": {
+          "System.ServiceModel.Primitives": "8.1.2"
+        },
+        "runtime": {
+          "lib/net8.0/System.ServiceModel.Http.dll": {
+            "assemblyVersion": "8.1.2.0",
+            "fileVersion": "8.100.225.15402"
+          }
+        },
+        "resources": {
+          "lib/net8.0/cs/System.ServiceModel.Http.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/net8.0/de/System.ServiceModel.Http.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net8.0/es/System.ServiceModel.Http.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net8.0/fr/System.ServiceModel.Http.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net8.0/it/System.ServiceModel.Http.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net8.0/ja/System.ServiceModel.Http.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net8.0/ko/System.ServiceModel.Http.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net8.0/pl/System.ServiceModel.Http.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/net8.0/pt-BR/System.ServiceModel.Http.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/net8.0/ru/System.ServiceModel.Http.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net8.0/tr/System.ServiceModel.Http.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/net8.0/zh-Hans/System.ServiceModel.Http.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net8.0/zh-Hant/System.ServiceModel.Http.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.ServiceModel.NetFramingBase/8.1.2": {
+        "dependencies": {
+          "System.ServiceModel.Primitives": "8.1.2"
+        },
+        "runtime": {
+          "lib/net8.0/System.ServiceModel.NetFramingBase.dll": {
+            "assemblyVersion": "8.1.2.0",
+            "fileVersion": "8.100.225.15402"
+          }
+        },
+        "resources": {
+          "lib/net8.0/cs/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/net8.0/de/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net8.0/es/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net8.0/fr/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net8.0/it/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net8.0/ja/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net8.0/ko/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net8.0/pl/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/net8.0/pt-BR/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/net8.0/ru/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net8.0/tr/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/net8.0/zh-Hans/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net8.0/zh-Hant/System.ServiceModel.NetFramingBase.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.ServiceModel.NetTcp/8.1.2": {
+        "dependencies": {
+          "System.ServiceModel.NetFramingBase": "8.1.2",
+          "System.ServiceModel.Primitives": "8.1.2"
+        },
+        "runtime": {
+          "lib/net8.0/System.ServiceModel.NetTcp.dll": {
+            "assemblyVersion": "8.1.2.0",
+            "fileVersion": "8.100.225.15402"
+          }
+        },
+        "resources": {
+          "lib/net8.0/cs/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/net8.0/de/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net8.0/es/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net8.0/fr/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net8.0/it/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net8.0/ja/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net8.0/ko/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net8.0/pl/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/net8.0/pt-BR/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/net8.0/ru/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net8.0/tr/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/net8.0/zh-Hans/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net8.0/zh-Hant/System.ServiceModel.NetTcp.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.ServiceModel.Primitives/8.1.2": {
+        "dependencies": {
+          "Microsoft.Extensions.ObjectPool": "8.0.10",
+          "System.Security.Cryptography.Xml": "8.0.2"
+        },
+        "runtime": {
+          "lib/net8.0/System.ServiceModel.Duplex.dll": {
+            "assemblyVersion": "8.1.2.0",
+            "fileVersion": "8.100.225.15402"
+          },
+          "lib/net8.0/System.ServiceModel.Primitives.dll": {
+            "assemblyVersion": "8.1.2.0",
+            "fileVersion": "8.100.225.15402"
+          },
+          "lib/net8.0/System.ServiceModel.Security.dll": {
+            "assemblyVersion": "8.1.2.0",
+            "fileVersion": "8.100.225.15402"
+          },
+          "lib/net8.0/System.ServiceModel.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "8.100.225.15402"
+          }
+        },
+        "resources": {
+          "lib/net8.0/cs/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/net8.0/de/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net8.0/es/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net8.0/fr/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net8.0/it/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net8.0/ja/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net8.0/ko/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net8.0/pl/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/net8.0/pt-BR/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/net8.0/ru/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net8.0/tr/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/net8.0/zh-Hans/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net8.0/zh-Hant/System.ServiceModel.Primitives.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "GBILET.Core/1.0.0": {
+        "dependencies": {
+          "AWSSDK.S3": "4.0.16.4",
+          "BCrypt.Net-Next": "4.0.3",
+          "Microsoft.AspNetCore.Authentication.JwtBearer": "8.0.11",
+          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.IdentityModel.Tokens": "8.2.1",
+          "System.IdentityModel.Tokens.Jwt": "8.2.1"
+        },
+        "runtime": {
+          "GBILET.Core.dll": {
             "assemblyVersion": "1.0.0.0",
             "fileVersion": "1.0.0.0"
           }
@@ -86,8 +719,13 @@
       },
       "GBILET.Infrastructure/1.0.0": {
         "dependencies": {
-          "GBILET.Application": "1.0.0",
-          "GBILET.Domain": "1.0.0"
+          "GBILET.Core": "1.0.0",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.0",
+          "QuestPDF": "2026.2.4",
+          "SkiaSharp": "2.88.9",
+          "System.ServiceModel.Http": "8.1.2",
+          "System.ServiceModel.NetTcp": "8.1.2",
+          "System.ServiceModel.Primitives": "8.1.2"
         },
         "runtime": {
           "GBILET.Infrastructure.dll": {
@@ -104,12 +742,180 @@
       "serviceable": false,
       "sha512": ""
     },
+    "AWSSDK.Core/4.0.3.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-nJyNzaz3pcD8c8hZvtJXuziJm1dkd3/BYmZvhf1TPNfMo3G3lsesGFZl1UVyQhGEfmQOS+efT0H8tf00PMmjug==",
+      "path": "awssdk.core/4.0.3.8",
+      "hashPath": "awssdk.core.4.0.3.8.nupkg.sha512"
+    },
+    "AWSSDK.S3/4.0.16.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-por8eZJdPAu3hptAwyhuzji1NlHzuNhnp6TBjuj8egpjCpfLZdLBIlH0L+vKqfAJqFsxqtRDynzwGcgdbZPTOg==",
+      "path": "awssdk.s3/4.0.16.4",
+      "hashPath": "awssdk.s3.4.0.16.4.nupkg.sha512"
+    },
+    "BCrypt.Net-Next/4.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-W+U9WvmZQgi5cX6FS5GDtDoPzUCV4LkBLkywq/kRZhuDwcbavOzcDAr3LXJFqHUi952Yj3LEYoWW0jbEUQChsA==",
+      "path": "bcrypt.net-next/4.0.3",
+      "hashPath": "bcrypt.net-next.4.0.3.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.Authentication.JwtBearer/8.0.11": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-9KhRuywosM24BPf1R5erwsvIkpRUu1+btVyOPlM3JgrhFVP4pq5Fuzi3vjP01OHXfbCtNhWa+HGkZeqaWdcO5w==",
+      "path": "microsoft.aspnetcore.authentication.jwtbearer/8.0.11",
+      "hashPath": "microsoft.aspnetcore.authentication.jwtbearer.8.0.11.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-SoODat83pGQUpWB9xULdMX6tuKpq/RTXDuJ2WeC1ldUKcKzLkaFJD1n+I0nOLY58odez/e7z8b6zdp235G/kyg==",
+      "path": "microsoft.entityframeworkcore/8.0.0",
+      "hashPath": "microsoft.entityframeworkcore.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Abstractions/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-VR22s3+zoqlVI7xauFKn1znSIFHO8xuILT+noSwS8bZCKcHz0ydkTDQMuaxSa5WBaQrZmwtTz9rmRvJ7X8mSPQ==",
+      "path": "microsoft.entityframeworkcore.abstractions/8.0.0",
+      "hashPath": "microsoft.entityframeworkcore.abstractions.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Analyzers/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ZXxEeLs2zoZ1TA+QoMMcw4f3Tirf8PzgdDax8RoWo0dxI2KmqiEGWYjhm2B/XyWfglc6+mNRyB8rZiQSmxCpeg==",
+      "path": "microsoft.entityframeworkcore.analyzers/8.0.0",
+      "hashPath": "microsoft.entityframeworkcore.analyzers.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Relational/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fFKkr24cYc7Zw5T6DC4tEyOEPgPbq23BBmym1r9kn4ET9F3HKaetpOeQtV2RryYyUxEeNkJuxgfiZHTisqZc+A==",
+      "path": "microsoft.entityframeworkcore.relational/8.0.0",
+      "hashPath": "microsoft.entityframeworkcore.relational.8.0.0.nupkg.sha512"
+    },
     "Microsoft.Extensions.ApiDescription.Server/6.0.5": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-Ckb5EDBUNJdFWyajfXzUIMRkhf52fHZOQuuZg/oiu8y7zDCVwD0iHhew6MnThjHmevanpxL3f5ci2TtHQEN6bw==",
       "path": "microsoft.extensions.apidescription.server/6.0.5",
       "hashPath": "microsoft.extensions.apidescription.server.6.0.5.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Caching.Abstractions/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3KuSxeHoNYdxVYfg2IRZCThcrlJ1XJqIXkAWikCsbm5C/bCjv7G0WoKDyuR98Q+T607QT2Zl5GsbGRkENcV2yQ==",
+      "path": "microsoft.extensions.caching.abstractions/8.0.0",
+      "hashPath": "microsoft.extensions.caching.abstractions.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Caching.Memory/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7pqivmrZDzo1ADPkRwjy+8jtRKWRCPag9qPI+p7sgu7Q4QreWhcvbiWXsbhP+yY8XSiDvZpu2/LWdBv7PnmOpQ==",
+      "path": "microsoft.extensions.caching.memory/8.0.0",
+      "hashPath": "microsoft.extensions.caching.memory.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Configuration.Abstractions/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3lE/iLSutpgX1CC0NOW70FJoGARRHbyKmG7dc0klnUZ9Dd9hS6N/POPWhKhMLCEuNN5nXEY5agmlFtH562vqhQ==",
+      "path": "microsoft.extensions.configuration.abstractions/8.0.0",
+      "hashPath": "microsoft.extensions.configuration.abstractions.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.DependencyInjection/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-V8S3bsm50ig6JSyrbcJJ8bW2b9QLGouz+G1miK3UTaOWmMtFwNNNzUf4AleyDWUmTrWMLNnFSLEQtxmxgNQnNQ==",
+      "path": "microsoft.extensions.dependencyinjection/8.0.0",
+      "hashPath": "microsoft.extensions.dependencyinjection.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cjWrLkJXK0rs4zofsK4bSdg+jhDLTaxrkXu4gS6Y7MAlCvRyNNgwY/lJi5RDlQOnSZweHqoyvgvbdvQsRIW+hg==",
+      "path": "microsoft.extensions.dependencyinjection.abstractions/8.0.0",
+      "hashPath": "microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Logging/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-tvRkov9tAJ3xP51LCv3FJ2zINmv1P8Hi8lhhtcKGqM+ImiTCC84uOPEI4z8Cdq2C3o9e+Aa0Gw0rmrsJD77W+w==",
+      "path": "microsoft.extensions.logging/8.0.0",
+      "hashPath": "microsoft.extensions.logging.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Logging.Abstractions/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-arDBqTgFCyS0EvRV7O3MZturChstm50OJ0y9bDJvAcmEPJm0FFpFyjU/JLYyStNGGey081DvnQYlncNX5SJJGA==",
+      "path": "microsoft.extensions.logging.abstractions/8.0.0",
+      "hashPath": "microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.ObjectPool/8.0.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-u7gAG7JgxF8VSJUGPSudAcPxOt+ymJKQCSxNRxiuKV+klCQbHljQR75SilpedCTfhPWDhtUwIJpnDVtspr9nMg==",
+      "path": "microsoft.extensions.objectpool/8.0.10",
+      "hashPath": "microsoft.extensions.objectpool.8.0.10.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Options/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-JOVOfqpnqlVLUzINQ2fox8evY2SKLYJ3BV8QDe/Jyp21u1T7r45x/R/5QdteURMR5r01GxeJSBBUOCOyaNXA3g==",
+      "path": "microsoft.extensions.options/8.0.0",
+      "hashPath": "microsoft.extensions.options.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Primitives/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-bXJEZrW9ny8vjMF1JV253WeLhpEVzFo1lyaZu1vQ4ZxWUlVvknZ/+ftFgVheLubb4eZPSwwxBeqS1JkCOjxd8g==",
+      "path": "microsoft.extensions.primitives/8.0.0",
+      "hashPath": "microsoft.extensions.primitives.8.0.0.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Abstractions/8.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8sMlmHhh5HdP3+yCSCUpJpN1yYrJ6J/V39df9siY8PeMckRMrSBRL/TMs/Jex6P1ly/Ie2mFqvhcPHHrNmCd/w==",
+      "path": "microsoft.identitymodel.abstractions/8.2.1",
+      "hashPath": "microsoft.identitymodel.abstractions.8.2.1.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.JsonWebTokens/8.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Oo0SBOzK6p3YIUcc1YTJCaYezVUa5HyUJ/AAB35QwxhhD6Blei5tNjNYDR0IbqHdb5EPUIiKcIbQGoj2b1mIbg==",
+      "path": "microsoft.identitymodel.jsonwebtokens/8.2.1",
+      "hashPath": "microsoft.identitymodel.jsonwebtokens.8.2.1.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Logging/8.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-EgSEAtBoWBynACdhKnMlVAFGGWqOIdmbpW7Vvx2SQ7u7ogZ50NcEGSoGljEsQoGIRYpo0UxXYktKcYMp+G/Bcg==",
+      "path": "microsoft.identitymodel.logging/8.2.1",
+      "hashPath": "microsoft.identitymodel.logging.8.2.1.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Protocols/7.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-SydLwMRFx6EHPWJ+N6+MVaoArN1Htt92b935O3RUWPY1yUF63zEjvd3lBu79eWdZUwedP8TN2I5V9T3nackvIQ==",
+      "path": "microsoft.identitymodel.protocols/7.1.2",
+      "hashPath": "microsoft.identitymodel.protocols.7.1.2.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Protocols.OpenIdConnect/7.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-6lHQoLXhnMQ42mGrfDkzbIOR3rzKM1W1tgTeMPLgLCqwwGw0d96xFi/UiX/fYsu7d6cD5MJiL3+4HuI8VU+sVQ==",
+      "path": "microsoft.identitymodel.protocols.openidconnect/7.1.2",
+      "hashPath": "microsoft.identitymodel.protocols.openidconnect.7.1.2.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Tokens/8.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-oQeLWCATuVXOCdIvouM4GG2xl1YNng+uAxYwu7CG6RuW+y+1+slXrOBq5csTU2pnV2SH3B1GmugDf6Jv/lexjw==",
+      "path": "microsoft.identitymodel.tokens/8.2.1",
+      "hashPath": "microsoft.identitymodel.tokens.8.2.1.nupkg.sha512"
     },
     "Microsoft.OpenApi/1.6.14": {
       "type": "package",
@@ -124,6 +930,48 @@
       "sha512": "sha512-EfYANhAWqmWKoLwN6bxoiPZSOfJSO9lzX+UrU6GVhLhPub1Hd+5f0zL0/tggIA6mRz6Ebw2xCNcIsM4k+7NPng==",
       "path": "microsoft.visualstudio.azure.containers.tools.targets/1.22.1",
       "hashPath": "microsoft.visualstudio.azure.containers.tools.targets.1.22.1.nupkg.sha512"
+    },
+    "Npgsql/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Qiz74U+O7Mv4knrsXgKVYGJjgwoziK+aMFZqz7PtKR3vyGIhZA0tnW6HoUnL3X+YqtmVuhmoKkN8LDWEHMxPbw==",
+      "path": "npgsql/8.0.0",
+      "hashPath": "npgsql.8.0.0.nupkg.sha512"
+    },
+    "Npgsql.EntityFrameworkCore.PostgreSQL/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GDXiMS9peEdjSCU/rfgyHruio7q6tYuywGaktqEi6UPQ6ILechp3fVVX+dHXkIXt4nklCBzYVWkzFrSL9ubKUA==",
+      "path": "npgsql.entityframeworkcore.postgresql/8.0.0",
+      "hashPath": "npgsql.entityframeworkcore.postgresql.8.0.0.nupkg.sha512"
+    },
+    "QuestPDF/2026.2.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fajBdRJFr3hu2Mr6mEVsXjvVKD9Q/Q6hfPEUMpV/xlwxWdFebmpGdi0FLQTApMvpapy72v9dvcGuk7e7NQmQyQ==",
+      "path": "questpdf/2026.2.4",
+      "hashPath": "questpdf.2026.2.4.nupkg.sha512"
+    },
+    "SkiaSharp/2.88.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3MD5VHjXXieSHCleRLuaTXmL2pD0mB7CcOB1x2kA1I4bhptf4e3R27iM93264ZYuAq6mkUyX5XbcxnZvMJYc1Q==",
+      "path": "skiasharp/2.88.9",
+      "hashPath": "skiasharp.2.88.9.nupkg.sha512"
+    },
+    "SkiaSharp.NativeAssets.macOS/2.88.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Nv5spmKc4505Ep7oUoJ5vp3KweFpeNqxpyGDWyeEPTX2uR6S6syXIm3gj75dM0YJz7NPvcix48mR5laqs8dPuA==",
+      "path": "skiasharp.nativeassets.macos/2.88.9",
+      "hashPath": "skiasharp.nativeassets.macos.2.88.9.nupkg.sha512"
+    },
+    "SkiaSharp.NativeAssets.Win32/2.88.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-wb2kYgU7iy84nQLYZwMeJXixvK++GoIuECjU4ECaUKNuflyRlJKyiRhN1MAHswvlvzuvkrjRWlK0Za6+kYQK7w==",
+      "path": "skiasharp.nativeassets.win32/2.88.9",
+      "hashPath": "skiasharp.nativeassets.win32.2.88.9.nupkg.sha512"
     },
     "Swashbuckle.AspNetCore/6.6.2": {
       "type": "package",
@@ -153,12 +1001,56 @@
       "path": "swashbuckle.aspnetcore.swaggerui/6.6.2",
       "hashPath": "swashbuckle.aspnetcore.swaggerui.6.6.2.nupkg.sha512"
     },
-    "GBILET.Application/1.0.0": {
-      "type": "project",
-      "serviceable": false,
-      "sha512": ""
+    "System.IdentityModel.Tokens.Jwt/8.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GVQmbjr2N8awFWPTWyThLxgKnFINObG1P+oX7vFrBY8um3V7V7Dh3wnxaGxNH6v6lSTeVQrY+SaUUBX9H3TPcw==",
+      "path": "system.identitymodel.tokens.jwt/8.2.1",
+      "hashPath": "system.identitymodel.tokens.jwt.8.2.1.nupkg.sha512"
     },
-    "GBILET.Domain/1.0.0": {
+    "System.Security.Cryptography.Pkcs/8.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-CoCRHFym33aUSf/NtWSVSZa99dkd0Hm7OCZUxORBjRB16LNhIEOf8THPqzIYlvKM0nNDAPTRBa1FxEECrgaxxA==",
+      "path": "system.security.cryptography.pkcs/8.0.1",
+      "hashPath": "system.security.cryptography.pkcs.8.0.1.nupkg.sha512"
+    },
+    "System.Security.Cryptography.Xml/8.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-aDM/wm0ZGEZ6ZYJLzgqjp2FZdHbDHh6/OmpGfb7AdZ105zYmPn/83JRU2xLIbwgoNz9U1SLUTJN0v5th3qmvjA==",
+      "path": "system.security.cryptography.xml/8.0.2",
+      "hashPath": "system.security.cryptography.xml.8.0.2.nupkg.sha512"
+    },
+    "System.ServiceModel.Http/8.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-2HoneRUCHB8kKQcuAladR16mIHuyi5f9DrrNnTjkaICv5X7YuwoI7GSrp9GTkRSxC4ddNcjMdwE01Rm0sPgoMw==",
+      "path": "system.servicemodel.http/8.1.2",
+      "hashPath": "system.servicemodel.http.8.1.2.nupkg.sha512"
+    },
+    "System.ServiceModel.NetFramingBase/8.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-XDNsiI4Lrv4scb10salZNbUDJNYj3Qm39KeN9uulKXbgcxF/fNC+hCrLDAhNz/rIqxOeRB/JCfQ4A/Ha0hFAWg==",
+      "path": "system.servicemodel.netframingbase/8.1.2",
+      "hashPath": "system.servicemodel.netframingbase.8.1.2.nupkg.sha512"
+    },
+    "System.ServiceModel.NetTcp/8.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+H4KpATeOPxGfl8JlMpv+a7h6ZIItIhHXJRr+0/KKAP49TjHXybaNwFrUbpasAMVE+D+8M96GxRevzcqvahfAQ==",
+      "path": "system.servicemodel.nettcp/8.1.2",
+      "hashPath": "system.servicemodel.nettcp.8.1.2.nupkg.sha512"
+    },
+    "System.ServiceModel.Primitives/8.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-xlJ07FAUSDjPL/GhvVY1/KVPWn2ce056X4nHPwqAa5rkNLiNN5rqh6VcgMUoF6J7ckwhkVJ1vVx/K/47nyyR9g==",
+      "path": "system.servicemodel.primitives/8.1.2",
+      "hashPath": "system.servicemodel.primitives.8.1.2.nupkg.sha512"
+    },
+    "GBILET.Core/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

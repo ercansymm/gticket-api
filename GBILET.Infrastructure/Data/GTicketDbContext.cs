@@ -1,6 +1,6 @@
-﻿
+﻿using GBILET.Core.Entities;
+using GBILET.Core.Entities.Admin;
 using Microsoft.EntityFrameworkCore;
-using GBILET.Core.Entities;
 
 namespace GBILET.Infrastructure.Data;
 
@@ -59,6 +59,11 @@ public class GTicketDbContext : DbContext
     public DbSet<Session> Sessions { get; set; }
     public DbSet<SearchLog> SearchLogs { get; set; }
     public DbSet<PopularRoute> PopularRoutes { get; set; }
+
+    // Admin panel entities
+    public DbSet<AdminUser> AdminUsers { get; set; }
+    public DbSet<AdminRefreshToken> AdminRefreshTokens { get; set; }
+    public DbSet<AdminAuditLog> AdminAuditLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -274,6 +279,65 @@ public class GTicketDbContext : DbContext
             e2.Property(p => p.TempTag).HasMaxLength(100);
             e2.Property(p => p.PaxReferenceId).HasMaxLength(100);
             e2.Property(p => p.TicketNumber).HasMaxLength(20);
+        });
+
+        // ============================================================
+        // ADMIN PANEL ENTITIES
+        // ============================================================
+
+        modelBuilder.Entity<AdminUser>(e =>
+        {
+            e.ToTable("AdminUsers");
+            e.HasKey(u => u.Id);
+            e.Property(u => u.Username).HasMaxLength(64).IsRequired();
+            e.Property(u => u.Email).HasMaxLength(256).IsRequired();
+            e.Property(u => u.FullName).HasMaxLength(128).IsRequired();
+            e.Property(u => u.PasswordHash).HasMaxLength(256).IsRequired();
+            e.Property(u => u.TwoFactorSecret).HasMaxLength(64);
+            e.Property(u => u.LastLoginIp).HasMaxLength(64);
+            e.Property(u => u.Role).HasConversion<int>();
+            e.HasIndex(u => u.Username).IsUnique();
+            e.HasIndex(u => u.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<AdminRefreshToken>(e =>
+        {
+            e.ToTable("AdminRefreshTokens");
+            e.HasKey(t => t.Id);
+            e.Property(t => t.TokenHash).HasMaxLength(128).IsRequired();
+            e.Property(t => t.CreatedByIp).HasMaxLength(64);
+            e.Property(t => t.RevokedByIp).HasMaxLength(64);
+            e.Property(t => t.RevokedReason).HasMaxLength(64);
+            e.Property(t => t.UserAgent).HasMaxLength(512);
+            e.HasIndex(t => t.TokenHash).IsUnique();
+            e.HasIndex(t => new { t.AdminUserId, t.RevokedAt, t.ExpiresAt });
+            e.HasOne(t => t.AdminUser)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(t => t.AdminUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.Ignore(t => t.IsExpired);
+            e.Ignore(t => t.IsRevoked);
+            e.Ignore(t => t.IsActive);
+        });
+
+        modelBuilder.Entity<AdminAuditLog>(e =>
+        {
+            e.ToTable("AdminAuditLogs");
+            e.HasKey(l => l.Id);
+            e.Property(l => l.Username).HasMaxLength(64);
+            e.Property(l => l.Action).HasMaxLength(128).IsRequired();
+            e.Property(l => l.TargetEntity).HasMaxLength(64);
+            e.Property(l => l.TargetId).HasMaxLength(64);
+            e.Property(l => l.ErrorMessage).HasMaxLength(1024);
+            e.Property(l => l.IpAddress).HasMaxLength(64);
+            e.Property(l => l.UserAgent).HasMaxLength(512);
+            e.HasIndex(l => l.AdminUserId);
+            e.HasIndex(l => l.Action);
+            e.HasIndex(l => l.CreatedAt);
+            e.HasOne(l => l.AdminUser)
+                .WithMany(u => u.AuditLogs)
+                .HasForeignKey(l => l.AdminUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Seed Data
