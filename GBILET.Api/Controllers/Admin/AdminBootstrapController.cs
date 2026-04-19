@@ -84,6 +84,7 @@ public class AdminBootstrapController : ControllerBase
             username = admin.Username,
             email = admin.Email,
             role = admin.Role.ToString()
+            
         });
     }
 }
