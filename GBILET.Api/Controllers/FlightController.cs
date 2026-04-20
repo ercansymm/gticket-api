@@ -686,6 +686,104 @@ public class FlightController : ControllerBase
                 {
                     _logger.LogError(dbEx, "[MakePayment] DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
                 }
+
+                // ── AUTO-FINALIZE: 3D gerektirmeyen odemelerde biletlemeyi backend'de yap ──
+                // Kullanici sayfayi yenilese bile bilet kesilmis olur.
+                if (!result.Is3DSecureRequired && !string.IsNullOrEmpty(request.ProductId))
+                {
+                    try
+                    {
+                        _logger.LogInformation("[MakePayment] Auto-finalize baslatiliyor. BookingId={BookingId}, ProductId={ProductId}",
+                            request.BookingId, request.ProductId);
+
+                        var finalizeResult = await _flightService.FinalizeShoppingAsync(new FinalizeShoppingRequest
+                        {
+                            SessionId = request.SessionId,
+                            SessionToken = request.SessionToken,
+                            ShoppingFileId = request.ShoppingFileId,
+                            ProductId = request.ProductId,
+                            BookingId = request.BookingId,
+                            BillingInfo = request.BillingInfo
+                        });
+
+                        if (!finalizeResult.HasError)
+                        {
+                            result.AutoFinalized = true;
+                            result.FinalizeStatus = finalizeResult.Status;
+                            result.InternalPnr = finalizeResult.InternalPnr;
+                            result.Tickets = finalizeResult.Tickets;
+
+                            _logger.LogInformation("[MakePayment] Auto-finalize basarili. PNR={PNR}, Status={Status}",
+                                finalizeResult.BookingCode, finalizeResult.Status);
+
+                            try
+                            {
+                                var booking2 = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
+                                if (booking2 != null)
+                                {
+                                    booking2.Status = finalizeResult.Status ?? "Ticketed";
+                                    booking2.IsFinalized = true;
+                                    booking2.TicketedAt = DateTime.UtcNow;
+                                    booking2.UpdatedAt = DateTime.UtcNow;
+
+                                    foreach (var ticket in finalizeResult.Tickets)
+                                    {
+                                        var pax = booking2.Passengers.FirstOrDefault(p =>
+                                            string.Equals(p.FirstName, ticket.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                            string.Equals(p.LastName, ticket.LastName, StringComparison.OrdinalIgnoreCase));
+                                        if (pax != null)
+                                            pax.TicketNumber = ticket.TicketNumber;
+                                    }
+
+                                    var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
+                                    booking2.InternalPnr = internalPnr;
+                                    result.InternalPnr = internalPnr;
+                                    await _bookingRepository.UpdateInternalPnrAsync(request.BookingId.Value, internalPnr);
+
+                                    if (!string.IsNullOrEmpty(finalizeResult.BookingCode))
+                                        await _bookingRepository.UpdatePnrAsync(request.BookingId.Value, finalizeResult.BookingCode);
+
+                                    await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, booking2.Status);
+                                    await _bookingRepository.AddLogAsync(new BookingLog
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        BookingId = request.BookingId.Value,
+                                        SessionId = request.SessionId ?? "",
+                                        SessionToken = request.SessionToken ?? "",
+                                        Operation = "FinalizeShopping_Auto",
+                                        IsSuccess = true,
+                                        CreatedAt = DateTime.UtcNow
+                                    });
+                                }
+                            }
+                            catch (Exception dbEx)
+                            {
+                                _logger.LogError(dbEx, "[MakePayment] Auto-finalize DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[MakePayment] Auto-finalize basarisiz: {Error}. Odeme alindi ama biletleme yapilamadi. BookingId={BookingId}",
+                                finalizeResult.ErrorMessage, request.BookingId);
+
+                            await _bookingRepository.AddLogAsync(new BookingLog
+                            {
+                                Id = Guid.NewGuid(),
+                                BookingId = request.BookingId.Value,
+                                SessionId = request.SessionId ?? "",
+                                SessionToken = request.SessionToken ?? "",
+                                Operation = "FinalizeShopping_Auto",
+                                IsSuccess = false,
+                                ErrorMessage = finalizeResult.ErrorMessage,
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+                    }
+                    catch (Exception finEx)
+                    {
+                        _logger.LogError(finEx, "[MakePayment] Auto-finalize exception. Odeme alindi ama biletleme yapilamadi. BookingId={BookingId}", request.BookingId);
+                    }
+                }
             }
 
             return Ok(result);
@@ -1057,6 +1155,169 @@ public class FlightController : ControllerBase
         {
             _logger.LogError(ex, "[3DCallback] Exception");
             return Redirect($"{_frontendUrl}/payment/result?status=error&error={Uri.EscapeDataString(ex.Message)}");
+        }
+    }
+
+    /// <summary>
+    /// Odeme alinmis ama biletleme yapilamamis (Paid + IsFinalized=false) booking'leri kurtarma endpoint'i.
+    /// Session bilgileri hala gecerliyse FinalizeShopping'i yeniden dener.
+    /// Frontend sayfa yenilemesinden sonra veya admin panelden cagrilabilir.
+    /// </summary>
+    [HttpPost("recover-booking")]
+    public async Task<IActionResult> RecoverBooking([FromBody] RecoverBookingRequest? request)
+    {
+        try
+        {
+            if (request == null || request.BookingId == Guid.Empty)
+                return BadRequest(new { error = "BookingId zorunludur." });
+
+            var booking = await _bookingRepository.GetByIdAsync(request.BookingId);
+            if (booking == null)
+                return NotFound(new { error = $"Booking bulunamadi: {request.BookingId}" });
+
+            // Zaten biletlenmis mi kontrol et
+            if (booking.IsFinalized)
+            {
+                return Ok(new
+                {
+                    alreadyFinalized = true,
+                    status = booking.Status,
+                    pnr = booking.PNR,
+                    internalPnr = booking.InternalPnr,
+                    message = "Booking zaten biletlenmis."
+                });
+            }
+
+            // Sadece Paid durumundaki booking'ler kurtarilabilir
+            if (booking.Status != "Paid")
+            {
+                return BadRequest(new
+                {
+                    error = $"Booking durumu '{booking.Status}'. Sadece 'Paid' durumundaki booking'ler kurtarilabilir."
+                });
+            }
+
+            // Session bilgilerini belirle: request'ten gelirse onu kullan, yoksa DB'den al
+            var sessionId = !string.IsNullOrEmpty(request.SessionId) ? request.SessionId : booking.SessionId;
+            var sessionToken = !string.IsNullOrEmpty(request.SessionToken) ? request.SessionToken : booking.SessionToken;
+            var shoppingFileId = !string.IsNullOrEmpty(request.ShoppingFileId)
+                ? request.ShoppingFileId
+                : booking.BiletBankFileId?.ToString();
+            var productId = request.ProductId;
+
+            // Cache'ten ProductId almaya calis
+            if (string.IsNullOrEmpty(productId) && !string.IsNullOrEmpty(shoppingFileId)
+                && _cache.TryGetValue<ThreeDSessionData>($"3d_session_{shoppingFileId}", out var cached) && cached != null)
+            {
+                productId = cached.ProductId;
+            }
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(sessionToken))
+                return BadRequest(new { error = "Session bilgileri (SessionId/SessionToken) bulunamadi. Session suresi dolmus olabilir." });
+
+            if (string.IsNullOrEmpty(shoppingFileId))
+                return BadRequest(new { error = "ShoppingFileId bulunamadi." });
+
+            if (string.IsNullOrEmpty(productId))
+                return BadRequest(new { error = "ProductId bulunamadi. Cache'teki session suresi dolmus olabilir." });
+
+            _logger.LogInformation("[RecoverBooking] Kurtarma baslatiliyor. BookingId={BookingId}, ProductId={ProductId}",
+                request.BookingId, productId);
+
+            var finalizeResult = await _flightService.FinalizeShoppingAsync(new FinalizeShoppingRequest
+            {
+                SessionId = sessionId,
+                SessionToken = sessionToken,
+                ShoppingFileId = shoppingFileId,
+                ProductId = productId,
+                BookingId = request.BookingId,
+                BillingInfo = request.BillingInfo
+            });
+
+            if (!finalizeResult.HasError)
+            {
+                try
+                {
+                    var bookingToUpdate = await _bookingRepository.GetByIdAsync(request.BookingId);
+                    if (bookingToUpdate != null)
+                    {
+                        bookingToUpdate.Status = finalizeResult.Status ?? "Ticketed";
+                        bookingToUpdate.IsFinalized = true;
+                        bookingToUpdate.TicketedAt = DateTime.UtcNow;
+                        bookingToUpdate.UpdatedAt = DateTime.UtcNow;
+
+                        foreach (var ticket in finalizeResult.Tickets)
+                        {
+                            var pax = bookingToUpdate.Passengers.FirstOrDefault(p =>
+                                string.Equals(p.FirstName, ticket.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(p.LastName, ticket.LastName, StringComparison.OrdinalIgnoreCase));
+                            if (pax != null)
+                                pax.TicketNumber = ticket.TicketNumber;
+                        }
+
+                        if (string.IsNullOrEmpty(bookingToUpdate.InternalPnr))
+                        {
+                            var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
+                            bookingToUpdate.InternalPnr = internalPnr;
+                            await _bookingRepository.UpdateInternalPnrAsync(request.BookingId, internalPnr);
+                            finalizeResult.InternalPnr = internalPnr;
+                        }
+
+                        if (!string.IsNullOrEmpty(finalizeResult.BookingCode))
+                            await _bookingRepository.UpdatePnrAsync(request.BookingId, finalizeResult.BookingCode);
+
+                        await _bookingRepository.UpdateStatusAsync(request.BookingId, bookingToUpdate.Status);
+                        await _bookingRepository.AddLogAsync(new BookingLog
+                        {
+                            Id = Guid.NewGuid(),
+                            BookingId = request.BookingId,
+                            SessionId = sessionId,
+                            SessionToken = sessionToken,
+                            Operation = "FinalizeShopping_Recovery",
+                            IsSuccess = true,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[RecoverBooking] DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
+                }
+
+                return Ok(new
+                {
+                    recovered = true,
+                    status = finalizeResult.Status,
+                    pnr = finalizeResult.BookingCode,
+                    internalPnr = finalizeResult.InternalPnr,
+                    tickets = finalizeResult.Tickets
+                });
+            }
+            else
+            {
+                await _bookingRepository.AddLogAsync(new BookingLog
+                {
+                    Id = Guid.NewGuid(),
+                    BookingId = request.BookingId,
+                    SessionId = sessionId,
+                    SessionToken = sessionToken,
+                    Operation = "FinalizeShopping_Recovery",
+                    IsSuccess = false,
+                    ErrorMessage = finalizeResult.ErrorMessage,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                return Ok(new
+                {
+                    recovered = false,
+                    error = finalizeResult.ErrorMessage
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RecoverBooking] Exception. BookingId={BookingId}", request?.BookingId);
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 

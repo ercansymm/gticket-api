@@ -36,7 +36,7 @@ public class MakePaymentResponse
     public string? PaymentReferenceId { get; set; }
 
     /// <summary>
-    /// Rezervasyon kodu (PNR) — BookingCode
+    /// Rezervasyon kodu (PNR) ï¿½ BookingCode
     /// </summary>
     public string? PNR { get; set; }
 
@@ -76,6 +76,27 @@ public class MakePaymentResponse
     /// BiletBank PaymentInstallmentOptions olarak doner.
     /// </summary>
     public List<PaymentInstallmentOption> InstallmentOptions { get; set; } = [];
+
+    /// <summary>
+    /// Backend auto-finalize yapildiysa true doner.
+    /// Frontend'in ayrica FinalizeShopping cagirmasina gerek kalmaz.
+    /// </summary>
+    public bool AutoFinalized { get; set; }
+
+    /// <summary>
+    /// Auto-finalize basarili olduysa biletleme durumu.
+    /// </summary>
+    public string? FinalizeStatus { get; set; }
+
+    /// <summary>
+    /// Auto-finalize basarili olduysa internal PNR.
+    /// </summary>
+    public string? InternalPnr { get; set; }
+
+    /// <summary>
+    /// Auto-finalize basarili olduysa bilet numaralari.
+    /// </summary>
+    public List<TicketInfo> Tickets { get; set; } = [];
 
     /// <summary>
     /// Debug: Gonderilen SOAP request
