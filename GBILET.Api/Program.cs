@@ -14,7 +14,9 @@ using GBILET.Core.Service.Admin;
 using GBILET.Infrastructure.Services.Admin;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Security.Cryptography;
+
 
 // PostgreSQL: DateTimeKind.Unspecified olan DateTime değerlerini kabul et
 // Npgsql 6+ varsayılan olarak sadece UTC kabul eder; bu switch legacy davranışı etkinleştirir
@@ -33,6 +35,13 @@ builder.Services.AddControllers()
     });
 builder.Services.AddScoped<AirportSeeder>();
 builder.Services.AddScoped<AirlineSeeder>();
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
     builder.Services.AddCors(options =>
 {
@@ -317,6 +326,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseResponseCompression();
 app.UseStaticFiles();
+app.UseForwardedHeaders();
 app.UseCors("FrontendPolicy");
 app.UseRateLimiter();
 app.UseHttpsRedirection();
