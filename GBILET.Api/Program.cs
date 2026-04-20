@@ -193,7 +193,7 @@ builder.Services.AddHttpClient<ICurrencyService, CurrencyService>(client =>
 // ADMIN PANEL — Auth & Services
 // ============================================================
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
-
+builder.Services.AddScoped<IAdminUserManagementService, AdminUserManagementService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddSingleton<ITokenService, TokenService>(); // RSA key'ler bir kez yüklensin
 builder.Services.AddSingleton<ITotpService, TotpService>();   // Stateless
