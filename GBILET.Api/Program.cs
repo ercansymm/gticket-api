@@ -198,6 +198,7 @@ builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddSingleton<ITokenService, TokenService>(); // RSA key'ler bir kez yüklensin
 builder.Services.AddSingleton<ITotpService, TotpService>();   // Stateless
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
+builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
 
 builder.Services.AddMemoryCache();
 
