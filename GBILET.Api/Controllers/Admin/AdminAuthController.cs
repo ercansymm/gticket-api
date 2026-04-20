@@ -208,7 +208,7 @@ public class AdminAuthController : ControllerBase
         {
             HttpOnly = true,
             Secure = isHttps,                // Production'da HTTPS zorunlu
-            SameSite = SameSiteMode.Strict,
+            SameSite = SameSiteMode.None,
             Path = "/",
             Expires = tokens.AccessTokenExpiresAt
         };
@@ -218,7 +218,7 @@ public class AdminAuthController : ControllerBase
         {
             HttpOnly = true,
             Secure = isHttps,
-            SameSite = SameSiteMode.Strict,
+            SameSite = SameSiteMode.None,
             Path = "/api/admin/auth",        // Sadece auth endpoint'lerine gönderilsin
             Expires = tokens.RefreshTokenExpiresAt
         };
@@ -232,17 +232,17 @@ public class AdminAuthController : ControllerBase
         {
             HttpOnly = true,
             Secure = isHttps,
-            SameSite = SameSiteMode.Strict,
+            SameSite = SameSiteMode.None,
             Expires = DateTimeOffset.UnixEpoch
         };
         Response.Cookies.Append(AccessCookieName, "", new CookieOptions
         {
-            HttpOnly = true, Secure = isHttps, SameSite = SameSiteMode.Strict,
+            HttpOnly = true, Secure = isHttps, SameSite = SameSiteMode.None,
             Path = "/", Expires = DateTimeOffset.UnixEpoch
         });
         Response.Cookies.Append(RefreshCookieName, "", new CookieOptions
         {
-            HttpOnly = true, Secure = isHttps, SameSite = SameSiteMode.Strict,
+            HttpOnly = true, Secure = isHttps, SameSite = SameSiteMode.None,
             Path = "/api/admin/auth", Expires = DateTimeOffset.UnixEpoch
         });
     }
