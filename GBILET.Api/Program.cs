@@ -320,6 +320,7 @@ app.UseStaticFiles();
 app.UseCors("FrontendPolicy");
 app.UseRateLimiter();
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers().RequireRateLimiting("fixed");
 await app.RunAsync();
