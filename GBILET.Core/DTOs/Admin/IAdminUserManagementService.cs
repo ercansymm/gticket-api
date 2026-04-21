@@ -1,1 +1,0 @@
-Task<AdminUserDetailDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
