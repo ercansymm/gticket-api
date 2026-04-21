@@ -34,6 +34,24 @@ public class AdminUserManagementController : ControllerBase
         return Ok(users);
     }
 
+
+
+
+
+            // ============================================================
+    // GET /api/admin/users/{id}
+    // ============================================================
+    [HttpGet("{id:guid}")]
+    [EnableRateLimiting("admin-general")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
+    {
+        var user = await _service.GetByIdAsync(id, ct);
+        if (user == null)
+            return NotFound(new { error = "Admin kullanıcı bulunamadı." });
+
+        return Ok(user);
+    }
+
     // ============================================================
     // POST /api/admin/users
     // ============================================================
