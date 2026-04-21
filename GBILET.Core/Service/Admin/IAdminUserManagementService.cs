@@ -6,6 +6,8 @@ public interface IAdminUserManagementService
 {
     Task<List<AdminUserListItemDto>> GetAllAsync(CancellationToken ct = default);
 
+    Task<AdminUserDetailDto?> GetByIdAsync(Guid id, CancellationToken ct = default);  // ← YENİ
+
     Task<AdminUserListItemDto> CreateAsync(
         CreateAdminUserRequest request,
         Guid createdByUserId,

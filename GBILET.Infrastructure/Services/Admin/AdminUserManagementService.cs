@@ -104,6 +104,44 @@ public class AdminUserManagementService : IAdminUserManagementService
         return ToDto(user);
     }
 
+
+// ============================================================
+// GET BY ID
+// ============================================================
+public async Task<AdminUserDetailDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
+{
+    return await _db.AdminUsers
+        .AsNoTracking()
+        .Where(u => u.Id == id)
+        .Select(u => new AdminUserDetailDto
+        {
+            Id = u.Id,
+            Username = u.Username,
+            Email = u.Email,
+            FullName = u.FullName,
+            Role = u.Role,
+            IsActive = u.IsActive,
+            TwoFactorEnabled = u.TwoFactorEnabled,
+            LastLoginAt = u.LastLoginAt,
+            FailedLoginAttempts = u.FailedLoginAttempts,
+            LockedUntil = u.LockedUntil,
+            CreatedAt = u.CreatedAt,
+            UpdatedAt = u.UpdatedAt
+        })
+        .FirstOrDefaultAsync(ct);
+}
+
+
+
+
+
+
+
+
+
+
+
+
     // ============================================================
     // UPDATE STATUS (Activate / Deactivate)
     // ============================================================
