@@ -32,6 +32,8 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 builder.Services.AddScoped<AirportSeeder>();
 builder.Services.AddScoped<AirlineSeeder>();
