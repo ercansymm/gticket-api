@@ -147,8 +147,10 @@ public class AdminPaymentsController : ControllerBase
             BiletBankPaymentId = payment.BiletBankPaymentId,
             ProviderTransactionId = payment.ProviderTransactionId,
 
-            TransactionDate = payment.TransactionDate,
-            RefundedAt = payment.RefundedAt,
+            TransactionDate = DateTime.SpecifyKind(payment.TransactionDate, DateTimeKind.Utc),
+            RefundedAt = payment.RefundedAt.HasValue
+                ? DateTime.SpecifyKind(payment.RefundedAt.Value, DateTimeKind.Utc)
+                : null,
             RefundAmount = payment.RefundAmount
         };
 
@@ -245,7 +247,7 @@ public class AdminPaymentsController : ControllerBase
             Is3DSecure = p.Is3DSecure,
             ErrorCode = p.ErrorCode,
             ErrorMessage = p.ErrorMessage,
-            TransactionDate = p.TransactionDate
+            TransactionDate = DateTime.SpecifyKind(p.TransactionDate, DateTimeKind.Utc)
         };
     }
 }
