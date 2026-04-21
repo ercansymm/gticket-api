@@ -1,5 +1,7 @@
-﻿using GBILET.Core.Entities;
+﻿using GBILET.Core.DTOs.Payment;
+using GBILET.Core.Entities;
 using GBILET.Core.Helpers;
+using GBILET.Core.Interfaces;
 using GBILET.Core.Models.Flight;
 using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
@@ -15,14 +17,16 @@ public class FlightController : ControllerBase
 {
     private readonly IFlightService _flightService;
     private readonly IBookingRepository _bookingRepository;
+    private readonly IPaymentService _paymentService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<FlightController> _logger;
     private readonly string _frontendUrl;
 
-    public FlightController(IFlightService flightService, IBookingRepository bookingRepository, IMemoryCache cache, ILogger<FlightController> logger, IConfiguration configuration)
+    public FlightController(IFlightService flightService, IBookingRepository bookingRepository, IPaymentService paymentService, IMemoryCache cache, ILogger<FlightController> logger, IConfiguration configuration)
     {
         _flightService = flightService;
         _bookingRepository = bookingRepository;
+        _paymentService = paymentService;
         _cache = cache;
         _logger = logger;
         _frontendUrl = configuration["FrontendUrl"] ?? "http://localhost:3000";
@@ -637,7 +641,6 @@ public class FlightController : ControllerBase
 
             // ContinueUrl'u olustur — session bilgilerini query string'e gom
             var baseCallbackUrl = $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
-            request.ContinueUrl = $"{baseCallbackUrl}?sid={Uri.EscapeDataString(request.SessionId)}&stk={Uri.EscapeDataString(request.SessionToken)}&sfid={Uri.EscapeDataString(request.ShoppingFileId)}&bid={request.BookingId}";
 
             // Cache'e de yaz (fallback olarak) — ProductId dahil (FinalizeShopping icin gerekli)
             _cache.Set($"3d_session_{request.ShoppingFileId}", new ThreeDSessionData
@@ -650,140 +653,15 @@ public class FlightController : ControllerBase
                 BillingInfo = request.BillingInfo
             }, TimeSpan.FromMinutes(15));
 
-            var result = await _flightService.MakePaymentAsync(request);
+            var result = await _paymentService.ProcessPaymentAsync(new PaymentProcessRequest
+            {
+                Payment = request,
+                CallbackBaseUrl = baseCallbackUrl
+            });
 
             if (result == null)
             {
-                return StatusCode(500, new { error = "MakePayment servisten null response dondu." });
-            }
-
-            // Odeme basariliysa DB'deki booking durumunu guncelle
-            if (!result.HasError && result.IsPaymentSuccessful && request.BookingId.HasValue)
-            {
-                try
-                {
-                    var booking = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
-                    if (booking != null)
-                    {
-                        booking.Status = "Paid";
-                        booking.PaidAt = DateTime.UtcNow;
-                        booking.UpdatedAt = DateTime.UtcNow;
-                        await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, "Paid");
-                    }
-
-                    await _bookingRepository.AddLogAsync(new BookingLog
-                    {
-                        Id = Guid.NewGuid(),
-                        BookingId = request.BookingId.Value,
-                        SessionId = request.SessionId ?? "",
-                        SessionToken = request.SessionToken ?? "",
-                        Operation = "MakePayment",
-                        IsSuccess = true,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-                catch (Exception dbEx)
-                {
-                    _logger.LogError(dbEx, "[MakePayment] DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
-                }
-
-                // ── AUTO-FINALIZE: 3D gerektirmeyen odemelerde biletlemeyi backend'de yap ──
-                // Kullanici sayfayi yenilese bile bilet kesilmis olur.
-                if (!result.Is3DSecureRequired && !string.IsNullOrEmpty(request.ProductId))
-                {
-                    try
-                    {
-                        _logger.LogInformation("[MakePayment] Auto-finalize baslatiliyor. BookingId={BookingId}, ProductId={ProductId}",
-                            request.BookingId, request.ProductId);
-
-                        var finalizeResult = await _flightService.FinalizeShoppingAsync(new FinalizeShoppingRequest
-                        {
-                            SessionId = request.SessionId,
-                            SessionToken = request.SessionToken,
-                            ShoppingFileId = request.ShoppingFileId,
-                            ProductId = request.ProductId,
-                            BookingId = request.BookingId,
-                            BillingInfo = request.BillingInfo
-                        });
-
-                        if (!finalizeResult.HasError)
-                        {
-                            result.AutoFinalized = true;
-                            result.FinalizeStatus = finalizeResult.Status;
-                            result.InternalPnr = finalizeResult.InternalPnr;
-                            result.Tickets = finalizeResult.Tickets;
-
-                            _logger.LogInformation("[MakePayment] Auto-finalize basarili. PNR={PNR}, Status={Status}",
-                                finalizeResult.BookingCode, finalizeResult.Status);
-
-                            try
-                            {
-                                var booking2 = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
-                                if (booking2 != null)
-                                {
-                                    booking2.Status = finalizeResult.Status ?? "Ticketed";
-                                    booking2.IsFinalized = true;
-                                    booking2.TicketedAt = DateTime.UtcNow;
-                                    booking2.UpdatedAt = DateTime.UtcNow;
-
-                                    foreach (var ticket in finalizeResult.Tickets)
-                                    {
-                                        var pax = booking2.Passengers.FirstOrDefault(p =>
-                                            string.Equals(p.FirstName, ticket.FirstName, StringComparison.OrdinalIgnoreCase) &&
-                                            string.Equals(p.LastName, ticket.LastName, StringComparison.OrdinalIgnoreCase));
-                                        if (pax != null)
-                                            pax.TicketNumber = ticket.TicketNumber;
-                                    }
-
-                                    var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
-                                    booking2.InternalPnr = internalPnr;
-                                    result.InternalPnr = internalPnr;
-                                    await _bookingRepository.UpdateInternalPnrAsync(request.BookingId.Value, internalPnr);
-
-                                    if (!string.IsNullOrEmpty(finalizeResult.BookingCode))
-                                        await _bookingRepository.UpdatePnrAsync(request.BookingId.Value, finalizeResult.BookingCode);
-
-                                    await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, booking2.Status);
-                                    await _bookingRepository.AddLogAsync(new BookingLog
-                                    {
-                                        Id = Guid.NewGuid(),
-                                        BookingId = request.BookingId.Value,
-                                        SessionId = request.SessionId ?? "",
-                                        SessionToken = request.SessionToken ?? "",
-                                        Operation = "FinalizeShopping_Auto",
-                                        IsSuccess = true,
-                                        CreatedAt = DateTime.UtcNow
-                                    });
-                                }
-                            }
-                            catch (Exception dbEx)
-                            {
-                                _logger.LogError(dbEx, "[MakePayment] Auto-finalize DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogWarning("[MakePayment] Auto-finalize basarisiz: {Error}. Odeme alindi ama biletleme yapilamadi. BookingId={BookingId}",
-                                finalizeResult.ErrorMessage, request.BookingId);
-
-                            await _bookingRepository.AddLogAsync(new BookingLog
-                            {
-                                Id = Guid.NewGuid(),
-                                BookingId = request.BookingId.Value,
-                                SessionId = request.SessionId ?? "",
-                                SessionToken = request.SessionToken ?? "",
-                                Operation = "FinalizeShopping_Auto",
-                                IsSuccess = false,
-                                ErrorMessage = finalizeResult.ErrorMessage,
-                                CreatedAt = DateTime.UtcNow
-                            });
-                        }
-                    }
-                    catch (Exception finEx)
-                    {
-                        _logger.LogError(finEx, "[MakePayment] Auto-finalize exception. Odeme alindi ama biletleme yapilamadi. BookingId={BookingId}", request.BookingId);
-                    }
-                }
+                return StatusCode(500, new { error = "PaymentService null response dondu." });
             }
 
             return Ok(result);
@@ -820,30 +698,21 @@ public class FlightController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.ShoppingFileId))
                 return BadRequest(new { error = "ShoppingFileId alani zorunludur." });
 
-            var result = await _flightService.Complete3DPaymentAsync(request);
-
-            // DB guncelle
-            if (!result.HasError && result.IsPaymentSuccessful && request.BookingId.HasValue)
+            // Cache'ten ProductId/BillingInfo'yu cek (varsa) — auto-finalize icin gerekli
+            string? productId = null;
+            ShoppingBillingInfo? billingInfo = null;
+            if (_cache.TryGetValue<ThreeDSessionData>($"3d_session_{request.ShoppingFileId}", out var cached) && cached != null)
             {
-                try
-                {
-                    await _bookingRepository.UpdateStatusAsync(request.BookingId.Value, "Paid");
-                    await _bookingRepository.AddLogAsync(new BookingLog
-                    {
-                        Id = Guid.NewGuid(),
-                        BookingId = request.BookingId.Value,
-                        SessionId = request.SessionId ?? "",
-                        SessionToken = request.SessionToken ?? "",
-                        Operation = "Complete3DPayment_API",
-                        IsSuccess = true,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-                catch (Exception dbEx)
-                {
-                    _logger.LogError(dbEx, "[Complete3DPayment] DB guncelleme basarisiz. BookingId={BookingId}", request.BookingId);
-                }
+                productId = cached.ProductId;
+                billingInfo = cached.BillingInfo;
             }
+
+            var result = await _paymentService.ProcessComplete3DAsync(new Complete3DRequest
+            {
+                Payment = request,
+                ProductId = productId,
+                BillingInfo = billingInfo
+            });
 
             return Ok(result);
         }
@@ -946,7 +815,7 @@ public class FlightController : ControllerBase
                 }
             }
 
-            // BiletBank'a Complete3DPayment cagrisi yap
+            // BiletBank'a Complete3DPayment + Booking finalize (PaymentService icinde DB transaction)
             var completeRequest = new Complete3DPaymentRequest
             {
                 SessionId = sessionId,
@@ -956,197 +825,24 @@ public class FlightController : ControllerBase
                 BookingId = bookingId
             };
 
-            var result = await _flightService.Complete3DPaymentAsync(completeRequest);
+            var result = await _paymentService.ProcessComplete3DAsync(new Complete3DRequest
+            {
+                Payment = completeRequest,
+                ProductId = productId,
+                BillingInfo = billingInfo
+            });
 
-            _logger.LogInformation("[3DCallback] Complete3D result: HasError={HasError}, IsPaymentSuccessful={IsPaymentSuccessful}, Status={Status}",
-                result.HasError, result.IsPaymentSuccessful, result.Status);
+            _logger.LogInformation("[3DCallback] Complete3D result: HasError={HasError}, IsPaymentSuccessful={IsPaymentSuccessful}, Status={Status}, AutoFinalized={AutoFinalized}",
+                result.HasError, result.IsPaymentSuccessful, result.Status, result.AutoFinalized);
 
             if (!result.HasError && result.IsPaymentSuccessful)
             {
-                // DB'yi Paid olarak guncelle
-                if (bookingId.HasValue)
-                {
-                    try
-                    {
-                        await _bookingRepository.UpdateStatusAsync(bookingId.Value, "Paid");
-                        await _bookingRepository.AddLogAsync(new BookingLog
-                        {
-                            Id = Guid.NewGuid(),
-                            BookingId = bookingId.Value,
-                            SessionId = sessionId,
-                            SessionToken = sessionToken,
-                            Operation = "Complete3DPayment",
-                            IsSuccess = true,
-                            CreatedAt = DateTime.UtcNow
-                        });
-                    }
-                    catch (Exception dbEx)
-                    {
-                        _logger.LogError(dbEx, "[3DCallback] DB guncelleme basarisiz.");
-                    }
-                }
-
-                // FinalizeShopping — biletleme adimi
-                // NOT: ProductId ve ShoppingFileId farkli seylerdir.
-                // ProductId = ucus urun ID'si (Allocate'ten gelir)
-                // ShoppingFileId = sepet container ID'si
-                // FinalizeShopping icin ProductId zorunludur; yoksa atla ve frontend'e uyar.
-                string? pnr = result.PNR;
-                bool finalizeAttempted = false;
-                bool finalizeSuccess = false;
-                string? internalPnrForRedirect = null;
-
-                if (!string.IsNullOrEmpty(productId))
-                {
-                    finalizeAttempted = true;
-                    try
-                    {
-                        var finalizeResult = await _flightService.FinalizeShoppingAsync(new FinalizeShoppingRequest
-                        {
-                            SessionId = sessionId,
-                            SessionToken = sessionToken,
-                            ShoppingFileId = shoppingFileId,
-                            ProductId = productId,
-                            BookingId = bookingId,
-                            BillingInfo = billingInfo
-                        });
-
-                        if (!finalizeResult.HasError)
-                        {
-                            finalizeSuccess = true;
-                            pnr = finalizeResult.BookingCode ?? pnr;
-                            _logger.LogInformation("[3DCallback] FinalizeShopping basarili. PNR={PNR}, Status={Status}",
-                                finalizeResult.BookingCode, finalizeResult.Status);
-
-                            if (bookingId.HasValue)
-                            {
-                                try
-                                {
-                                    // ReadShoppingFile to refresh ALL segments (outbound + return) BEFORE UpdateStatusAsync
-                                    // so that SaveChangesAsync in UpdateStatusAsync persists the segment changes
-                                    try
-                                    {
-                                        var readResult = await _flightService.ReadShoppingFileAsync(new ReadShoppingFileRequest
-                                        {
-                                            SessionId = sessionId,
-                                            SessionToken = sessionToken,
-                                            ShoppingFileId = shoppingFileId
-                                        });
-
-                                        Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] ReadShoppingFile returned {readResult?.Segments?.Count ?? 0} segments, HasError={readResult?.HasError}");
-                                        if (readResult?.Segments != null)
-                                        {
-                                            foreach (var seg in readResult.Segments)
-                                            {
-                                                Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] Segment: {seg.OriginCode} -> {seg.DestinationCode}, Flight: {seg.MarketingAirline}{seg.FlightNumber}, Dep: {seg.DepartureDay} {seg.DepartureTime}");
-                                            }
-                                        }
-
-                                        if (!readResult.HasError && readResult.Segments.Count > 0)
-                                        {
-                                            var booking = await _bookingRepository.GetByIdAsync(bookingId.Value);
-                                            if (booking != null)
-                                            {
-                                                Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] Before clear: {booking.FlightSegments.Count} segments in DB");
-                                                booking.FlightSegments.Clear();
-                                                foreach (var seg in readResult.Segments)
-                                                {
-                                                    booking.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
-                                                    {
-                                                        Id = Guid.NewGuid(),
-                                                        BookingId = booking.Id,
-                                                        SequenceNo = booking.FlightSegments.Count + 1,
-                                                        MarketingAirline = seg.MarketingAirline ?? "",
-                                                        FlightNumber = seg.FlightNumber ?? "",
-                                                        OriginCode = seg.OriginCode ?? "",
-                                                        DestinationCode = seg.DestinationCode ?? "",
-                                                        DepartureDate = DateTime.TryParse(seg.DepartureDay, out var rd) ? rd : DateTime.MinValue,
-                                                        DepartureTime = seg.DepartureTime,
-                                                        ArrivalDate = DateTime.TryParse(seg.ArrivalDay, out var ra) ? ra : null,
-                                                        ArrivalTime = seg.ArrivalTime,
-                                                        BookingClass = seg.BookingClass
-                                                    });
-                                                }
-                                                Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] After refresh: {booking.FlightSegments.Count} segments in DB");
-                                                _logger.LogInformation("[3DCallback] Updated segments from ReadShoppingFile. Count={Count}", readResult.Segments.Count);
-                                            }
-                                            else
-                                            {
-                                                Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] ERROR: booking is null for bookingId={bookingId.Value}");
-                                            }
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] Skipping refresh: HasError={readResult?.HasError}, SegmentCount={readResult?.Segments?.Count ?? 0}");
-                                        }
-                                    }
-                                    catch (Exception readEx)
-                                    {
-                                        Console.WriteLine($"[SEGMENT-DEBUG] [3DCallback] ERROR: {readEx.Message}\n{readEx.StackTrace}");
-                                        _logger.LogWarning(readEx, "[3DCallback] ReadShoppingFile failed — keeping existing segments.");
-                                    }
-
-                                    // InternalPnr uret ve kaydet
-                                    var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
-                                    await _bookingRepository.UpdateInternalPnrAsync(bookingId.Value, internalPnr);
-                                    internalPnrForRedirect = internalPnr;
-
-                                    await _bookingRepository.UpdateStatusAsync(bookingId.Value, finalizeResult.Status ?? "Ticketed");
-                                    if (!string.IsNullOrEmpty(finalizeResult.BookingCode))
-                                        await _bookingRepository.UpdatePnrAsync(bookingId.Value, finalizeResult.BookingCode);
-                                }
-                                catch (Exception dbEx)
-                                {
-                                    _logger.LogError(dbEx, "[3DCallback] FinalizeShopping sonrasi DB guncelleme basarisiz.");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogWarning("[3DCallback] FinalizeShopping hata: {Error}. Odeme basarili ama biletleme yapilamadi.",
-                                finalizeResult.ErrorMessage);
-                        }
-                    }
-                    catch (Exception finEx)
-                    {
-                        _logger.LogError(finEx, "[3DCallback] FinalizeShopping exception. Odeme basarili ama biletleme yapilamadi.");
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("[3DCallback] ProductId bos — FinalizeShopping atlanamadi. Frontend complete-3d-payment uzerinden biletleme yapabilir.");
-                }
-
-                // Frontend'e basarili redirect
-                var successUrl = $"{_frontendUrl}/payment/result?status=success&bookingId={bookingId}&pnr={Uri.EscapeDataString(internalPnrForRedirect ?? pnr ?? "")}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={finalizeSuccess}";
+                var pnrForRedirect = result.InternalPnr ?? result.PNR ?? "";
+                var successUrl = $"{_frontendUrl}/payment/result?status=success&bookingId={bookingId}&pnr={Uri.EscapeDataString(pnrForRedirect)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
                 return Redirect(successUrl);
             }
             else
             {
-                // Odeme basarisiz — DB log
-                if (bookingId.HasValue)
-                {
-                    try
-                    {
-                        await _bookingRepository.UpdateStatusAsync(bookingId.Value, "PaymentFailed");
-                        await _bookingRepository.AddLogAsync(new BookingLog
-                        {
-                            Id = Guid.NewGuid(),
-                            BookingId = bookingId.Value,
-                            SessionId = sessionId,
-                            SessionToken = sessionToken,
-                            Operation = "Complete3DPayment_Failed",
-                            IsSuccess = false,
-                            ErrorMessage = result.ErrorMessage,
-                            CreatedAt = DateTime.UtcNow
-                        });
-                    }
-                    catch (Exception dbEx)
-                    {
-                        _logger.LogError(dbEx, "[3DCallback] Basarisiz odeme DB log hatasi.");
-                    }
-                }
-
                 var errorMsg = result.ErrorMessage ?? "Odeme basarisiz";
                 return Redirect($"{_frontendUrl}/payment/result?status=failed&error={Uri.EscapeDataString(errorMsg)}&bookingId={bookingId}");
             }

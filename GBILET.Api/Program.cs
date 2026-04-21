@@ -211,6 +211,8 @@ builder.Services
     client.Timeout = TimeSpan.FromSeconds(120);
 });
 
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+
 
 var app = builder.Build();
 
