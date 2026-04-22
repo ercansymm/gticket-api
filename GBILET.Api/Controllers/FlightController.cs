@@ -800,7 +800,7 @@ public class FlightController : ControllerBase
                 else
                 {
                     _logger.LogError("[3DCallback] Session bilgisi bulunamadi (ne query'de ne cache'te).");
-                    return Redirect($"{_frontendUrl}/payment/result?status=failed&error={Uri.EscapeDataString("Session bilgisi bulunamadi. Odeme yeniden baslatilmali.")}");
+                    return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString("Session bilgisi bulunamadi. Odeme yeniden baslatilmali.")}");
                 }
             }
             else
@@ -838,19 +838,21 @@ public class FlightController : ControllerBase
             if (!result.HasError && result.IsPaymentSuccessful)
             {
                 var pnrForRedirect = result.InternalPnr ?? result.PNR ?? "";
-                var successUrl = $"{_frontendUrl}/payment/result?status=success&bookingId={bookingId}&pnr={Uri.EscapeDataString(pnrForRedirect)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
+                // Dogrudan /checkout/success'e yonlendiriyoruz (eski /payment/result ara
+                // ekrani arada gereksiz bir loading + buyuk tik gosteriyordu).
+                var successUrl = $"{_frontendUrl}/checkout/success?bookingId={bookingId}&pnr={Uri.EscapeDataString(pnrForRedirect)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
                 return Redirect(successUrl);
             }
             else
             {
                 var errorMsg = result.ErrorMessage ?? "Odeme basarisiz";
-                return Redirect($"{_frontendUrl}/payment/result?status=failed&error={Uri.EscapeDataString(errorMsg)}&bookingId={bookingId}");
+                return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString(errorMsg)}&bookingId={bookingId}");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[3DCallback] Exception");
-            return Redirect($"{_frontendUrl}/payment/result?status=error&error={Uri.EscapeDataString(ex.Message)}");
+            return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString(ex.Message)}");
         }
     }
 
