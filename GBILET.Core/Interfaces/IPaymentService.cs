@@ -19,4 +19,11 @@ public interface IPaymentService
     /// basariliysa Booking'i Paid'e ceker ve (mumkunse) auto-finalize ile bilet keser.
     /// </summary>
     Task<PaymentProcessResult> ProcessComplete3DAsync(Complete3DRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// RecoverBooking gibi out-of-band biletleme akislarinda, ilgili Booking'in son
+    /// Pending3D / Pending Payment kaydini Success'e ceker. Admin panelde "Beklemede"
+    /// gozuken ama aslinda bileti kesilmis odemeleri duzeltmek icin kullanilir.
+    /// </summary>
+    Task<bool> MarkLatestPendingPaymentSuccessAsync(Guid bookingId, string? bbPaymentId, CancellationToken ct = default);
 }

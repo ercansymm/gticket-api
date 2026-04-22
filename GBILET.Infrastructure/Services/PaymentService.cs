@@ -286,6 +286,27 @@ public class PaymentService : IPaymentService
             booking.PaidAt = DateTime.UtcNow;
             booking.UpdatedAt = DateTime.UtcNow;
             booking.LastError = null;
+
+            // Odeme onaylandi → ATA PNR'i hemen burada uret. TryAutoFinalize asagida
+            // calismasa bile (ProductId cache'ten dusmus, BB hata vermis vs.)
+            // booking'imiz icin internal referans hazir olur. Cari akisi ile esit davranis.
+            if (string.IsNullOrEmpty(booking.InternalPnr))
+            {
+                try
+                {
+                    var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
+                    booking.InternalPnr = internalPnr;
+                    result.InternalPnr = internalPnr;
+                }
+                catch (Exception pnrEx)
+                {
+                    _logger.LogWarning(pnrEx, "[PaymentService] InternalPnr uretme basarisiz; finalize akisinda tekrar denenecek. BookingId={BookingId}", booking.Id);
+                }
+            }
+            else
+            {
+                result.InternalPnr = booking.InternalPnr;
+            }
         }
         _db.BookingLogs.Add(BuildLog(pay.BookingId, pay.SessionId, pay.SessionToken,
             "Complete3DPayment", isSuccess: true, error: null));
@@ -569,6 +590,56 @@ public class PaymentService : IPaymentService
                     pax.TicketNumber = ticket.TicketNumber;
             }
 
+            // BB FinalizeShopping bazi rotalar/statulerde Tickets listesini bos donebiliyor
+            // (ozellikle Status=Reservation). Bu durumda ReadShoppingFile ile acik bilet
+            // numaralarini cek ve yolculara isle.
+            var anyTicketAssigned = booking.Passengers.Any(p => !string.IsNullOrEmpty(p.TicketNumber));
+            if (!anyTicketAssigned)
+            {
+                try
+                {
+                    var read = await _flightService.ReadShoppingFileAsync(new ReadShoppingFileRequest
+                    {
+                        SessionId = sessionId ?? "",
+                        SessionToken = sessionToken ?? "",
+                        ShoppingFileId = shoppingFileId ?? ""
+                    });
+
+                    if (!read.HasError)
+                    {
+                        // Once Tickets listesinden dene
+                        foreach (var t in read.Tickets ?? new())
+                        {
+                            if (string.IsNullOrEmpty(t.TicketNumber)) continue;
+                            var pax = booking.Passengers.FirstOrDefault(p =>
+                                string.Equals(p.FirstName, t.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(p.LastName, t.LastName, StringComparison.OrdinalIgnoreCase));
+                            if (pax != null && string.IsNullOrEmpty(pax.TicketNumber))
+                                pax.TicketNumber = t.TicketNumber;
+                        }
+
+                        // Yedek: Passengers[].TicketNumber alanindan dene
+                        foreach (var rp in read.Passengers ?? new())
+                        {
+                            if (string.IsNullOrEmpty(rp.TicketNumber)) continue;
+                            var pax = booking.Passengers.FirstOrDefault(p =>
+                                string.Equals(p.FirstName, rp.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                string.Equals(p.LastName, rp.LastName, StringComparison.OrdinalIgnoreCase));
+                            if (pax != null && string.IsNullOrEmpty(pax.TicketNumber))
+                                pax.TicketNumber = rp.TicketNumber;
+                        }
+
+                        // Tickets result'a da ekle (frontend'in PDF butonu ve ozet icin)
+                        if ((result.Tickets == null || result.Tickets.Count == 0) && read.Tickets?.Count > 0)
+                            result.Tickets = read.Tickets;
+                    }
+                }
+                catch (Exception readEx)
+                {
+                    _logger.LogWarning(readEx, "[PaymentService] ReadShoppingFile (ticket fallback) basarisiz. BookingId={BookingId}", booking.Id);
+                }
+            }
+
             _db.BookingLogs.Add(BuildLog(bookingId, sessionId, sessionToken,
                 "FinalizeShopping_Auto", isSuccess: true, error: null));
         }
@@ -594,6 +665,39 @@ public class PaymentService : IPaymentService
             ErrorMessage = error,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    public async Task<bool> MarkLatestPendingPaymentSuccessAsync(Guid bookingId, string? bbPaymentId, CancellationToken ct = default)
+    {
+        if (bookingId == Guid.Empty) return false;
+
+        // Bu booking'in en yeni Pending3D / Pending Payment kaydini bul
+        var pending = await _db.Payments
+            .Where(p => p.BookingId == bookingId &&
+                        (p.Status == "Pending3D" || p.Status == "Pending"))
+            .OrderByDescending(p => p.TransactionDate)
+            .FirstOrDefaultAsync(ct);
+
+        if (pending == null) return false;
+
+        pending.Status = "Success";
+        pending.ErrorMessage = null;
+        pending.ErrorCode = null;
+        if (!string.IsNullOrEmpty(bbPaymentId))
+            pending.BiletBankPaymentId = bbPaymentId;
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("[PaymentService] Pending payment Success'e cekildi. BookingId={BookingId}, PaymentId={PaymentId}",
+                bookingId, pending.Id);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[PaymentService] MarkLatestPendingPaymentSuccessAsync save failed. BookingId={BookingId}", bookingId);
+            return false;
+        }
     }
 
     /// <summary>

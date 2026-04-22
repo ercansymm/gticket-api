@@ -950,6 +950,49 @@ public class FlightController : ControllerBase
                                 pax.TicketNumber = ticket.TicketNumber;
                         }
 
+                        // Tickets bos donduyse ReadShoppingFile ile tekrar dene (BB Reservation
+                        // statusunde bilet numaralari finalize response'unda gelmeyebiliyor).
+                        var anyTicket = bookingToUpdate.Passengers.Any(p => !string.IsNullOrEmpty(p.TicketNumber));
+                        if (!anyTicket)
+                        {
+                            try
+                            {
+                                var read = await _flightService.ReadShoppingFileAsync(new ReadShoppingFileRequest
+                                {
+                                    SessionId = sessionId,
+                                    SessionToken = sessionToken,
+                                    ShoppingFileId = shoppingFileId
+                                });
+                                if (!read.HasError)
+                                {
+                                    foreach (var t in read.Tickets ?? new())
+                                    {
+                                        if (string.IsNullOrEmpty(t.TicketNumber)) continue;
+                                        var pax = bookingToUpdate.Passengers.FirstOrDefault(p =>
+                                            string.Equals(p.FirstName, t.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                            string.Equals(p.LastName, t.LastName, StringComparison.OrdinalIgnoreCase));
+                                        if (pax != null && string.IsNullOrEmpty(pax.TicketNumber))
+                                            pax.TicketNumber = t.TicketNumber;
+                                    }
+                                    foreach (var rp in read.Passengers ?? new())
+                                    {
+                                        if (string.IsNullOrEmpty(rp.TicketNumber)) continue;
+                                        var pax = bookingToUpdate.Passengers.FirstOrDefault(p =>
+                                            string.Equals(p.FirstName, rp.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                                            string.Equals(p.LastName, rp.LastName, StringComparison.OrdinalIgnoreCase));
+                                        if (pax != null && string.IsNullOrEmpty(pax.TicketNumber))
+                                            pax.TicketNumber = rp.TicketNumber;
+                                    }
+                                    if ((finalizeResult.Tickets == null || finalizeResult.Tickets.Count == 0) && read.Tickets?.Count > 0)
+                                        finalizeResult.Tickets = read.Tickets;
+                                }
+                            }
+                            catch (Exception readEx)
+                            {
+                                _logger.LogWarning(readEx, "[RecoverBooking] ReadShoppingFile (ticket fallback) basarisiz. BookingId={BookingId}", request.BookingId);
+                            }
+                        }
+
                         if (string.IsNullOrEmpty(bookingToUpdate.InternalPnr))
                         {
                             var internalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
@@ -957,11 +1000,19 @@ public class FlightController : ControllerBase
                             await _bookingRepository.UpdateInternalPnrAsync(request.BookingId, internalPnr);
                             finalizeResult.InternalPnr = internalPnr;
                         }
+                        else
+                        {
+                            finalizeResult.InternalPnr = bookingToUpdate.InternalPnr;
+                        }
 
                         if (!string.IsNullOrEmpty(finalizeResult.BookingCode))
                             await _bookingRepository.UpdatePnrAsync(request.BookingId, finalizeResult.BookingCode);
 
                         await _bookingRepository.UpdateStatusAsync(request.BookingId, bookingToUpdate.Status);
+
+                        // Admin panelde "Beklemede" gozuken Pending3D Payment kaydini Success'e cek.
+                        await _paymentService.MarkLatestPendingPaymentSuccessAsync(request.BookingId, null);
+
                         await _bookingRepository.AddLogAsync(new BookingLog
                         {
                             Id = Guid.NewGuid(),
