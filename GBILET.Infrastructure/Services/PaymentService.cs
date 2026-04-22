@@ -43,7 +43,9 @@ public class PaymentService : IPaymentService
         var pay = request.Payment;
 
         // 3D callback URL'ini olustur — BiletBank'a verilen ContinueUrl bunu kullanir.
-        if (string.IsNullOrEmpty(pay.ContinueUrl) && !string.IsNullOrEmpty(request.CallbackBaseUrl))
+        // Frontend ContinueUrl gondermis olsa bile backend kendi callback URL'i ile override eder.
+        // Aksi halde Lidio direkt frontend'e doner ve Complete3DPayment cagrilmaz; odeme onaysiz kalir.
+        if (!string.IsNullOrEmpty(request.CallbackBaseUrl))
         {
             pay.ContinueUrl = $"{request.CallbackBaseUrl}" +
                               $"?sid={Uri.EscapeDataString(pay.SessionId ?? "")}" +
