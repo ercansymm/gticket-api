@@ -333,19 +333,62 @@ public class PaymentService : IPaymentService
         catch (DbUpdateConcurrencyException concEx)
         {
             // BiletBank tarafinda odeme zaten alindi (Lidio Approved=true). DB'de bir entity
-            // baska bir cagri tarafindan degistirildiyse (cift callback / retry) son durumu
-            // booking'den okuyup basari olarak doneriz. Yoksa kullaniciya yanlislikla "odeme
-            // basarisiz" gosterilir.
+            // baska bir cagri tarafindan degistirildiyse (cift callback / retry) tracker'i
+            // detach edip kritik alanlari raw SQL ile zorla guncelliyoruz. Aksi halde Payment
+            // "Pending3D" kalir ve admin panelde "Beklemede" gozukur.
             _logger.LogWarning(concEx,
-                "[PaymentService] Complete3D SaveChanges concurrency conflict; treating as success based on booking state. BookingId={BookingId}",
+                "[PaymentService] Complete3D SaveChanges concurrency conflict; forcing critical fields via raw SQL. BookingId={BookingId}",
                 pay.BookingId);
 
-            // Tracker'i temizle ve booking'i fresh oku
+            var newPnr = booking?.InternalPnr;
+            var newPaymentRefId = payment.BiletBankPaymentId;
+
+            // Tracker'i temizle (sonraki sorgular fresh olsun)
             foreach (var entry in _db.ChangeTracker.Entries().ToList())
                 entry.State = EntityState.Detached;
 
+            // 1) Payment row'unu Success'e cek (concurrency'den bagimsiz raw UPDATE)
+            try
+            {
+                await _db.Payments
+                    .Where(p => p.Id == payment.Id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.Status, "Success")
+                        .SetProperty(p => p.ErrorMessage, (string?)null)
+                        .SetProperty(p => p.ErrorCode, (string?)null)
+                        .SetProperty(p => p.BiletBankPaymentId, newPaymentRefId), ct);
+            }
+            catch (Exception ex1)
+            {
+                _logger.LogWarning(ex1, "[PaymentService] Payment force-update basarisiz. PaymentId={PaymentId}", payment.Id);
+            }
+
+            // 2) Booking durumunu ve InternalPnr'i zorla yaz
             if (pay.BookingId.HasValue && pay.BookingId.Value != Guid.Empty)
             {
+                try
+                {
+                    // InternalPnr yoksa simdi uret
+                    if (string.IsNullOrEmpty(newPnr))
+                    {
+                        try { newPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository); }
+                        catch { /* yine de devam */ }
+                    }
+
+                    await _db.Bookings
+                        .Where(b => b.Id == pay.BookingId.Value)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(b => b.Status, b => b.Status == "Paid" || b.IsFinalized ? b.Status : "Paid")
+                            .SetProperty(b => b.PaidAt, b => b.PaidAt ?? DateTime.UtcNow)
+                            .SetProperty(b => b.InternalPnr, b => b.InternalPnr ?? newPnr)
+                            .SetProperty(b => b.UpdatedAt, DateTime.UtcNow)
+                            .SetProperty(b => b.LastError, (string?)null), ct);
+                }
+                catch (Exception ex2)
+                {
+                    _logger.LogWarning(ex2, "[PaymentService] Booking force-update basarisiz. BookingId={BookingId}", pay.BookingId);
+                }
+
                 var fresh = await _db.Bookings.AsNoTracking()
                     .FirstOrDefaultAsync(b => b.Id == pay.BookingId.Value, ct);
                 if (fresh != null)
