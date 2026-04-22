@@ -16,6 +16,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Security.Cryptography;
+using GBILET.Core.Service.Support;
+using GBILET.Infrastructure.Services.Support;
 
 
 // PostgreSQL: DateTimeKind.Unspecified olan DateTime değerlerini kabul et
@@ -201,7 +203,7 @@ builder.Services.AddSingleton<ITokenService, TokenService>(); // RSA key'ler bir
 builder.Services.AddSingleton<ITotpService, TotpService>();   // Stateless
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
-
+builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddMemoryCache();
 
 builder.Services

@@ -1,6 +1,7 @@
 ﻿using GBILET.Core.Entities;
 using GBILET.Core.Entities.Admin;
 using Microsoft.EntityFrameworkCore;
+using GBILET.Core.Entities.Support;
 
 namespace GBILET.Infrastructure.Data;
 
@@ -64,6 +65,10 @@ public class GTicketDbContext : DbContext
     public DbSet<AdminUser> AdminUsers { get; set; }
     public DbSet<AdminRefreshToken> AdminRefreshTokens { get; set; }
     public DbSet<AdminAuditLog> AdminAuditLogs { get; set; }
+
+    // Support entities
+    public DbSet<SupportTicket> SupportTickets { get; set; }
+    public DbSet<SupportTicketMessage> SupportTicketMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -342,5 +347,67 @@ public class GTicketDbContext : DbContext
 
         // Seed Data
         DataSeeder.Seed(modelBuilder);
+
+        // ============================================================
+        // SUPPORT SYSTEM ENTITIES
+        // ============================================================
+
+        modelBuilder.Entity<SupportTicket>(e =>
+        {
+            e.ToTable("SupportTickets");
+            e.HasKey(t => t.Id);
+
+            e.Property(t => t.TicketNumber).HasMaxLength(32).IsRequired();
+            e.Property(t => t.Subject).HasMaxLength(200).IsRequired();
+
+            e.Property(t => t.Type).HasConversion<int>();
+            e.Property(t => t.Status).HasConversion<int>();
+
+            e.HasIndex(t => t.TicketNumber).IsUnique();
+            e.HasIndex(t => t.UserId);
+            e.HasIndex(t => t.Status);
+            e.HasIndex(t => t.Type);
+            e.HasIndex(t => t.LastActivityAt);
+            e.HasIndex(t => t.CreatedAt);
+
+            e.HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(t => t.Booking)
+                .WithMany()
+                .HasForeignKey(t => t.BookingId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(t => t.ClosedByAdmin)
+                .WithMany()
+                .HasForeignKey(t => t.ClosedByAdminId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasMany(t => t.Messages)
+                .WithOne(m => m.Ticket)
+                .HasForeignKey(m => m.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SupportTicketMessage>(e =>
+        {
+            e.ToTable("SupportTicketMessages");
+            e.HasKey(m => m.Id);
+
+            e.Property(m => m.SenderDisplayName).HasMaxLength(128).IsRequired();
+            e.Property(m => m.Body).IsRequired();
+            e.Property(m => m.SenderType).HasConversion<int>();
+
+            e.HasIndex(m => m.TicketId);
+            e.HasIndex(m => m.CreatedAt);
+        });
     }
+
+
+    
 }
+
