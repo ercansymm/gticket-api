@@ -214,6 +214,7 @@ builder.Services
 });
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<GBILET.Core.Service.Auth.IAuthService, GBILET.Infrastructure.Services.AuthService>();
 
 
 var app = builder.Build();
