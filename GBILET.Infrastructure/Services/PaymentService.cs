@@ -213,6 +213,29 @@ public class PaymentService : IPaymentService
                 .FirstOrDefaultAsync(b => b.Id == pay.BookingId.Value, ct);
         }
 
+        // Idempotency: Lidio bazen ayni callback'i iki kez tetikler (GET redirect + POST notify),
+        // kullanici sayfayi yenileyebilir veya "Tekrar Dene" ile tekrar gelebilir. Bu Payment
+        // daha onceki cagride basariyla isleme alindiysa, ayni state'i dondur ve EF concurrency
+        // hatasina sebep olabilecek tekrar update'lerden kacin.
+        if (string.Equals(payment.Status, "Success", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation(
+                "[PaymentService] Complete3D idempotent skip. Payment already Success. BookingId={BookingId}, PaymentId={PaymentId}",
+                pay.BookingId, payment.Id);
+            return new PaymentProcessResult
+            {
+                HasError = false,
+                IsPaymentSuccessful = true,
+                Status = booking?.Status ?? "Paid",
+                ShoppingFileId = pay.ShoppingFileId,
+                PaymentReferenceId = payment.BiletBankPaymentId,
+                PNR = booking?.PNR,
+                InternalPnr = booking?.InternalPnr,
+                AutoFinalized = booking?.IsFinalized ?? false,
+                PaymentId = payment.Id
+            };
+        }
+
         var result = new PaymentProcessResult
         {
             HasError = bbResponse.HasError,
@@ -268,14 +291,51 @@ public class PaymentService : IPaymentService
             "Complete3DPayment", isSuccess: true, error: null));
 
         // Auto-finalize (controller eskiden 3d-callback icinde yapiyordu)
-        if (!string.IsNullOrEmpty(request.ProductId))
+        if (!string.IsNullOrEmpty(request.ProductId) && booking?.IsFinalized != true)
         {
             await TryAutoFinalizeAsync(pay.SessionId, pay.SessionToken,
                 pay.ShoppingFileId, request.ProductId, pay.BookingId, request.BillingInfo,
                 booking, result, ct, refreshSegments: true);
         }
+        else if (booking?.IsFinalized == true)
+        {
+            _logger.LogInformation("[PaymentService] Booking already finalized, skipping auto-finalize. BookingId={BookingId}", pay.BookingId);
+            result.AutoFinalized = true;
+            result.PNR = booking.PNR;
+            result.InternalPnr = booking.InternalPnr;
+        }
 
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException concEx)
+        {
+            // BiletBank tarafinda odeme zaten alindi (Lidio Approved=true). DB'de bir entity
+            // baska bir cagri tarafindan degistirildiyse (cift callback / retry) son durumu
+            // booking'den okuyup basari olarak doneriz. Yoksa kullaniciya yanlislikla "odeme
+            // basarisiz" gosterilir.
+            _logger.LogWarning(concEx,
+                "[PaymentService] Complete3D SaveChanges concurrency conflict; treating as success based on booking state. BookingId={BookingId}",
+                pay.BookingId);
+
+            // Tracker'i temizle ve booking'i fresh oku
+            foreach (var entry in _db.ChangeTracker.Entries().ToList())
+                entry.State = EntityState.Detached;
+
+            if (pay.BookingId.HasValue && pay.BookingId.Value != Guid.Empty)
+            {
+                var fresh = await _db.Bookings.AsNoTracking()
+                    .FirstOrDefaultAsync(b => b.Id == pay.BookingId.Value, ct);
+                if (fresh != null)
+                {
+                    result.PNR = fresh.PNR;
+                    result.InternalPnr = fresh.InternalPnr;
+                    result.AutoFinalized = fresh.IsFinalized;
+                    result.BookingStatus = fresh.Status;
+                }
+            }
+        }
         return result;
     }
 
@@ -431,7 +491,13 @@ public class PaymentService : IPaymentService
 
                     if (!read.HasError && read.Segments?.Count > 0)
                     {
-                        booking.FlightSegments.Clear();
+                        // Eski segment'leri EF'e acikca Deleted olarak isaretle (Clear() bazen
+                        // sadece collection'dan cikarir, FK update'i deniyor olabilir).
+                        if (booking.FlightSegments.Count > 0)
+                        {
+                            _db.FlightSegments.RemoveRange(booking.FlightSegments.ToList());
+                            booking.FlightSegments.Clear();
+                        }
                         foreach (var seg in read.Segments)
                         {
                             booking.FlightSegments.Add(new GBILET.Core.Entities.FlightSegment
