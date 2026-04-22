@@ -8,7 +8,6 @@ namespace GBILET.Api.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/support-tickets")]
-[Authorize(AuthenticationSchemes = "AdminBearer")]
 public class AdminSupportTicketsController : ControllerBase
 {
     private readonly ISupportTicketService _support;
@@ -53,8 +52,8 @@ public class AdminSupportTicketsController : ControllerBase
     // POST /api/admin/support-tickets/{id}/messages
     // Admin talebe mesaj ekler
     // ============================================================
-    [HttpPost("{id:guid}/messages")]
-    [Authorize(AuthenticationSchemes = "AdminBearer", Roles = "SuperAdmin,CallCenter")]
+[HttpPost("{id:guid}/messages")]
+    [Authorize(Roles = "SuperAdmin,CallCenter")]
     public async Task<IActionResult> AddMessage(
         Guid id,
         [FromBody] AddSupportMessageRequest request,
@@ -83,8 +82,8 @@ public class AdminSupportTicketsController : ControllerBase
     // PATCH /api/admin/support-tickets/{id}/close
     // Ticket'ı kapat
     // ============================================================
-    [HttpPatch("{id:guid}/close")]
-    [Authorize(AuthenticationSchemes = "AdminBearer", Roles = "SuperAdmin,CallCenter")]
+[HttpPatch("{id:guid}/close")]
+    [Authorize(Roles = "SuperAdmin,CallCenter")]
     public async Task<IActionResult> Close(Guid id, CancellationToken ct)
     {
         var adminId = GetAdminUserId();
