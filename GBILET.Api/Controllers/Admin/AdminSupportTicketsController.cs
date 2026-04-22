@@ -54,6 +54,7 @@ public class AdminSupportTicketsController : ControllerBase
     // Admin talebe mesaj ekler
     // ============================================================
     [HttpPost("{id:guid}/messages")]
+    [Authorize(AuthenticationSchemes = "AdminBearer", Roles = "SuperAdmin,CallCenter")]
     public async Task<IActionResult> AddMessage(
         Guid id,
         [FromBody] AddSupportMessageRequest request,
@@ -83,6 +84,7 @@ public class AdminSupportTicketsController : ControllerBase
     // Ticket'ı kapat
     // ============================================================
     [HttpPatch("{id:guid}/close")]
+    [Authorize(AuthenticationSchemes = "AdminBearer", Roles = "SuperAdmin,CallCenter")]
     public async Task<IActionResult> Close(Guid id, CancellationToken ct)
     {
         var adminId = GetAdminUserId();
