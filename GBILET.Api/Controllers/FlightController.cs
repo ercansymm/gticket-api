@@ -886,14 +886,11 @@ public class FlightController : ControllerBase
                 });
             }
 
-            // Sadece Paid durumundaki booking'ler kurtarilabilir
-            if (booking.Status != "Paid")
-            {
-                return BadRequest(new
-                {
-                    error = $"Booking durumu '{booking.Status}'. Sadece 'Paid' durumundaki booking'ler kurtarilabilir."
-                });
-            }
+            // Cari odeme akisindaki gibi: IsFinalized=false olan her booking icin
+            // FinalizeShopping'i tekrar denemekte sakinca yok. Status kontrolu agresif olmamali
+            // — "Paid" veya "PaymentFailed" disinda bir sey de olabilir (ör. "Pending").
+            _logger.LogInformation("[RecoverBooking] Attempting recovery. BookingId={BookingId}, Status={Status}, IsFinalized={IsFinalized}",
+                booking.Id, booking.Status, booking.IsFinalized);
 
             // Session bilgilerini belirle: request'ten gelirse onu kullan, yoksa DB'den al
             var sessionId = !string.IsNullOrEmpty(request.SessionId) ? request.SessionId : booking.SessionId;
@@ -1198,6 +1195,7 @@ public class FlightController : ControllerBase
             {
                 booking.Id,
                 booking.PNR,
+                booking.InternalPnr,
                 booking.Status,
                 booking.GrandTotal,
                 booking.Currency,

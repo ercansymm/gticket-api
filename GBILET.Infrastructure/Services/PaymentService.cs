@@ -463,16 +463,32 @@ public class PaymentService : IPaymentService
                 BillingInfo = billingInfo
             });
 
-            if (finalize.HasError)
+            // Cari odeme akisindaki FinalizeShopping endpoint'i ile ayni semantik:
+            // Sadece HasError=false yetmez \u2014 Status'un da basarili biletleme degerlerinden
+            // birisi olmasi sart. Aksi halde \"Pending\"/\"PartialBooking\" gibi ara durumlar
+            // hatali sekilde finalized olarak isaretlenir.
+            var successStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { "Booking", "Ticketed", "Reservation" };
+            var isFinalized = !finalize.HasError
+                && !string.IsNullOrEmpty(finalize.Status)
+                && successStatuses.Contains(finalize.Status);
+
+            _logger.LogInformation(
+                "[PaymentService] Auto-finalize result. BookingId={BookingId}, HasError={HasError}, Status={Status}, IsFinalized={IsFinalized}, Error={Error}",
+                bookingId, finalize.HasError, finalize.Status, isFinalized, finalize.ErrorMessage);
+
+            if (!isFinalized)
             {
-                _logger.LogWarning("[PaymentService] Auto-finalize basarisiz: {Error}", finalize.ErrorMessage);
+                _logger.LogWarning("[PaymentService] Auto-finalize basarisiz veya status uygunsuz: {Error}", finalize.ErrorMessage);
                 _db.BookingLogs.Add(BuildLog(bookingId, sessionId, sessionToken,
-                    "FinalizeShopping_Auto", isSuccess: false, error: finalize.ErrorMessage));
+                    "FinalizeShopping_Auto", isSuccess: false,
+                    error: Truncate(finalize.ErrorMessage ?? $"Status '{finalize.Status}' biletleme icin uygun degil.", 500)));
                 return;
             }
 
             result.AutoFinalized = true;
             result.FinalizeStatus = finalize.Status;
+            result.PNR = finalize.BookingCode ?? result.PNR;
             result.Tickets = finalize.Tickets ?? new();
 
             if (booking == null) return;
