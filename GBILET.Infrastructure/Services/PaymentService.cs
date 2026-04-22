@@ -113,11 +113,11 @@ public class PaymentService : IPaymentService
             payment.Status = "Failed";
             if (booking != null)
             {
-                booking.LastError = bbResponse.ErrorMessage;
+                booking.LastError = Truncate(bbResponse.ErrorMessage, 500);
                 booking.UpdatedAt = DateTime.UtcNow;
             }
             _db.BookingLogs.Add(BuildLog(pay.BookingId, pay.SessionId, pay.SessionToken,
-                logOp, isSuccess: false, error: bbResponse.ErrorMessage));
+                logOp, isSuccess: false, error: Truncate(bbResponse.ErrorMessage, 500)));
 
             await _db.SaveChangesAsync(ct);
             return result;
@@ -165,7 +165,7 @@ public class PaymentService : IPaymentService
         // Beklenmeyen durum — yine de sonuc don
         payment.Status = "Failed";
         _db.BookingLogs.Add(BuildLog(pay.BookingId, pay.SessionId, pay.SessionToken,
-            logOp, isSuccess: false, error: bbResponse.ErrorMessage ?? "Bilinmeyen odeme durumu."));
+            logOp, isSuccess: false, error: Truncate(bbResponse.ErrorMessage, 500) ?? "Bilinmeyen odeme durumu."));
         await _db.SaveChangesAsync(ct);
         return result;
     }
@@ -177,20 +177,29 @@ public class PaymentService : IPaymentService
 
         var pay = request.Payment;
 
-        MakePaymentResponse bbResponse;
-        try
+        // BiletBank'in Lidio gateway'i 3DS'i kendi tamamlar; callback'te Approved/Ok=true geldiyse
+        // ayrica MakePayment_Complete3DPayment SOAP cagrisina gerek yok (zaten servis bu action'i
+        // ContractFilter mismatch ile reddediyor). Sadece callback parametrelerini degerlendiriyoruz.
+        var bankParams = pay.BankResponseParameters ?? new Dictionary<string, string>();
+        var isApproved = ParseBoolParam(bankParams, "Approved") || ParseBoolParam(bankParams, "Ok");
+        var isFail = ParseBoolParam(bankParams, "Fail");
+        var bankErrorMessage = bankParams.TryGetValue("ErrorMessage", out var em) ? em : null;
+        var bankPaymentId = bankParams.TryGetValue("PaymentId", out var pid) ? pid : null;
+
+        var bbResponse = new MakePaymentResponse
         {
-            bbResponse = await _flightService.Complete3DPaymentAsync(pay);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[PaymentService] BiletBank Complete3DPayment exception. BookingId={BookingId}", pay.BookingId);
-            bbResponse = new MakePaymentResponse
-            {
-                HasError = true,
-                ErrorMessage = $"Complete3DPayment exception: {ex.Message}"
-            };
-        }
+            HasError = !isApproved || isFail,
+            IsPaymentSuccessful = isApproved && !isFail,
+            ErrorMessage = (!isApproved || isFail)
+                ? (bankErrorMessage ?? "3D Secure dogrulamasi onaylanmadi.")
+                : null,
+            PaymentReferenceId = bankPaymentId,
+            ShoppingFileId = pay.ShoppingFileId
+        };
+
+        _logger.LogInformation(
+            "[PaymentService] Complete3D callback evaluation. BookingId={BookingId}, Approved={Approved}, Fail={Fail}, IsSuccessful={IsSuccessful}",
+            pay.BookingId, isApproved, isFail, bbResponse.IsPaymentSuccessful);
 
         // Bu booking icin Pending3D olan Payment kaydini bul, yoksa yeni olustur.
         Payment payment = await FindOrCreatePaymentForBookingAsync(pay.BookingId, pay.ShoppingFileId, bbResponse, ct);
@@ -226,18 +235,18 @@ public class PaymentService : IPaymentService
         if (bbResponse.HasError || !bbResponse.IsPaymentSuccessful)
         {
             payment.Status = "Failed";
-            payment.ErrorMessage = bbResponse.ErrorMessage;
+            payment.ErrorMessage = Truncate(bbResponse.ErrorMessage, 500);
             payment.ErrorCode = CategorizeErrorCode(bbResponse.ErrorMessage);
             UpdateRawXml(payment, bbResponse);
 
             if (booking != null)
             {
                 booking.Status = "PaymentFailed";
-                booking.LastError = bbResponse.ErrorMessage;
+                booking.LastError = Truncate(bbResponse.ErrorMessage, 500);
                 booking.UpdatedAt = DateTime.UtcNow;
             }
             _db.BookingLogs.Add(BuildLog(pay.BookingId, pay.SessionId, pay.SessionToken,
-                "Complete3DPayment", isSuccess: false, error: bbResponse.ErrorMessage));
+                "Complete3DPayment", isSuccess: false, error: Truncate(bbResponse.ErrorMessage, 500)));
             await _db.SaveChangesAsync(ct);
             return result;
         }
@@ -274,6 +283,29 @@ public class PaymentService : IPaymentService
     // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// <summary>Postgres varchar(N) overflow'u onlemek icin string'i guvenle kirpar.</summary>
+    private static string? Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+        return value.Length <= maxLength ? value : value.Substring(0, maxLength);
+    }
+
+    /// <summary>Lidio callback bool parametresini parse eder ("true"/"True"/"1" -> true).</summary>
+    private static bool ParseBoolParam(IDictionary<string, string> dict, string key)
+    {
+        if (dict == null) return false;
+        foreach (var kvp in dict)
+        {
+            if (string.Equals(kvp.Key, key, StringComparison.OrdinalIgnoreCase))
+            {
+                var v = kvp.Value?.Trim();
+                if (string.IsNullOrEmpty(v)) return false;
+                return v.Equals("true", StringComparison.OrdinalIgnoreCase) || v == "1";
+            }
+        }
+        return false;
+    }
+
     private Payment BuildPaymentEntity(MakePaymentRequest req, MakePaymentResponse resp)
     {
         var maskedCard = MaskCardNumber(req.CreditCard?.CardNumber);
@@ -298,7 +330,7 @@ public class PaymentService : IPaymentService
             BiletBankPaymentId = resp.PaymentReferenceId,
             PaymentType = req.PaymentType,
             RedirectUrl = resp.ThreeDSecureUrl,
-            ErrorMessage = resp.ErrorMessage,
+            ErrorMessage = Truncate(resp.ErrorMessage, 500),
             ErrorCode = CategorizeErrorCode(resp.ErrorMessage),
             RawRequest = rawReq,
             RawResponse = resp.RawSoapResponse
@@ -330,7 +362,7 @@ public class PaymentService : IPaymentService
             ProviderTransactionId = resp.PaymentReferenceId,
             BiletBankPaymentId = resp.PaymentReferenceId,
             PaymentType = "CreditCard",
-            ErrorMessage = resp.ErrorMessage,
+            ErrorMessage = Truncate(resp.ErrorMessage, 500),
             ErrorCode = CategorizeErrorCode(resp.ErrorMessage),
             RawRequest = MaskRawXml(resp.RawSoapRequest),
             RawResponse = resp.RawSoapResponse
