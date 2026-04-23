@@ -241,16 +241,11 @@ public async Task<AdminUserDetailDto?> GetByIdAsync(Guid id, CancellationToken c
         string? userAgent,
         CancellationToken ct = default)
     {
-        // Kural 1: Kendi hesabini silemezsin
-        if (targetUserId == performedByUserId)
-        {
-            throw new InvalidOperationException("Kendi hesabınızı silemezsiniz.");
-        }
-
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == targetUserId, ct)
             ?? throw new KeyNotFoundException("Admin kullanıcı bulunamadı.");
 
-        // Kural 2: Son SuperAdmin'i silemezsin
+        // Kural: Son SuperAdmin'i silemezsin (kendisi dahil). Sistemde hic SuperAdmin
+        // kalmamasini onler — aksi halde admin paneline kimse giremez.
         if (user.Role == AdminRole.SuperAdmin)
         {
             var superAdminCount = await _db.AdminUsers
@@ -263,18 +258,19 @@ public async Task<AdminUserDetailDto?> GetByIdAsync(Guid id, CancellationToken c
         }
 
         var deletedUsername = user.Username;
+        var isSelfDelete = targetUserId == performedByUserId;
         _db.AdminUsers.Remove(user);
         await _db.SaveChangesAsync(ct);
 
         await LogAuditAsync(
-            performedByUserId, null, "AdminDeleted",
+            performedByUserId, null, isSelfDelete ? "AdminSelfDeleted" : "AdminDeleted",
             success: true, errorMessage: null,
             targetEntity: "AdminUser", targetId: targetUserId.ToString(),
             ipAddress: ipAddress, userAgent: userAgent,
-            details: $"Username={deletedUsername}, Role={user.Role}");
+            details: $"Username={deletedUsername}, Role={user.Role}, SelfDelete={isSelfDelete}");
 
-        _logger.LogInformation("Admin user {Username} deleted by {PerformedBy}",
-            deletedUsername, performedByUserId);
+        _logger.LogInformation("Admin user {Username} deleted by {PerformedBy} (selfDelete={SelfDelete})",
+            deletedUsername, performedByUserId, isSelfDelete);
     }
 
     // ============================================================
