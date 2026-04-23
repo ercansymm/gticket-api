@@ -33,7 +33,7 @@ public class Payment
     //  YENİ — BiletBank referansı
     public string? BiletBankPaymentId { get; set; }
 
-    //  YENİ — Ödeme tipi (RunningAccount / CreditCard / CreditCardDirect)
+    //  YENİ — Ödeme tipi (CreditCard / CreditCardDirect)
     public string? PaymentType { get; set; }
 
     //  YENİ — Hata kategorisi (filtre için)

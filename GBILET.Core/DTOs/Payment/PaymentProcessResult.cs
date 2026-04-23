@@ -21,7 +21,6 @@ public class PaymentProcessResult
 
     public string? PNR { get; set; }
     public string? BookingStatus { get; set; }
-    public decimal? RunningAccountBalance { get; set; }
     public decimal GrandTotal { get; set; }
 
     /// <summary>3D Secure HTML formu — gerekirse iframe icinde gosterilir.</summary>

@@ -60,7 +60,6 @@ public class AllocateResponse
     /// Odeme yontemleri
     /// </summary>
     public bool IsCreditCardPaymentEnabled { get; set; }
-    public bool IsRunningAccountPaymentEnabled { get; set; }
 
     /// <summary>
     /// Allocate response'taki yolcu bilgileri (T_Passenger).

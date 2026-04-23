@@ -98,7 +98,6 @@ public class PaymentService : IPaymentService
             PaymentReferenceId = bbResponse.PaymentReferenceId,
             PNR = bbResponse.PNR,
             BookingStatus = bbResponse.BookingStatus,
-            RunningAccountBalance = bbResponse.RunningAccountBalance,
             GrandTotal = bbResponse.GrandTotal,
             ThreeDSecureUrl = bbResponse.ThreeDSecureUrl,
             Is3DSecureRequired = bbResponse.Is3DSecureRequired,

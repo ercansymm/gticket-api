@@ -45,10 +45,6 @@ public class MakePaymentResponse
     /// </summary>
     public string? BookingStatus { get; set; }
 
-    /// <summary>
-    /// Cari hesap bakiyesi (RunningAccount odemelerinde doner)
-    /// </summary>
-    public decimal? RunningAccountBalance { get; set; }
 
     /// <summary>
     /// Odeme toplam tutari

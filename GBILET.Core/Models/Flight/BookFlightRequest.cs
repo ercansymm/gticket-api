@@ -1,12 +1,12 @@
 namespace GBILET.Core.Models.Flight;
 
 /// <summary>
-/// Tek request ile tüm uçuþ rezervasyon akýþýný baþlatan model.
+/// Tek request ile tï¿½m uï¿½uï¿½ rezervasyon akï¿½ï¿½ï¿½nï¿½ baï¿½latan model.
 /// Search ? Allocate ? UpdatePassengers ? MakePreBooking ? MakePayment ? FinalizeShopping
 /// </summary>
 public class BookFlightRequest
 {
-    // ?? Uçuþ Arama ??
+    // ?? Uï¿½uï¿½ Arama ??
     public string Origin { get; set; } = null!;
     public string Destination { get; set; } = null!;
     public DateTime DepartureDate { get; set; }
@@ -17,43 +17,44 @@ public class BookFlightRequest
     public int ChildCount { get; set; } = 0;
     public int InfantCount { get; set; } = 0;
 
-    // ?? Uçuþ Seçimi ??
+    // ?? Uï¿½uï¿½ Seï¿½imi ??
     /// <summary>
-    /// Hangi uçuþu seçmek istediðinizi belirler.
-    /// 0 = en ucuz uçuþ (varsayýlan).
+    /// Hangi uï¿½uï¿½u seï¿½mek istediï¿½inizi belirler.
+    /// 0 = en ucuz uï¿½uï¿½ (varsayï¿½lan).
     /// </summary>
     public int FlightIndex { get; set; } = 0;
 
     /// <summary>
     /// Branded fare paketi indexi.
-    /// 0 = en ucuz paket (varsayýlan).
+    /// 0 = en ucuz paket (varsayï¿½lan).
     /// </summary>
     public int BrandedFareIndex { get; set; } = 0;
 
     // ?? Yolcu Bilgileri ??
     public List<BookFlightPassenger> Passengers { get; set; } = [];
 
-    // ?? Ýletiþim ??
+    // ?? ï¿½letiï¿½im ??
     public string ContactEmail { get; set; } = null!;
     public string ContactPhone { get; set; } = null!;
 
-    // ?? Ödeme ??
+
+    // ?? Ã–deme ??
     /// <summary>
-    /// "RunningAccount" veya "CreditCard"
+    /// "CreditCard" veya "CreditCardDirect"
     /// </summary>
-    public string PaymentType { get; set; } = "RunningAccount";
+    public string PaymentType { get; set; } = "CreditCard";
 
     /// <summary>
     /// PaymentType = CreditCard ise zorunlu.
     /// </summary>
     public CreditCardInfo? CreditCard { get; set; }
 
-    // ?? Kullanýcý (opsiyonel) ??
+    // ?? Kullanï¿½cï¿½ (opsiyonel) ??
     public Guid? UserId { get; set; }
 
     /// <summary>
-    /// true ise ödeme ve biletleme de yapýlýr.
-    /// false ise sadece PreBooking'e kadar gidilir (ödeme yapýlmaz).
+    /// true ise ï¿½deme ve biletleme de yapï¿½lï¿½r.
+    /// false ise sadece PreBooking'e kadar gidilir (ï¿½deme yapï¿½lmaz).
     /// </summary>
     public bool AutoPayAndFinalize { get; set; } = true;
 }
