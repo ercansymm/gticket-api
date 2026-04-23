@@ -30,4 +30,11 @@ public interface IAdminUserManagementService
         string? ipAddress,
         string? userAgent,
         CancellationToken ct = default);
+
+    Task DeleteAsync(
+        Guid targetUserId,
+        Guid performedByUserId,
+        string? ipAddress,
+        string? userAgent,
+        CancellationToken ct = default);
 }

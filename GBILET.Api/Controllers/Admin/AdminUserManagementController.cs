@@ -148,6 +148,31 @@ public class AdminUserManagementController : ControllerBase
     }
 
     // ============================================================
+    // DELETE /api/admin/users/{id}
+    // ============================================================
+    [HttpDelete("{id:guid}")]
+    [EnableRateLimiting("admin-general")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var performedBy = GetUserIdFromClaims();
+        if (performedBy == null) return Unauthorized();
+
+        try
+        {
+            await _service.DeleteAsync(id, performedBy.Value, GetIp(), GetUserAgent(), ct);
+            return Ok(new { message = "Admin kullanıcı silindi." });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // ============================================================
     // Helpers
     // ============================================================
     private Guid? GetUserIdFromClaims()

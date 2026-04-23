@@ -232,6 +232,52 @@ public async Task<AdminUserDetailDto?> GetByIdAsync(Guid id, CancellationToken c
     }
 
     // ============================================================
+    // DELETE
+    // ============================================================
+    public async Task DeleteAsync(
+        Guid targetUserId,
+        Guid performedByUserId,
+        string? ipAddress,
+        string? userAgent,
+        CancellationToken ct = default)
+    {
+        // Kural 1: Kendi hesabini silemezsin
+        if (targetUserId == performedByUserId)
+        {
+            throw new InvalidOperationException("Kendi hesabınızı silemezsiniz.");
+        }
+
+        var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == targetUserId, ct)
+            ?? throw new KeyNotFoundException("Admin kullanıcı bulunamadı.");
+
+        // Kural 2: Son SuperAdmin'i silemezsin
+        if (user.Role == AdminRole.SuperAdmin)
+        {
+            var superAdminCount = await _db.AdminUsers
+                .CountAsync(u => u.Role == AdminRole.SuperAdmin, ct);
+            if (superAdminCount <= 1)
+            {
+                throw new InvalidOperationException(
+                    "Sistemdeki son SuperAdmin'i silemezsiniz.");
+            }
+        }
+
+        var deletedUsername = user.Username;
+        _db.AdminUsers.Remove(user);
+        await _db.SaveChangesAsync(ct);
+
+        await LogAuditAsync(
+            performedByUserId, null, "AdminDeleted",
+            success: true, errorMessage: null,
+            targetEntity: "AdminUser", targetId: targetUserId.ToString(),
+            ipAddress: ipAddress, userAgent: userAgent,
+            details: $"Username={deletedUsername}, Role={user.Role}");
+
+        _logger.LogInformation("Admin user {Username} deleted by {PerformedBy}",
+            deletedUsername, performedByUserId);
+    }
+
+    // ============================================================
     // Helpers
     // ============================================================
     private static AdminUserListItemDto ToDto(AdminUser u) => new()
