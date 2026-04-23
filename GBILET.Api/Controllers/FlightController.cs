@@ -837,10 +837,13 @@ public class FlightController : ControllerBase
 
             if (!result.HasError && result.IsPaymentSuccessful)
             {
-                var pnrForRedirect = result.InternalPnr ?? result.PNR ?? "";
+                // BB PNR (havayolu/BiletBank kodu) ve InternalPnr (ATA PNR) ayri parametre
+                // olarak gonderiliyor. Frontend ATA PNR'i oncelikli gosteriyor.
+                var bbPnr = result.PNR ?? "";
+                var internalPnr = result.InternalPnr ?? "";
                 // Dogrudan /checkout/success'e yonlendiriyoruz (eski /payment/result ara
                 // ekrani arada gereksiz bir loading + buyuk tik gosteriyordu).
-                var successUrl = $"{_frontendUrl}/checkout/success?bookingId={bookingId}&pnr={Uri.EscapeDataString(pnrForRedirect)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
+                var successUrl = $"{_frontendUrl}/checkout/success?bookingId={bookingId}&pnr={Uri.EscapeDataString(bbPnr)}&internalPnr={Uri.EscapeDataString(internalPnr)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
                 return Redirect(successUrl);
             }
             else
@@ -1241,6 +1244,27 @@ public class FlightController : ControllerBase
             var booking = await _bookingRepository.GetByIdAsync(bookingId);
             if (booking == null)
                 return NotFound(new { error = $"Booking bulunamadi: {bookingId}" });
+
+            // Self-heal: Odenmis veya biletlenmis booking'lerde InternalPnr (ATA PNR) eksikse
+            // burada uretip kaydet. Boylece frontend her zaman ATA PNR'i alabilir.
+            if (string.IsNullOrEmpty(booking.InternalPnr) &&
+                (string.Equals(booking.Status, "Paid", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(booking.Status, "Ticketed", StringComparison.OrdinalIgnoreCase) ||
+                 booking.IsFinalized))
+            {
+                try
+                {
+                    var newInternalPnr = await PnrGenerator.GenerateUniqueAsync(_bookingRepository);
+                    await _bookingRepository.UpdateInternalPnrAsync(bookingId, newInternalPnr);
+                    booking.InternalPnr = newInternalPnr;
+                    _logger.LogInformation("[GetBooking] Eksik InternalPnr otomatik uretildi. BookingId={BookingId}, InternalPnr={InternalPnr}",
+                        bookingId, newInternalPnr);
+                }
+                catch (Exception pnrEx)
+                {
+                    _logger.LogWarning(pnrEx, "[GetBooking] InternalPnr self-heal basarisiz. BookingId={BookingId}", bookingId);
+                }
+            }
 
             return Ok(new
             {

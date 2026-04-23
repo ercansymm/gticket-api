@@ -244,7 +244,14 @@ public class SupportTicketService : ISupportTicketService
                 BookingPnr = t.Booking != null ? t.Booking.PNR : null,
                 UserId = t.UserId,
                 GuestSessionId = t.GuestSessionId,
-                UserFullName = t.User != null ? t.User.FullName : null,
+                // Misafir ticket'larda User boş; passenger adı ilk mesajın SenderDisplayName alanına yazılır
+                UserFullName = t.User != null
+                    ? t.User.FullName
+                    : t.Messages
+                        .OrderBy(m => m.CreatedAt)
+                        .Where(m => m.SenderType == SupportMessageSenderType.Customer)
+                        .Select(m => m.SenderDisplayName)
+                        .FirstOrDefault(),
                 UserEmail = t.User != null ? t.User.Email : null,
                 MessageCount = t.Messages.Count,
                 LastMessagePreview = t.Messages
@@ -624,7 +631,13 @@ public class SupportTicketService : ISupportTicketService
             BookingStatus = ticket.Booking?.Status,
             UserId = ticket.UserId,
             GuestSessionId = ticket.GuestSessionId,
-            UserFullName = ticket.User?.FullName,
+            // Misafir ticket'larda User boş; passenger adını ilk müşteri mesajının SenderDisplayName alanından çek
+            UserFullName = ticket.User?.FullName
+                ?? ticket.Messages
+                    .Where(m => m.SenderType == SupportMessageSenderType.Customer)
+                    .OrderBy(m => m.CreatedAt)
+                    .Select(m => m.SenderDisplayName)
+                    .FirstOrDefault(),
             UserEmail = ticket.User?.Email,
             UserPhone = ticket.User?.Phone,
             ClosedAt = ticket.ClosedAt,
