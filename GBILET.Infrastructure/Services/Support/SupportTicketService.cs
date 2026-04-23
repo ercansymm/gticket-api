@@ -380,19 +380,54 @@ public class SupportTicketService : ISupportTicketService
             .FirstOrDefaultAsync(ct);
 
         if (booking == null)
+        {
+            _logger.LogWarning("Guest lookup: PNR {Pnr} ile eşleşen Booking bulunamadı.", pnrTrim);
             return null;
+        }
 
-        // Yolculardan biri girilen soyadla eşleşmeli (case-insensitive, Türkçe duyarlı değil)
+        // Yolculardan biri girilen soyadla eşleşmeli.
+        // Türkçe karakterler (İ/ı, Ş/ş, Ğ/ğ, Ü/ü, Ö/ö, Ç/ç) normalize edilerek karşılaştırılır;
+        // OrdinalIgnoreCase Türkçe karakter eşleşmelerini garanti etmez.
+        var surnameNorm = NormalizeForCompare(surnameTrim);
+
         var matched = booking.Passengers
             .FirstOrDefault(p =>
                 !string.IsNullOrWhiteSpace(p.LastName) &&
-                string.Equals(p.LastName.Trim(), surnameTrim, StringComparison.OrdinalIgnoreCase));
+                NormalizeForCompare(p.LastName) == surnameNorm);
 
         if (matched == null)
+        {
+            _logger.LogWarning(
+                "Guest lookup: PNR {Pnr} bulundu (BookingId={BookingId}) ama soyad eşleşmedi. Girilen='{Surname}' Yolcular=[{Names}]",
+                pnrTrim, booking.Id, surnameTrim,
+                string.Join(", ", booking.Passengers.Select(p => p.LastName)));
             return null;
+        }
 
         var displayName = $"{matched.FirstName} {matched.LastName}".Trim();
         return (booking.Id, displayName);
+    }
+
+    // Türkçe duyarlı normalize: trim + Türkçe harfleri ASCII karşılıklarına çevirir + upper-invariant
+    private static string NormalizeForCompare(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        var s = value.Trim();
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var ch in s)
+        {
+            switch (ch)
+            {
+                case 'İ': case 'I': case 'ı': case 'i': sb.Append('I'); break;
+                case 'Ş': case 'ş': sb.Append('S'); break;
+                case 'Ğ': case 'ğ': sb.Append('G'); break;
+                case 'Ü': case 'ü': sb.Append('U'); break;
+                case 'Ö': case 'ö': sb.Append('O'); break;
+                case 'Ç': case 'ç': sb.Append('C'); break;
+                default: sb.Append(char.ToUpperInvariant(ch)); break;
+            }
+        }
+        return sb.ToString();
     }
 
     // ============================================================
