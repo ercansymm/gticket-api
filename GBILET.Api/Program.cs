@@ -111,6 +111,20 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
+    // YENİ — Misafir destek lookup: brute-force koruması (PNR + Soyad)
+    // 5 deneme / dk + 30 deneme / saat per IP
+    options.AddPolicy("guest-support-lookup", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        });
+    });
+
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.ContentType = "application/json";
@@ -204,6 +218,8 @@ builder.Services.AddSingleton<ITotpService, TotpService>();   // Stateless
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
+builder.Services.AddSingleton<IGuestSupportTokenService, GuestSupportTokenService>();
+builder.Services.AddDataProtection(); // GuestSupportTokenService bunu kullanır
 builder.Services.AddMemoryCache();
 
 builder.Services

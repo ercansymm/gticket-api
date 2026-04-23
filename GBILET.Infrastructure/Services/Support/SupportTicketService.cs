@@ -119,6 +119,7 @@ public class SupportTicketService : ISupportTicketService
                 BookingId = t.BookingId,
                 BookingPnr = t.Booking != null ? t.Booking.PNR : null,
                 UserId = t.UserId,
+                GuestSessionId = t.GuestSessionId,
                 UserFullName = t.User != null ? t.User.FullName : null,
                 UserEmail = t.User != null ? t.User.Email : null,
                 MessageCount = t.Messages.Count,
@@ -242,6 +243,7 @@ public class SupportTicketService : ISupportTicketService
                 BookingId = t.BookingId,
                 BookingPnr = t.Booking != null ? t.Booking.PNR : null,
                 UserId = t.UserId,
+                GuestSessionId = t.GuestSessionId,
                 UserFullName = t.User != null ? t.User.FullName : null,
                 UserEmail = t.User != null ? t.User.Email : null,
                 MessageCount = t.Messages.Count,
@@ -357,6 +359,206 @@ public class SupportTicketService : ISupportTicketService
     }
 
     // ============================================================
+    // GUEST: LOOKUP (PNR + Soyad)
+    // ============================================================
+    public async Task<(Guid BookingId, string PassengerDisplayName)?> LookupGuestBookingAsync(
+        string pnr,
+        string surname,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(pnr) || string.IsNullOrWhiteSpace(surname))
+            return null;
+
+        var pnrTrim = pnr.Trim().ToUpperInvariant();
+        var surnameTrim = surname.Trim();
+
+        // PNR'a göre booking bul
+        var booking = await _db.Bookings
+            .AsNoTracking()
+            .Include(b => b.Passengers)
+            .Where(b => b.PNR != null && b.PNR.ToUpper() == pnrTrim)
+            .FirstOrDefaultAsync(ct);
+
+        if (booking == null)
+            return null;
+
+        // Yolculardan biri girilen soyadla eşleşmeli (case-insensitive, Türkçe duyarlı değil)
+        var matched = booking.Passengers
+            .FirstOrDefault(p =>
+                !string.IsNullOrWhiteSpace(p.LastName) &&
+                string.Equals(p.LastName.Trim(), surnameTrim, StringComparison.OrdinalIgnoreCase));
+
+        if (matched == null)
+            return null;
+
+        var displayName = $"{matched.FirstName} {matched.LastName}".Trim();
+        return (booking.Id, displayName);
+    }
+
+    // ============================================================
+    // GUEST: LIST (BookingId scope)
+    // ============================================================
+    public async Task<List<SupportTicketListItemDto>> GetByGuestBookingAsync(
+        Guid bookingId,
+        CancellationToken ct = default)
+    {
+        return await _db.SupportTickets
+            .AsNoTracking()
+            .Where(t => t.BookingId == bookingId)
+            .OrderByDescending(t => t.LastActivityAt)
+            .Select(t => new SupportTicketListItemDto
+            {
+                Id = t.Id,
+                TicketNumber = t.TicketNumber,
+                Type = t.Type,
+                Subject = t.Subject,
+                Status = t.Status,
+                BookingId = t.BookingId,
+                BookingPnr = t.Booking != null ? t.Booking.PNR : null,
+                UserId = t.UserId,
+                GuestSessionId = t.GuestSessionId,
+                UserFullName = t.User != null ? t.User.FullName : null,
+                UserEmail = t.User != null ? t.User.Email : null,
+                MessageCount = t.Messages.Count,
+                LastMessagePreview = t.Messages
+                    .OrderByDescending(m => m.CreatedAt)
+                    .Select(m => m.Body)
+                    .FirstOrDefault(),
+                LastMessageSenderType = t.Messages
+                    .OrderByDescending(m => m.CreatedAt)
+                    .Select(m => (SupportMessageSenderType?)m.SenderType)
+                    .FirstOrDefault(),
+                LastActivityAt = t.LastActivityAt,
+                CreatedAt = t.CreatedAt
+            })
+            .ToListAsync(ct);
+    }
+
+    // ============================================================
+    // GUEST: CREATE
+    // ============================================================
+    public async Task<SupportTicketDetailDto> CreateByGuestAsync(
+        Guid bookingId,
+        string passengerDisplayName,
+        GuestCreateSupportTicketRequest request,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Subject))
+            throw new InvalidOperationException("Konu boş olamaz.");
+        if (string.IsNullOrWhiteSpace(request.Message))
+            throw new InvalidOperationException("Mesaj boş olamaz.");
+        if (request.Subject.Length > 200)
+            throw new InvalidOperationException("Konu en fazla 200 karakter olabilir.");
+
+        var booking = await _db.Bookings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == bookingId, ct)
+            ?? throw new KeyNotFoundException("Rezervasyon bulunamadı.");
+
+        var now = DateTime.UtcNow;
+        var ticketId = Guid.NewGuid();
+        var ticketNumber = await GenerateTicketNumberAsync(ct);
+
+        var ticket = new SupportTicket
+        {
+            Id = ticketId,
+            TicketNumber = ticketNumber,
+            UserId = booking.UserId,                  // Booking üyenin ise yine User'a bağlanır
+            GuestSessionId = booking.GuestSessionId,  // Misafir booking ise GuestSession'a bağlanır
+            BookingId = bookingId,
+            Type = request.Type,
+            Subject = request.Subject.Trim(),
+            Status = SupportTicketStatus.Open,
+            CreatedAt = now,
+            UpdatedAt = now,
+            LastActivityAt = now
+        };
+
+        var firstMessage = new SupportTicketMessage
+        {
+            Id = Guid.NewGuid(),
+            TicketId = ticketId,
+            SenderType = SupportMessageSenderType.Customer,
+            SenderId = booking.UserId,                // Misafir ise null
+            SenderDisplayName = string.IsNullOrWhiteSpace(passengerDisplayName)
+                ? "Misafir"
+                : passengerDisplayName,
+            Body = request.Message.Trim(),
+            CreatedAt = now
+        };
+
+        _db.SupportTickets.Add(ticket);
+        _db.SupportTicketMessages.Add(firstMessage);
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Guest support ticket {TicketNumber} created for booking {BookingId} (type={Type})",
+            ticketNumber, bookingId, request.Type);
+
+        return (await LoadDetailAsync(ticketId, ct))!;
+    }
+
+    // ============================================================
+    // GUEST: DETAIL (BookingId scope)
+    // ============================================================
+    public async Task<SupportTicketDetailDto?> GetDetailForGuestAsync(
+        Guid ticketId,
+        Guid bookingId,
+        CancellationToken ct = default)
+    {
+        var matches = await _db.SupportTickets
+            .AnyAsync(t => t.Id == ticketId && t.BookingId == bookingId, ct);
+
+        if (!matches)
+            return null;
+
+        return await LoadDetailAsync(ticketId, ct);
+    }
+
+    // ============================================================
+    // GUEST: ADD MESSAGE
+    // ============================================================
+    public async Task<SupportTicketMessageDto> AddMessageByGuestAsync(
+        Guid ticketId,
+        Guid bookingId,
+        string passengerDisplayName,
+        AddSupportMessageRequest request,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Body))
+            throw new InvalidOperationException("Mesaj boş olamaz.");
+
+        var ticket = await _db.SupportTickets
+            .FirstOrDefaultAsync(t => t.Id == ticketId && t.BookingId == bookingId, ct)
+            ?? throw new KeyNotFoundException("Destek talebi bulunamadı.");
+
+        if (ticket.Status == SupportTicketStatus.Closed)
+            throw new InvalidOperationException("Kapalı bir talebe mesaj ekleyemezsiniz.");
+
+        var now = DateTime.UtcNow;
+        var message = new SupportTicketMessage
+        {
+            Id = Guid.NewGuid(),
+            TicketId = ticketId,
+            SenderType = SupportMessageSenderType.Customer,
+            SenderId = ticket.UserId,
+            SenderDisplayName = string.IsNullOrWhiteSpace(passengerDisplayName)
+                ? "Misafir"
+                : passengerDisplayName,
+            Body = request.Body.Trim(),
+            CreatedAt = now
+        };
+
+        ticket.LastActivityAt = now;
+        ticket.UpdatedAt = now;
+
+        _db.SupportTicketMessages.Add(message);
+        await _db.SaveChangesAsync(ct);
+
+        return ToMessageDto(message);
+    }
+
+    // ============================================================
     // Helpers
     // ============================================================
 
@@ -386,6 +588,7 @@ public class SupportTicketService : ISupportTicketService
             BookingDestination = ticket.Booking?.Destination,
             BookingStatus = ticket.Booking?.Status,
             UserId = ticket.UserId,
+            GuestSessionId = ticket.GuestSessionId,
             UserFullName = ticket.User?.FullName,
             UserEmail = ticket.User?.Email,
             UserPhone = ticket.User?.Phone,

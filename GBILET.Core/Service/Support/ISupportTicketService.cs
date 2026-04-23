@@ -50,4 +50,39 @@ public interface ISupportTicketService
         Guid ticketId,
         Guid adminUserId,
         CancellationToken ct = default);
+
+    // ============================================================
+    // GUEST (üye olmayan müşteri — PNR + Soyad ile erişim)
+    // ============================================================
+
+    /// <summary>
+    /// PNR + Soyad doğrulaması. Eşleşme varsa BookingId + yolcu ad-soyadı döner;
+    /// yoksa null. Brute force ve enumerasyona karşı çağıran rate limit uygulamalıdır.
+    /// </summary>
+    Task<(Guid BookingId, string PassengerDisplayName)?> LookupGuestBookingAsync(
+        string pnr,
+        string surname,
+        CancellationToken ct = default);
+
+    Task<List<SupportTicketListItemDto>> GetByGuestBookingAsync(
+        Guid bookingId,
+        CancellationToken ct = default);
+
+    Task<SupportTicketDetailDto> CreateByGuestAsync(
+        Guid bookingId,
+        string passengerDisplayName,
+        GuestCreateSupportTicketRequest request,
+        CancellationToken ct = default);
+
+    Task<SupportTicketDetailDto?> GetDetailForGuestAsync(
+        Guid ticketId,
+        Guid bookingId,
+        CancellationToken ct = default);
+
+    Task<SupportTicketMessageDto> AddMessageByGuestAsync(
+        Guid ticketId,
+        Guid bookingId,
+        string passengerDisplayName,
+        AddSupportMessageRequest request,
+        CancellationToken ct = default);
 }

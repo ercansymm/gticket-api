@@ -365,6 +365,7 @@ public class GTicketDbContext : DbContext
 
             e.HasIndex(t => t.TicketNumber).IsUnique();
             e.HasIndex(t => t.UserId);
+            e.HasIndex(t => t.GuestSessionId);
             e.HasIndex(t => t.Status);
             e.HasIndex(t => t.Type);
             e.HasIndex(t => t.LastActivityAt);
@@ -373,7 +374,14 @@ public class GTicketDbContext : DbContext
             e.HasOne(t => t.User)
                 .WithMany()
                 .HasForeignKey(t => t.UserId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne<GBILET.Core.Entities.GuestSession>()
+                .WithMany()
+                .HasForeignKey(t => t.GuestSessionId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
             e.HasOne(t => t.Booking)
                 .WithMany()

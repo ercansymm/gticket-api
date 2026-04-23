@@ -8,7 +8,7 @@ public class SupportTicketMessage
 
     // Gönderen
     public SupportMessageSenderType SenderType { get; set; }
-    public Guid SenderId { get; set; }  // Customer ise User.Id, Admin ise AdminUser.Id
+    public Guid? SenderId { get; set; }  // Customer→User.Id, Admin→AdminUser.Id, misafir müşteri→null
 
     // Görünen ad (snapshot — User/AdminUser silinse bile görünür)
     public string SenderDisplayName { get; set; } = null!;

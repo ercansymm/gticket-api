@@ -9,8 +9,11 @@ public class SupportTicket
     // Ticket numarası (örn: "TKT-2026-00001")
     public string TicketNumber { get; set; } = null!;
 
-    // Ticket sahibi (müşteri)
-    public Guid UserId { get; set; }
+    // Ticket sahibi (müşteri) — üye müşteri ise dolu, misafir ise null
+    public Guid? UserId { get; set; }
+
+    // Misafir müşteri ise dolu (Booking.GuestSessionId)
+    public Guid? GuestSessionId { get; set; }
 
     // Opsiyonel rezervasyon bağlantısı
     public Guid? BookingId { get; set; }

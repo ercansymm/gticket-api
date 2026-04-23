@@ -17,8 +17,10 @@ public class SupportTicketListItemDto
     public Guid? BookingId { get; set; }
     public string? BookingPnr { get; set; }
 
-    // Müşteri bilgisi (admin listesinde gösterilir)
-    public Guid UserId { get; set; }
+    // Müşteri bilgisi (admin listesinde gösterilir; misafir ise UserId null)
+    public Guid? UserId { get; set; }
+    public Guid? GuestSessionId { get; set; }
+    public bool IsGuest => UserId == null;
     public string? UserFullName { get; set; }
     public string? UserEmail { get; set; }
 
@@ -49,8 +51,10 @@ public class SupportTicketDetailDto
     public string? BookingDestination { get; set; }
     public string? BookingStatus { get; set; }
 
-    // Müşteri bilgisi
-    public Guid UserId { get; set; }
+    // Müşteri bilgisi (misafir ise UserId null)
+    public Guid? UserId { get; set; }
+    public Guid? GuestSessionId { get; set; }
+    public bool IsGuest => UserId == null;
     public string? UserFullName { get; set; }
     public string? UserEmail { get; set; }
     public string? UserPhone { get; set; }
@@ -74,7 +78,7 @@ public class SupportTicketMessageDto
 {
     public Guid Id { get; set; }
     public SupportMessageSenderType SenderType { get; set; }
-    public Guid SenderId { get; set; }
+    public Guid? SenderId { get; set; }
     public string SenderDisplayName { get; set; } = null!;
     public string Body { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
@@ -121,4 +125,33 @@ public class PagedResult<T>
     public int Page { get; set; }
     public int PageSize { get; set; }
     public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+}
+
+// ============================================================
+// GUEST: PNR + Soyad ile arama (lookup)
+// ============================================================
+public class GuestSupportLookupRequest
+{
+    public string Pnr { get; set; } = null!;
+    public string Surname { get; set; } = null!;
+}
+
+public class GuestSupportLookupResponse
+{
+    public string Token { get; set; } = null!;       // 30 dk geçerli access token
+    public DateTime ExpiresAt { get; set; }
+    public Guid BookingId { get; set; }
+    public string Pnr { get; set; } = null!;
+    public string PassengerDisplayName { get; set; } = null!;
+    public int TicketCount { get; set; }
+}
+
+// ============================================================
+// GUEST: Yeni talep oluştur
+// ============================================================
+public class GuestCreateSupportTicketRequest
+{
+    public SupportTicketType Type { get; set; }
+    public string Subject { get; set; } = null!;
+    public string Message { get; set; } = null!;
 }
