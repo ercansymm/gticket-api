@@ -55,8 +55,16 @@ public class CustomerSupportController : ControllerBase
         if (userId == null)
             return Unauthorized(new { error = "Oturum bulunamadı." });
 
-        var result = await _support.GetByCustomerAsync(userId.Value, ct);
-        return Ok(result);
+        try
+        {
+            var result = await _support.GetByCustomerAsync(userId.Value, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error listing customer support tickets for {UserId}", userId);
+            return StatusCode(500, new { error = "Talepler getirilirken bir hata oluştu." });
+        }
     }
 
     [HttpGet("tickets/{id:guid}")]
