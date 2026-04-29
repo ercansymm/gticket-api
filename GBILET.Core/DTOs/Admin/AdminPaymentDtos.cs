@@ -5,7 +5,7 @@ namespace GBILET.Core.DTOs.Admin;
 public class AdminPaymentListItem
 {
     public Guid Id { get; set; }
-    public Guid BookingId { get; set; }
+    public Guid? BookingId { get; set; }
 
     // Booking referansları (arama / görüntüleme)
     public string? Pnr { get; set; }
@@ -42,7 +42,7 @@ public class AdminPaymentListResponse
 public class AdminPaymentDetail
 {
     public Guid Id { get; set; }
-    public Guid BookingId { get; set; }
+    public Guid? BookingId { get; set; }
 
     // Booking
     public string? Pnr { get; set; }

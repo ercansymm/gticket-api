@@ -71,11 +71,9 @@ public class PaymentService : IPaymentService
             };
         }
 
-        // ── Payment kaydi ── (basari, hata veya 3D-bekliyor — her durumda yaz)
-        var payment = BuildPaymentEntity(pay, bbResponse);
-        _db.Payments.Add(payment);
-
-        // Booking'i (mumkunse) cek
+        // ── Booking'i once cek (varsa) ──
+        // Payment.BookingId FK iceren bir kolon — gecersiz/sahte BookingId ile insert edersek
+        // FK violation aliriz. Bu yuzden once Booking'in DB'de var oldugundan emin olalim.
         Booking? booking = null;
         if (pay.BookingId.HasValue && pay.BookingId.Value != Guid.Empty)
         {
@@ -83,7 +81,20 @@ public class PaymentService : IPaymentService
                 .Include(b => b.Passengers)
                 .Include(b => b.FlightSegments)
                 .FirstOrDefaultAsync(b => b.Id == pay.BookingId.Value, ct);
+
+            if (booking == null)
+            {
+                _logger.LogWarning(
+                    "[PaymentService] BookingId={BookingId} DB'de bulunamadi; Payment kaydi BookingId=null ile yazilacak.",
+                    pay.BookingId.Value);
+            }
         }
+
+        // ── Payment kaydi ── (basari, hata veya 3D-bekliyor — her durumda yaz)
+        var payment = BuildPaymentEntity(pay, bbResponse);
+        // Booking yoksa FK violation almamak icin BookingId'yi null'a cek
+        payment.BookingId = booking?.Id;
+        _db.Payments.Add(payment);
 
         var logOp = "MakePayment";
         var result = new PaymentProcessResult
@@ -442,7 +453,8 @@ public class PaymentService : IPaymentService
         return new Payment
         {
             Id = Guid.NewGuid(),
-            BookingId = req.BookingId ?? Guid.Empty,
+            // FK olusabilir — caller tarafi Booking varligini dogruladiktan sonra override edebilir.
+            BookingId = (req.BookingId.HasValue && req.BookingId.Value != Guid.Empty) ? req.BookingId : null,
             Amount = req.Amount,
             Currency = req.Currency ?? "TRY",
             CardHolderName = req.CreditCard?.CardHolderName,
@@ -467,6 +479,7 @@ public class PaymentService : IPaymentService
     private async Task<Payment> FindOrCreatePaymentForBookingAsync(
         Guid? bookingId, string? shoppingFileId, MakePaymentResponse resp, CancellationToken ct)
     {
+        Guid? validBookingId = null;
         if (bookingId.HasValue && bookingId.Value != Guid.Empty)
         {
             var existing = await _db.Payments
@@ -475,12 +488,22 @@ public class PaymentService : IPaymentService
                 .FirstOrDefaultAsync(ct);
             if (existing != null)
                 return existing;
+
+            // Booking gercekten DB'de var mi? Yoksa FK violation'i onlemek icin null kullan.
+            var bookingExists = await _db.Bookings
+                .AnyAsync(b => b.Id == bookingId.Value, ct);
+            if (bookingExists)
+                validBookingId = bookingId.Value;
+            else
+                _logger.LogWarning(
+                    "[PaymentService] FindOrCreatePayment: BookingId={BookingId} DB'de yok; Payment BookingId=null ile yazilacak.",
+                    bookingId.Value);
         }
 
         var fresh = new Payment
         {
             Id = Guid.NewGuid(),
-            BookingId = bookingId ?? Guid.Empty,
+            BookingId = validBookingId,
             Amount = resp.GrandTotal,
             Currency = resp.Currency ?? "TRY",
             Status = "Pending",

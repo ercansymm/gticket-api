@@ -84,7 +84,7 @@ public class GTicketDbContext : DbContext
             e.HasOne(b => b.GuestSession).WithMany(g => g.Bookings).HasForeignKey(b => b.GuestSessionId).IsRequired(false);
             e.HasMany(b => b.Passengers).WithOne(p => p.Booking).HasForeignKey(p => p.BookingId);
             e.HasMany(b => b.FlightSegments).WithOne(s => s.Booking).HasForeignKey(s => s.BookingId);
-            e.HasMany(b => b.Payments).WithOne(p => p.Booking).HasForeignKey(p => p.BookingId);
+            e.HasMany(b => b.Payments).WithOne(p => p.Booking!).HasForeignKey(p => p.BookingId).IsRequired(false);
             e.HasMany(b => b.FareDetails).WithOne(f => f.Booking).HasForeignKey(f => f.BookingId);
             e.HasOne(b => b.BillingInfo).WithOne(bi => bi.Booking).HasForeignKey<BillingInfo>(bi => bi.BookingId);
             e.HasMany(b => b.BookingLogs).WithOne(l => l.Booking).HasForeignKey(l => l.BookingId);

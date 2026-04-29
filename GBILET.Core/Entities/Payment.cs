@@ -9,7 +9,7 @@ namespace GBILET.Core.Entities;
 public class Payment
 {
     public Guid Id { get; set; }
-    public Guid BookingId { get; set; }
+    public Guid? BookingId { get; set; }
     public decimal Amount { get; set; }
     public string Currency { get; set; } = "TRY";
     public string? CardHolderName { get; set; }
@@ -48,5 +48,5 @@ public class Payment
     public DateTime? RefundedAt { get; set; }
     public decimal? RefundAmount { get; set; }
 
-    public Booking Booking { get; set; }
+    public Booking? Booking { get; set; }
 }

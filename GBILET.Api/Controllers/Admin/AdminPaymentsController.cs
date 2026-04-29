@@ -108,19 +108,21 @@ public class AdminPaymentsController : ControllerBase
             return NotFound(new { error = "Ödeme bulunamadı." });
 
         var booking = payment.Booking;
-        var firstPax = booking.Passengers.OrderBy(x => x.SequenceNo).FirstOrDefault();
-        var bookingCat = BookingStatusMapper.Categorize(booking.Status, booking.IsFinalized);
+        var firstPax = booking?.Passengers.OrderBy(x => x.SequenceNo).FirstOrDefault();
+        var bookingCat = booking != null
+            ? BookingStatusMapper.Categorize(booking.Status, booking.IsFinalized)
+            : BookingStatusMapper.Categorize("Unknown", false);
 
         var detail = new AdminPaymentDetail
         {
             Id = payment.Id,
             BookingId = payment.BookingId,
-            Pnr = booking.PNR,
-            InternalPnr = booking.InternalPnr,
-            Route = $"{booking.Origin ?? "?"} → {booking.Destination ?? "?"}",
-            AirlineCode = booking.AirlineCode,
-            FlightNumber = booking.FlightNumber,
-            BookingStatus = booking.Status,
+            Pnr = booking?.PNR,
+            InternalPnr = booking?.InternalPnr,
+            Route = $"{booking?.Origin ?? "?"} → {booking?.Destination ?? "?"}",
+            AirlineCode = booking?.AirlineCode,
+            FlightNumber = booking?.FlightNumber,
+            BookingStatus = booking?.Status,
             BookingStatusCategory = BookingStatusMapper.CategoryToString(bookingCat),
 
             CustomerName = firstPax != null ? $"{firstPax.FirstName} {firstPax.LastName}" : "—",
@@ -227,15 +229,15 @@ public class AdminPaymentsController : ControllerBase
     private static AdminPaymentListItem MapListItem(Core.Entities.Payment p)
     {
         var booking = p.Booking;
-        var firstPax = booking.Passengers.OrderBy(x => x.SequenceNo).FirstOrDefault();
+        var firstPax = booking?.Passengers.OrderBy(x => x.SequenceNo).FirstOrDefault();
 
         return new AdminPaymentListItem
         {
             Id = p.Id,
             BookingId = p.BookingId,
-            Pnr = booking.PNR,
-            InternalPnr = booking.InternalPnr,
-            Route = $"{booking.Origin ?? "?"} → {booking.Destination ?? "?"}",
+            Pnr = booking?.PNR,
+            InternalPnr = booking?.InternalPnr,
+            Route = $"{booking?.Origin ?? "?"} → {booking?.Destination ?? "?"}",
             CustomerName = firstPax != null ? $"{firstPax.FirstName} {firstPax.LastName}" : "—",
             Amount = p.Amount,
             Currency = p.Currency,
