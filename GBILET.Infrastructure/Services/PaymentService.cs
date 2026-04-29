@@ -114,6 +114,8 @@ public class PaymentService : IPaymentService
             if (booking != null)
             {
                 booking.LastError = Truncate(bbResponse.ErrorMessage, 500);
+                booking.Status = "PaymentFailed";
+                booking.PaymentAttemptCount++;
                 booking.UpdatedAt = DateTime.UtcNow;
             }
             _db.BookingLogs.Add(BuildLog(pay.BookingId, pay.SessionId, pay.SessionToken,
@@ -266,6 +268,7 @@ public class PaymentService : IPaymentService
             {
                 booking.Status = "PaymentFailed";
                 booking.LastError = Truncate(bbResponse.ErrorMessage, 500);
+                booking.PaymentAttemptCount++;
                 booking.UpdatedAt = DateTime.UtcNow;
             }
             _db.BookingLogs.Add(BuildLog(pay.BookingId, pay.SessionId, pay.SessionToken,

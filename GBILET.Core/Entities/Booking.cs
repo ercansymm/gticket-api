@@ -35,6 +35,14 @@ public class Booking
     public string? SessionId { get; set; }
     public string? SessionToken { get; set; }
     public string? ProductItemId { get; set; }
+    public string? ProductId { get; set; }
+    public string? ShoppingFileId { get; set; }
+
+    /// <summary>
+    /// Ayni rezervasyon icin kac kez odeme denemesi yapildi (3D fail vb.).
+    /// 3 deneme ustu retry'a izin verme.
+    /// </summary>
+    public int PaymentAttemptCount { get; set; } = 0;
 
     // Komisyon
     public decimal ServiceFee { get; set; } = 0;

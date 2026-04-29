@@ -408,6 +408,8 @@ public class FlightController : ControllerBase
                     TransactionId = Guid.NewGuid().ToString(),
                     SessionId = request.SessionId,
                     SessionToken = request.SessionToken,
+                    ProductId = result.ProductId ?? request.ProductId,
+                    ShoppingFileId = result.ShoppingFileId ?? request.ShoppingFileId,
                     Origin = firstSegment?.OriginCode,
                     Destination = firstSegment?.DestinationCode,
                     AirlineCode = firstSegment?.MarketingAirline,
@@ -1334,8 +1336,8 @@ public class FlightController : ControllerBase
 
     /// <summary>
     /// 3D Secure ödeme başarısız olduğunda veya iptal edildiğinde rezervasyonun
-    /// hâlâ geçerli olup olmadığını kontrol eder. Frontend bu bilgiyi alıp
-    /// kullanıcıya "rezervasyonunuz X dakika daha geçerli" mesajı gösterir
+    /// hâlâ geçerli olup olmadığını kontrol eder. Frontend bu endpoint'i çağırıp
+    /// "rezervasyonunuz X dakika daha geçerli, tekrar deneyin" mesajını gösterir
     /// ve aynı booking üzerinden yeni ödeme denemesi sunar.
     /// </summary>
     [HttpGet("booking/{bookingId}/payment-status")]
@@ -1361,7 +1363,12 @@ public class FlightController : ControllerBase
             var statusLower = booking.Status?.ToLowerInvariant() ?? "";
             bool isAlreadyPaid = statusLower is "paid" or "ticketed" || booking.IsFinalized;
             bool isCancelled = statusLower is "cancelled" or "canceled" || booking.CancelledAt.HasValue;
-            bool canRetry = !isAlreadyPaid && !isCancelled && !isExpired;
+            const int MaxAttempts = 3;
+            bool maxAttemptsReached = booking.PaymentAttemptCount >= MaxAttempts;
+            bool canRetry = !isAlreadyPaid && !isCancelled && !isExpired && !maxAttemptsReached
+                            && !string.IsNullOrEmpty(booking.SessionId)
+                            && !string.IsNullOrEmpty(booking.SessionToken)
+                            && !string.IsNullOrEmpty(booking.ShoppingFileId);
 
             return Ok(new
             {
@@ -1382,14 +1389,111 @@ public class FlightController : ControllerBase
                 isAlreadyPaid,
                 isCancelled,
                 canRetry,
-                sessionId = booking.SessionId,
-                sessionToken = booking.SessionToken,
+                paymentAttemptCount = booking.PaymentAttemptCount,
+                maxAttempts = MaxAttempts,
+                maxAttemptsReached,
                 serverTime = nowUtc
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[GetBookingPaymentStatus] Error. BookingId={BookingId}", bookingId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Var olan bir rezervasyon için ödeme tekrar denenir. 3D Secure başarısız olduğunda
+    /// veya iptal edildiğinde kullanılır. Yeni allocate/prebooking yapılmaz —
+    /// booking'de saklanan SessionId/SessionToken/ShoppingFileId/ProductId tekrar kullanılır,
+    /// sadece kart bilgisi yenilenir.
+    /// </summary>
+    [HttpPost("booking/{bookingId}/retry-payment")]
+    public async Task<IActionResult> RetryPayment(Guid bookingId, [FromBody] RetryPaymentRequest? request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { error = "Request body parse edilemedi." });
+
+            if (request.CreditCard == null || string.IsNullOrWhiteSpace(request.CreditCard.CardNumber))
+                return BadRequest(new { error = "Kart bilgileri eksik." });
+
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            if (booking == null)
+                return NotFound(new { error = "Rezervasyon bulunamadı." });
+
+            var nowUtc = DateTime.UtcNow;
+            var tktl = NormalizeUtc(booking.TicketTimeLimit);
+
+            // Validasyonlar — backend tarafı son savunma hattı
+            var statusLower = booking.Status?.ToLowerInvariant() ?? "";
+            if (statusLower is "paid" or "ticketed" || booking.IsFinalized)
+                return Conflict(new { error = "Bu rezervasyonun ödemesi zaten tamamlanmış." });
+
+            if (statusLower is "cancelled" or "canceled" || booking.CancelledAt.HasValue)
+                return Conflict(new { error = "Bu rezervasyon iptal edilmiş, tekrar ödeme yapılamaz." });
+
+            if (tktl.HasValue && tktl.Value <= nowUtc)
+                return Conflict(new { error = "Rezervasyon süresi dolmuş. Lütfen yeni bir arama yapın." });
+
+            const int MaxAttempts = 3;
+            if (booking.PaymentAttemptCount >= MaxAttempts)
+                return Conflict(new { error = "Maksimum ödeme deneme sayısına ulaşıldı. Lütfen müşteri hizmetlerimizle iletişime geçin." });
+
+            if (string.IsNullOrEmpty(booking.SessionId) ||
+                string.IsNullOrEmpty(booking.SessionToken) ||
+                string.IsNullOrEmpty(booking.ShoppingFileId))
+                return Conflict(new { error = "Rezervasyon oturum bilgisi eksik. Lütfen yeni bir arama yapın." });
+
+            if (booking.GrandTotal == null || booking.GrandTotal <= 0)
+                return Conflict(new { error = "Rezervasyon tutarı bulunamadı." });
+
+            // Cache'e ProductId/BillingInfo'yu yaz (3D callback FinalizeShopping için)
+            _cache.Set($"3d_session_{booking.ShoppingFileId}", new ThreeDSessionData
+            {
+                SessionId = booking.SessionId!,
+                SessionToken = booking.SessionToken!,
+                ShoppingFileId = booking.ShoppingFileId!,
+                BookingId = booking.Id,
+                ProductId = booking.ProductId,
+                BillingInfo = request.BillingInfo
+            }, TimeSpan.FromMinutes(15));
+
+            var baseCallbackUrl = $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
+
+            var paymentRequest = new MakePaymentRequest
+            {
+                SessionId = booking.SessionId!,
+                SessionToken = booking.SessionToken!,
+                ShoppingFileId = booking.ShoppingFileId!,
+                ProductId = booking.ProductId,
+                Amount = booking.GrandTotal!.Value,
+                Currency = booking.Currency ?? "TRY",
+                PaymentType = "CreditCard",
+                CreditCard = request.CreditCard,
+                InstallmentOptionId = request.InstallmentOptionId,
+                BookingId = booking.Id,
+                BillingInfo = request.BillingInfo,
+                IsPartialPayment = false,
+                DeductLastSellerCommission = false
+            };
+
+            _logger.LogInformation(
+                "[RetryPayment] BookingId={BookingId}, PNR={PNR}, AttemptCount={AttemptCount}, Amount={Amount}",
+                booking.Id, booking.PNR, booking.PaymentAttemptCount, paymentRequest.Amount);
+
+            var result = await _paymentService.ProcessPaymentAsync(new PaymentProcessRequest
+            {
+                Payment = paymentRequest,
+                CallbackBaseUrl = baseCallbackUrl
+            });
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RetryPayment] Error. BookingId={BookingId}", bookingId);
             return StatusCode(500, new { error = ex.Message });
         }
     }
