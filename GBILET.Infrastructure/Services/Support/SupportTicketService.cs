@@ -379,11 +379,16 @@ public class SupportTicketService : ISupportTicketService
         var pnrTrim = pnr.Trim().ToUpperInvariant();
         var surnameTrim = surname.Trim();
 
-        // PNR'a göre booking bul
+        // PNR'a göre booking bul.
+        // PNR check sayfası kullanıcıdan ATA PNR'ı (InternalPnr) alıyor; eski kayıtlarda
+        // veya admin panelinden gelen sorgulamalarda BiletBank PNR'ı (PNR) da girilebiliyor.
+        // Her iki alanı da kontrol ederek tutarlı davranış sağlıyoruz.
         var booking = await _db.Bookings
             .AsNoTracking()
             .Include(b => b.Passengers)
-            .Where(b => b.PNR != null && b.PNR.ToUpper() == pnrTrim)
+            .Where(b =>
+                (b.InternalPnr != null && b.InternalPnr.ToUpper() == pnrTrim) ||
+                (b.PNR != null && b.PNR.ToUpper() == pnrTrim))
             .FirstOrDefaultAsync(ct);
 
         if (booking == null)

@@ -416,7 +416,11 @@ public class FlightController : ControllerBase
                     BookedAt = DateTime.UtcNow,
                     AdultCount = adultCount > 0 ? adultCount : 1,
                     ChildCount = childCount,
-                    InfantCount = infantCount
+                    InfantCount = infantCount,
+                    // Biletleme son tarihi: havayolu/GDS bu sureye kadar PNR'i tutar.
+                    // Sure dolunca PNR otomatik dusurulur, koltuk yeniden satisa acilir.
+                    // Reservation_ExpiresAt yoksa Prebooking_ExpiresAt'e fallback yap.
+                    TicketTimeLimit = NormalizeUtc(result.ReservationExpiresAt ?? result.PrebookingExpiresAt)
                 };
 
                 foreach (var pax in request.Passengers)
@@ -1287,6 +1291,7 @@ public class FlightController : ControllerBase
                 booking.BookedAt,
                 booking.PaidAt,
                 booking.TicketedAt,
+                booking.TicketTimeLimit,
                 booking.SessionId,
                 booking.SessionToken,
                 isGuest = booking.UserId == null,
@@ -1323,6 +1328,68 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 3D Secure ödeme başarısız olduğunda veya iptal edildiğinde rezervasyonun
+    /// hâlâ geçerli olup olmadığını kontrol eder. Frontend bu bilgiyi alıp
+    /// kullanıcıya "rezervasyonunuz X dakika daha geçerli" mesajı gösterir
+    /// ve aynı booking üzerinden yeni ödeme denemesi sunar.
+    /// </summary>
+    [HttpGet("booking/{bookingId}/payment-status")]
+    public async Task<IActionResult> GetBookingPaymentStatus(Guid bookingId)
+    {
+        try
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            if (booking == null)
+                return NotFound(new { error = $"Rezervasyon bulunamadi: {bookingId}" });
+
+            var nowUtc = DateTime.UtcNow;
+            var tktl = NormalizeUtc(booking.TicketTimeLimit);
+
+            // Rezervasyon süresinin durumu
+            bool isExpired = tktl.HasValue && tktl.Value <= nowUtc;
+            int? remainingMinutes = tktl.HasValue
+                ? Math.Max(0, (int)(tktl.Value - nowUtc).TotalMinutes)
+                : (int?)null;
+
+            // Tekrar ödeme yapilabilir mi?
+            // Sadece henüz ödenmemiş ve süresi dolmamış rezervasyonlar retry edilebilir.
+            var statusLower = booking.Status?.ToLowerInvariant() ?? "";
+            bool isAlreadyPaid = statusLower is "paid" or "ticketed" || booking.IsFinalized;
+            bool isCancelled = statusLower is "cancelled" or "canceled" || booking.CancelledAt.HasValue;
+            bool canRetry = !isAlreadyPaid && !isCancelled && !isExpired;
+
+            return Ok(new
+            {
+                bookingId = booking.Id,
+                pnr = booking.PNR,
+                internalPnr = booking.InternalPnr,
+                status = booking.Status,
+                grandTotal = booking.GrandTotal,
+                currency = booking.Currency,
+                origin = booking.Origin,
+                destination = booking.Destination,
+                airlineCode = booking.AirlineCode,
+                flightNumber = booking.FlightNumber,
+                lastError = booking.LastError,
+                ticketTimeLimit = tktl,
+                isExpired,
+                remainingMinutes,
+                isAlreadyPaid,
+                isCancelled,
+                canRetry,
+                sessionId = booking.SessionId,
+                sessionToken = booking.SessionToken,
+                serverTime = nowUtc
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GetBookingPaymentStatus] Error. BookingId={BookingId}", bookingId);
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -1658,6 +1725,7 @@ public class FlightController : ControllerBase
         b.PaidAt,
         b.TicketedAt,
         b.CancelledAt,
+        b.TicketTimeLimit,
         isGuest = b.UserId == null,
         passengerCount = b.Passengers.Count,
         firstPassenger = b.Passengers.OrderBy(p => p.SequenceNo).Select(p => new
@@ -1676,6 +1744,21 @@ public class FlightController : ControllerBase
             s.DepartureTime
         })
     };
+
+    /// <summary>
+    /// PostgreSQL DateTimeKind=Unspecified hatasini onlemek icin DateTime'i UTC'ye normalize eder.
+    /// </summary>
+    private static DateTime? NormalizeUtc(DateTime? value)
+    {
+        if (!value.HasValue) return null;
+        var v = value.Value;
+        return v.Kind switch
+        {
+            DateTimeKind.Utc => v,
+            DateTimeKind.Local => v.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(v, DateTimeKind.Utc)
+        };
+    }
 
     /// <summary>
     /// Tek request ile uçuş arama, seçim, yolcu bilgisi, ön rezervasyon, ödeme ve biletleme.

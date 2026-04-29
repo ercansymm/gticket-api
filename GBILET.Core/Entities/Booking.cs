@@ -47,6 +47,13 @@ public class Booking
     public DateTime? TicketedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
 
+    /// <summary>
+    /// Biletleme son tarihi (TKTL / Reservation_ExpiresAt). Bu süre dolduğunda PNR
+    /// havayolu/GDS tarafında otomatik düşer ve koltuk yeniden satışa açılır.
+    /// MakePreBooking response'undaki TimeTable.Reservation_ExpiresAt'ten gelir.
+    /// </summary>
+    public DateTime? TicketTimeLimit { get; set; }
+
     // Hata takibi
     public string? LastError { get; set; }
     public int RetryCount { get; set; } = 0;
