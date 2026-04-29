@@ -132,7 +132,7 @@ public class TicketPdfService : ITicketPdfService
                     {
                         text.Span("TURSAB: 18474").FontSize(8).FontColor(GrayColor);
                         text.Span("  |  ").FontSize(8).FontColor("#D1D5DB");
-                        text.Span("destek@atabilet.com").FontSize(8).FontColor(GrayColor);
+                        text.Span("www.atabilet.com").FontSize(8).FontColor(GrayColor);
                     });
                     info.Item().PaddingTop(2).AlignRight()
                         .Text("Acil Durum Bilet Hatti: 0532 015 26 38").FontSize(8).FontColor(GrayColor);
