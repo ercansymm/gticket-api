@@ -42,6 +42,7 @@ public class AdminBookingListItem
 {
     public Guid Id { get; set; }
     public string? Pnr { get; set; }
+    public string? InternalPnr { get; set; }
     public string PassengerName { get; set; } = "";
     public int PassengerCount { get; set; }
     public string Route { get; set; } = "";

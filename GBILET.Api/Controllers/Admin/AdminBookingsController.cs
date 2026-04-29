@@ -92,6 +92,7 @@ public class AdminBookingsController : ControllerBase
             {
                 Id = b.Id,
                 Pnr = b.PNR,
+                InternalPnr = b.InternalPnr,
                 PassengerName = firstPax != null ? $"{firstPax.FirstName} {firstPax.LastName}" : "—",
                 PassengerCount = b.Passengers.Count,
                 Route = $"{b.Origin ?? "?"} → {b.Destination ?? "?"}",
