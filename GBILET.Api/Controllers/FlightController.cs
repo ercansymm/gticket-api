@@ -1813,6 +1813,8 @@ public class FlightController : ControllerBase
     {
         b.Id,
         b.PNR,
+        b.InternalPnr,
+        b.BiletBankFileId,
         b.Status,
         b.GrandTotal,
         b.Currency,
