@@ -1571,6 +1571,7 @@ public class FlightController : ControllerBase
             {
                 booking.Id,
                 PNR = booking.InternalPnr,
+                BiletBankPnr = booking.PNR,
                 booking.Status,
                 booking.GrandTotal,
                 booking.Currency,
