@@ -8,7 +8,10 @@ namespace GBILET.Api.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/blog")]
-public class AdminBlogController(IBlogService blogService, ILogger<AdminBlogController> logger) : ControllerBase
+public class AdminBlogController(
+    IBlogService blogService,
+    ILogger<AdminBlogController> logger,
+    IWebHostEnvironment env) : ControllerBase
 {
     // ============================================================
     // PUBLIC — Frontend blog sayfaları buradan okur (auth gerekmez)
@@ -130,7 +133,8 @@ public class AdminBlogController(IBlogService blogService, ILogger<AdminBlogCont
 
         try
         {
-            var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "blog");
+            var webRoot = env.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot");
+            var uploadPath = Path.Combine(webRoot, "uploads", "blog");
             Directory.CreateDirectory(uploadPath);
 
             var fileName = $"{Guid.NewGuid()}{ext}";
