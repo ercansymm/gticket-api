@@ -1,9 +1,11 @@
+using GBILET.Core.Interfaces;
 using GBILET.Core.Models.Flight;
 using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Security;
 using System.Text;
 using System.Xml.Linq;
@@ -41,6 +43,8 @@ public class BiletBankFlightService : IFlightService
     private readonly HttpClient _httpClient;
     private readonly ILogger<BiletBankFlightService> _logger;
     private readonly IMemoryCache _cache;
+    private readonly IFlightSearchCache? _flightSearchCache;
+    private readonly FlightCacheOptions _flightCacheOptions;
     private readonly string _clientName;
     private readonly string _password;
     private readonly string _username;
@@ -51,11 +55,15 @@ public class BiletBankFlightService : IFlightService
         HttpClient httpClient,
         IConfiguration configuration,
         ILogger<BiletBankFlightService> logger,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        IFlightSearchCache? flightSearchCache = null,
+        IOptions<FlightCacheOptions>? flightCacheOptions = null)
     {
         _httpClient = httpClient;
         _logger = logger;
         _cache = cache;
+        _flightSearchCache = flightSearchCache;
+        _flightCacheOptions = flightCacheOptions?.Value ?? new FlightCacheOptions();
 
         _clientName = configuration["BiletBank:ClientName"]!;
         _password = configuration["BiletBank:Password"]!;
@@ -253,6 +261,28 @@ public class BiletBankFlightService : IFlightService
     }
 
     public async Task<FlightSearchResponseDto> SearchFlightDtoAsync(SearchRequest request)
+    {
+        // === Memory cache layer (transparent) ===
+        // Cache enabled only when IFlightSearchCache is registered. HasError responses are not cached.
+        if (_flightSearchCache != null)
+        {
+            var cacheKey = FlightSearchKeyGenerator.Build(request, _flightCacheOptions.KeyVersion);
+            var cachedDto = await _flightSearchCache.GetOrFetchAsync(
+                cacheKey,
+                async ct => await ExecuteSearchAndMapAsync(request).ConfigureAwait(false),
+                CancellationToken.None).ConfigureAwait(false);
+
+            if (cachedDto != null) return cachedDto;
+        }
+
+        return await ExecuteSearchAndMapAsync(request).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Cache miss durumunda gercek SOAP search + map + session cache islemini calistirir.
+    /// Bu metot cache layer'in altinda durur, dogrudan provider'a gider.
+    /// </summary>
+    private async Task<FlightSearchResponseDto> ExecuteSearchAndMapAsync(SearchRequest request)
     {
         var rawResponse = await SearchFlightAsync(request);
         var dto = FlightSearchMapper.MapToDto(rawResponse, _logger, request.FlightClass);
