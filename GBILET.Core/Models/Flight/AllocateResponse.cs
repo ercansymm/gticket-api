@@ -83,6 +83,36 @@ public class AllocateResponse
     /// Debug: Parse asamasi bilgisi (gecici)
     /// </summary>
     public string? DebugInfo { get; set; }
+
+    // ======================================================================
+    // Cache karsilastirma sonucu (opsiyonel - geriye donuk uyumluluk icin nullable).
+    // FlightAllocateService bu alanlari doldurur, ham SOAP servisi doldurmaz.
+    // Frontend bu alanlar geldiginde uyari/onay modali gosterebilir.
+    // ======================================================================
+
+    /// <summary>Cache snapshot ile fresh fiyat/koltuk karsilastirmasinda degisiklik bulundu mu?</summary>
+    public bool? HasChanges { get; set; }
+
+    /// <summary>Musteri checkout'a gecebilir mi? Bloklayici degisiklik varsa false.</summary>
+    public bool? CanProceedToCheckout { get; set; }
+
+    /// <summary>Tespit edilen degisiklik tipi (string olarak serialize edilir).</summary>
+    public string? ChangeType { get; set; }
+
+    /// <summary>Cache'teki eski toplam fiyat.</summary>
+    public decimal? OldPrice { get; set; }
+
+    /// <summary>Provider'dan donen yeni toplam fiyat.</summary>
+    public decimal? NewPrice { get; set; }
+
+    /// <summary>Cache'teki eski kalkis saati.</summary>
+    public string? OldDepartureTime { get; set; }
+
+    /// <summary>Provider'dan donen yeni kalkis saati.</summary>
+    public string? NewDepartureTime { get; set; }
+
+    /// <summary>Musteriye gosterilecek Turkce uyari mesaji (degisiklik bulundugunda).</summary>
+    public string? UserMessage { get; set; }
 }
 
 public class AllocateAirBooking

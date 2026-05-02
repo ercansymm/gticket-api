@@ -5,6 +5,7 @@ using GBILET.Core.Interfaces;
 using GBILET.Core.Models.Flight;
 using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
+using GBILET.Infrastructure.Resilience;
 using GBILET.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -21,8 +22,18 @@ public class FlightController : ControllerBase
     private readonly IMemoryCache _cache;
     private readonly ILogger<FlightController> _logger;
     private readonly string _frontendUrl;
+    private readonly FlightAllocateService _flightAllocateService;
+    private readonly SessionRecoveryExecutor _sessionRecoveryExecutor;
 
-    public FlightController(IFlightService flightService, IBookingRepository bookingRepository, IPaymentService paymentService, IMemoryCache cache, ILogger<FlightController> logger, IConfiguration configuration)
+    public FlightController(
+        IFlightService flightService,
+        IBookingRepository bookingRepository,
+        IPaymentService paymentService,
+        IMemoryCache cache,
+        ILogger<FlightController> logger,
+        IConfiguration configuration,
+        FlightAllocateService flightAllocateService,
+        SessionRecoveryExecutor sessionRecoveryExecutor)
     {
         _flightService = flightService;
         _bookingRepository = bookingRepository;
@@ -30,6 +41,8 @@ public class FlightController : ControllerBase
         _cache = cache;
         _logger = logger;
         _frontendUrl = configuration["FrontendUrl"] ?? "http://localhost:3000";
+        _flightAllocateService = flightAllocateService;
+        _sessionRecoveryExecutor = sessionRecoveryExecutor;
     }
 
 
@@ -141,7 +154,16 @@ public class FlightController : ControllerBase
             if (!hasSession && request.SearchRequest == null)
                 return BadRequest(new { error = "SessionId/SessionToken verilmediyse SearchRequest zorunludur." });
 
-            var result = await _flightService.AllocateFlightAsync(request);
+            // FlightAllocateService:
+            //   - Provider'a HER ZAMAN gider (allocate cache'lenmez)
+            //   - Search cache snapshot ile karsilastirma yapip Change bilgisini doldurur
+            //   - SessionRecoveryExecutor ile sarmaldir; session expire'da otomatik recovery yapar
+            var allocateResult = await _flightAllocateService.AllocateAsync(
+                request,
+                originalSearchCriteria: request.SearchRequest,
+                currency: "TRY");
+
+            var result = allocateResult.Allocate;
 
             // Session cache'ini allocate sonucu ile guncelle — ShoppingFileId degisebilir
             if (!result.HasError)
@@ -251,6 +273,18 @@ public class FlightController : ControllerBase
 
             var result = await _flightService.UpdatePassengersAsync(request);
             return Ok(new { result.HasError, result.ErrorMessage, result.RawSoapRequest, result.RawSoapResponse });
+        }
+        catch (GBILET.Core.Exceptions.BiletBankSessionExpiredException sessionEx)
+        {
+            // UpdatePassengers icin SessionRecoveryExecutor kullanilmaz: yeni session = yeni shoppingFileId
+            // gerektigi icin partial recovery booking state'ini bozardi. Frontend re-search yapmali.
+            _logger.LogWarning(sessionEx, "[UpdatePassengers] BiletBank session expired. Frontend should restart from search.");
+            return StatusCode(409, new
+            {
+                error = "Oturum süresi doldu, lütfen aramayı yeniden yapınız.",
+                code = "SESSION_EXPIRED",
+                requiresResearch = true
+            });
         }
         catch (Exception ex)
         {

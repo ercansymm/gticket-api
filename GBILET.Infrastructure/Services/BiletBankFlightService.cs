@@ -2,6 +2,7 @@ using GBILET.Core.Interfaces;
 using GBILET.Core.Models.Flight;
 using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Extensions;
+using GBILET.Infrastructure.Resilience;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -363,6 +364,9 @@ public class BiletBankFlightService : IFlightService
         response.SessionId = sessionId;
         response.SessionToken = sessionToken;
 
+        // Session expire pattern tespit edilirse SessionRecoveryExecutor'in handle etmesi icin firlat
+        BiletBankFaultDetector.ThrowIfSessionExpired(response.HasError, response.ErrorMessage, "AllocateFlight", sessionId);
+
         return response;
     }
 
@@ -388,6 +392,10 @@ public class BiletBankFlightService : IFlightService
             string.Join(", ", request.Passengers.Select(p => p.TempTag ?? "(null)")));
 
         var inner = await UpdatePassengersInternalAsync(request.SessionId, request.SessionToken, request);
+
+        // Session expire pattern tespit edilirse SessionRecoveryExecutor'in handle etmesi icin firlat
+        BiletBankFaultDetector.ThrowIfSessionExpired(inner.HasError, inner.ErrorMessage, "UpdatePassengers", request.SessionId);
+
         return inner;
     }
 
