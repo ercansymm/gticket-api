@@ -217,6 +217,7 @@ builder.Services.AddSingleton<ITokenService, TokenService>(); // RSA key'ler bir
 builder.Services.AddSingleton<ITotpService, TotpService>();   // Stateless
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
+builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddSingleton<IGuestSupportTokenService, GuestSupportTokenService>();
 builder.Services.AddDataProtection(); // GuestSupportTokenService bunu kullanır

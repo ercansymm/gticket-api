@@ -70,6 +70,9 @@ public class GTicketDbContext : DbContext
     public DbSet<SupportTicket> SupportTickets { get; set; }
     public DbSet<SupportTicketMessage> SupportTicketMessages { get; set; }
 
+    // Blog
+    public DbSet<BlogPost> BlogPosts { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
