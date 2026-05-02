@@ -265,7 +265,7 @@ namespace GBILET.Infrastructure.Migrations
                             Alliance = "Star Alliance",
                             Code = "TK",
                             CountryCode = "TR",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(1988),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1976),
                             IsActive = true,
                             IsDomestic = true,
                             LogoUrl = "/assets/airlines/tk.png",
@@ -278,7 +278,7 @@ namespace GBILET.Infrastructure.Migrations
                             Id = 2,
                             Code = "PC",
                             CountryCode = "TR",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(1992),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1980),
                             IsActive = true,
                             IsDomestic = true,
                             LogoUrl = "/assets/airlines/pc.png",
@@ -291,7 +291,7 @@ namespace GBILET.Infrastructure.Migrations
                             Id = 3,
                             Code = "VF",
                             CountryCode = "TR",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(1994),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1982),
                             IsActive = true,
                             IsDomestic = true,
                             LogoUrl = "/assets/airlines/vf.png",
@@ -304,7 +304,7 @@ namespace GBILET.Infrastructure.Migrations
                             Id = 4,
                             Code = "XQ",
                             CountryCode = "TR",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(1995),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1983),
                             IsActive = true,
                             IsDomestic = true,
                             LogoUrl = "/assets/airlines/xq.png",
@@ -317,7 +317,7 @@ namespace GBILET.Infrastructure.Migrations
                             Id = 5,
                             Code = "XC",
                             CountryCode = "TR",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(1996),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1985),
                             IsActive = true,
                             IsDomestic = true,
                             LogoUrl = "/assets/airlines/xc.png",
@@ -331,7 +331,7 @@ namespace GBILET.Infrastructure.Migrations
                             Alliance = "Star Alliance",
                             Code = "LH",
                             CountryCode = "DE",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(1998),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1986),
                             IsActive = true,
                             IsDomestic = false,
                             LogoUrl = "/assets/airlines/lh.png",
@@ -345,7 +345,7 @@ namespace GBILET.Infrastructure.Migrations
                             Alliance = "Oneworld",
                             Code = "BA",
                             CountryCode = "GB",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(1999),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1987),
                             IsActive = true,
                             IsDomestic = false,
                             LogoUrl = "/assets/airlines/ba.png",
@@ -359,7 +359,7 @@ namespace GBILET.Infrastructure.Migrations
                             Alliance = "SkyTeam",
                             Code = "AF",
                             CountryCode = "FR",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2000),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1989),
                             IsActive = true,
                             IsDomestic = false,
                             LogoUrl = "/assets/airlines/af.png",
@@ -372,7 +372,7 @@ namespace GBILET.Infrastructure.Migrations
                             Id = 9,
                             Code = "EK",
                             CountryCode = "AE",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2002),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1990),
                             IsActive = true,
                             IsDomestic = false,
                             LogoUrl = "/assets/airlines/ek.png",
@@ -386,7 +386,7 @@ namespace GBILET.Infrastructure.Migrations
                             Alliance = "Oneworld",
                             Code = "QR",
                             CountryCode = "QA",
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2003),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(1992),
                             IsActive = true,
                             IsDomestic = false,
                             LogoUrl = "/assets/airlines/qr.png",
@@ -548,6 +548,98 @@ namespace GBILET.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("BillingInfo");
+                });
+
+            modelBuilder.Entity("GBILET.Core.Entities.BlogPost", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentTr")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("KeywordsEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("KeywordsTr")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("MetaDescriptionEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("MetaDescriptionTr")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("MetaTitleEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("MetaTitleTr")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ReadTime")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SummaryEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SummaryTr")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TagEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TagTr")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ThumbUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TitleEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TitleTr")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BlogPosts");
                 });
 
             modelBuilder.Entity("GBILET.Core.Entities.Booking", b =>
@@ -1267,7 +1359,7 @@ namespace GBILET.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2226),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(2307),
                             Currency = "TRY",
                             DestinationCode = "AYT",
                             DisplayPrice = 899.00m,
@@ -1278,7 +1370,7 @@ namespace GBILET.Infrastructure.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2230),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(2311),
                             Currency = "TRY",
                             DestinationCode = "ADB",
                             DisplayPrice = 749.00m,
@@ -1289,7 +1381,7 @@ namespace GBILET.Infrastructure.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2231),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(2313),
                             Currency = "TRY",
                             DestinationCode = "TZX",
                             DisplayPrice = 699.00m,
@@ -1300,7 +1392,7 @@ namespace GBILET.Infrastructure.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2232),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(2314),
                             Currency = "TRY",
                             DestinationCode = "IST",
                             DisplayPrice = 599.00m,
@@ -1311,7 +1403,7 @@ namespace GBILET.Infrastructure.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2234),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(2315),
                             Currency = "TRY",
                             DestinationCode = "BJV",
                             DisplayPrice = 949.00m,
@@ -1322,7 +1414,7 @@ namespace GBILET.Infrastructure.Migrations
                         new
                         {
                             Id = 6,
-                            CreatedAt = new DateTime(2026, 4, 29, 10, 25, 14, 501, DateTimeKind.Utc).AddTicks(2235),
+                            CreatedAt = new DateTime(2026, 5, 2, 12, 40, 42, 765, DateTimeKind.Utc).AddTicks(2317),
                             Currency = "TRY",
                             DestinationCode = "AYT",
                             DisplayPrice = 799.00m,
