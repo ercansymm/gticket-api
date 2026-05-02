@@ -351,6 +351,12 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseResponseCompression();
 app.UseStaticFiles();
+
+// Upload klasörünü uygulama başlarken oluştur
+var uploadDir = Path.Combine(
+    app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"),
+    "uploads", "blog");
+Directory.CreateDirectory(uploadDir);
 app.UseForwardedHeaders();
 app.UseCors("FrontendPolicy");
 app.UseRateLimiter();
