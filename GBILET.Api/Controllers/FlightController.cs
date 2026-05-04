@@ -218,8 +218,6 @@ public class FlightController : ControllerBase
             // Telefon numarasini normalize et (ornek: 5351234567 → +90-5351234567)
             request.Contact.Phone = NormalizePhoneNumber(request.Contact.Phone);
 
-            _logger.LogInformation("[UpdatePassengers] Normalized phone: {Phone}", request.Contact.Phone);
-
             foreach (var pax in request.Passengers)
             {
                 if (string.IsNullOrWhiteSpace(pax.FirstName) || string.IsNullOrWhiteSpace(pax.LastName))
@@ -242,11 +240,8 @@ public class FlightController : ControllerBase
                     pax.TempTag = pax.PaxReferenceId;
 
                 _logger.LogInformation(
-                    "[UpdatePassengers] Pax {SeqNo}: Type={PaxType}, Name={FirstName} {LastName}, BirthDate={BirthDate}, CitizenNo={CitizenNo}, PassportNo={PassportNo}, TempTag={TempTag}",
-                    pax.SequenceNo, pax.PaxType, pax.FirstName, pax.LastName, pax.BirthDate,
-                    string.IsNullOrWhiteSpace(pax.CitizenNo) ? "(empty)" : pax.CitizenNo,
-                    string.IsNullOrWhiteSpace(pax.PassportNo) ? "(empty)" : pax.PassportNo,
-                    pax.TempTag);
+                    "[UpdatePassengers] Pax {SeqNo}: Type={PaxType}, TempTag={TempTag}",
+                    pax.SequenceNo, pax.PaxType, pax.TempTag);
             }
 
             var result = await _flightService.UpdatePassengersAsync(request);
