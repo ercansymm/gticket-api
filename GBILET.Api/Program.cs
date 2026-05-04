@@ -18,6 +18,12 @@ using Microsoft.AspNetCore.HttpOverrides;
 using System.Security.Cryptography;
 using GBILET.Core.Service.Support;
 using GBILET.Infrastructure.Services.Support;
+using GBILET.Core.Models.Flight;
+using GBILET.Infrastructure.Caching;
+using GBILET.Infrastructure.Resilience;
+using GBILET.Infrastructure.Services.FlightChangeRules;
+using Polly;
+using Polly.Extensions.Http;
 
 
 // PostgreSQL: DateTimeKind.Unspecified olan DateTime değerlerini kabul et
@@ -223,11 +229,35 @@ builder.Services.AddSingleton<IGuestSupportTokenService, GuestSupportTokenServic
 builder.Services.AddDataProtection(); // GuestSupportTokenService bunu kullanır
 builder.Services.AddMemoryCache();
 
+// ============================================================
+// FLIGHT SEARCH MEMORY CACHE + CHANGE DETECTOR + RESILIENCE
+// ============================================================
+builder.Services.Configure<FlightCacheOptions>(builder.Configuration.GetSection(FlightCacheOptions.SectionName));
+builder.Services.AddSingleton<IFlightSearchCache, MemoryFlightSearchCache>();
+
+// Strategy pattern: change rules registered in order, detector iterates by Order property
+builder.Services.AddScoped<IFlightChangeRule, FlightNotFoundRule>();
+builder.Services.AddScoped<IFlightChangeRule, SoldOutRule>();
+builder.Services.AddScoped<IFlightChangeRule, InsufficientSeatsRule>();
+builder.Services.AddScoped<IFlightChangeRule, DepartureDayChangedRule>();
+builder.Services.AddScoped<IFlightChangeRule, DepartureTimeChangedRule>();
+builder.Services.AddScoped<IFlightChangeRule, PriceIncreasedRule>();
+builder.Services.AddScoped<IFlightChangeRule, PriceDecreasedRule>();
+builder.Services.AddScoped<IFlightChangeRule, NoChangeRule>();
+builder.Services.AddScoped<FlightChangeDetector>();
+builder.Services.AddScoped<FlightAllocateService>();
+builder.Services.AddScoped<SessionRecoveryExecutor>();
+
 builder.Services
 .AddHttpClient<IFlightService, BiletBankFlightService>(client =>
 {
     client.BaseAddress = new Uri("https://apitest.biletbank.com");
     client.Timeout = TimeSpan.FromSeconds(120);
+})
+.AddPolicyHandler((sp, _) =>
+{
+    var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("BiletBankRetry");
+    return BiletBankRetryPolicy.Build(logger);
 });
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
