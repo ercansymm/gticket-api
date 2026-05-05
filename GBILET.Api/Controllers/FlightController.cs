@@ -22,6 +22,7 @@ public class FlightController : ControllerBase
     private readonly IMemoryCache _cache;
     private readonly ILogger<FlightController> _logger;
     private readonly string _frontendUrl;
+    private readonly string? _appBaseUrl;
     private readonly FlightAllocateService _flightAllocateService;
     private readonly SessionRecoveryExecutor _sessionRecoveryExecutor;
 
@@ -41,9 +42,15 @@ public class FlightController : ControllerBase
         _cache = cache;
         _logger = logger;
         _frontendUrl = configuration["FrontendUrl"] ?? "http://localhost:3000";
+        _appBaseUrl = configuration["AppBaseUrl"];
         _flightAllocateService = flightAllocateService;
         _sessionRecoveryExecutor = sessionRecoveryExecutor;
     }
+
+    private string BuildCallbackUrl() =>
+        !string.IsNullOrEmpty(_appBaseUrl)
+            ? $"{_appBaseUrl.TrimEnd('/')}/api/Flight/3d-callback"
+            : $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
 
 
 
@@ -675,7 +682,7 @@ public class FlightController : ControllerBase
             }
 
             // ContinueUrl'u olustur — session bilgilerini query string'e gom
-            var baseCallbackUrl = $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
+            var baseCallbackUrl = BuildCallbackUrl();
 
             // Cache'e de yaz (fallback olarak) — ProductId dahil (FinalizeShopping icin gerekli)
             _cache.Set($"3d_session_{request.ShoppingFileId}", new ThreeDSessionData
@@ -1489,7 +1496,7 @@ public class FlightController : ControllerBase
                 BillingInfo = request.BillingInfo
             }, TimeSpan.FromMinutes(15));
 
-            var baseCallbackUrl = $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
+            var baseCallbackUrl = BuildCallbackUrl();
 
             var paymentRequest = new MakePaymentRequest
             {
@@ -2312,7 +2319,7 @@ public class FlightController : ControllerBase
             response.Steps.Add($"Ödeme yapılıyor ({request.PaymentType})...");
 
             // ContinueUrl olustur ve session cache'le (BookFlight akisi icin)
-            var bfCallbackUrl = $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
+            var bfCallbackUrl = BuildCallbackUrl();
             var bfContinueUrl = $"{bfCallbackUrl}?sid={Uri.EscapeDataString(allocateResult.SessionId!)}&stk={Uri.EscapeDataString(allocateResult.SessionToken!)}&sfid={Uri.EscapeDataString(preBookResult.ShoppingFileId!)}&bid={savedBookingId}";
 
             _cache.Set($"3d_session_{preBookResult.ShoppingFileId}", new ThreeDSessionData

@@ -2515,7 +2515,8 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                     soapAction = "http://tempuri.org/I_Shopping/MakePayment_Init3DPayment";
                     // Eger PaymentService URL'i query string ile birlikte uretmisse (sid/stk/sfid/bid)
                     // sadece olduğu gibi kullan; degilse fallback URL'e ?sfid= ekle.
-                    var callbackBase = request.ContinueUrl ?? "http://37.148.212.253:5000/api/Flight/3d-callback";
+                    var callbackBase = request.ContinueUrl
+                        ?? throw new InvalidOperationException("ContinueUrl (CallbackBaseUrl) is required for 3D payment.");
                     var fullCallback = callbackBase.Contains('?')
                         ? callbackBase
                         : $"{callbackBase}?sfid={request.ShoppingFileId}";
