@@ -2488,13 +2488,16 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
       ? (expY >= 100 ? (expY % 100).ToString() : expY.ToString())
       : "0";
 
+                // BIN'den kart markasini tespit et (Mastercard 2-series icin kritik)
+                var cardType = DetectCardType(cardNumber);
+
                 // Debug: Kart bilgilerini maskeli olarak logla
                 var maskedCard = cardNumber.Length >= 4
                     ? $"{cardNumber[..6]}****{cardNumber[^4..]}"
                     : "KISA";
                 _logger.LogInformation(
-                    "[MakePayment] Kart bilgileri: Holder={CardHolder}, Number={MaskedCard} (len={CardLen}), ExpMonth={ExpMonth}, ExpYear={ExpYear}, CVV_len={CvvLen}",
-                    cardHolder, maskedCard, cardNumber.Length, cardExpMonth, cardExpYear, cardCvv.Length);
+                    "[MakePayment] Kart bilgileri: Holder={CardHolder}, Number={MaskedCard} (len={CardLen}), Type={CardType}, ExpMonth={ExpMonth}, ExpYear={ExpYear}, CVV_len={CvvLen}",
+                    cardHolder, maskedCard, cardNumber.Length, string.IsNullOrEmpty(cardType) ? "BILINMIYOR" : cardType, cardExpMonth, cardExpYear, cardCvv.Length);
 
                 var installmentXml = !string.IsNullOrWhiteSpace(request.InstallmentOptionId)
                     ? $"<trev1:InstallmentOptionId>{request.InstallmentOptionId}</trev1:InstallmentOptionId>"
@@ -2543,7 +2546,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
    <trev1:CV2>{cardCvv}</trev1:CV2>
    <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
    <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
-   <trev1:CardType/>
+   <trev1:CardType>{cardType}</trev1:CardType>
    <trev1:Currency>{currency}</trev1:Currency>
    <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
    <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
@@ -2587,6 +2590,7 @@ xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"">
             <trev1:CV2>{cardCvv}</trev1:CV2>
             <trev1:CardHolder>{cardHolder}</trev1:CardHolder>
             <trev1:CardNumber>{cardNumber}</trev1:CardNumber>
+            <trev1:CardType>{cardType}</trev1:CardType>
             <trev1:Currency>{currency}</trev1:Currency>
             <trev1:ExpirationMonth>{cardExpMonth}</trev1:ExpirationMonth>
             <trev1:ExpirationYear>{cardExpYear}</trev1:ExpirationYear>
@@ -3727,5 +3731,52 @@ xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
 
         // Diger durumlarda oldu�u gibi d�n
         return phone.StartsWith("+") ? phone : $"+{phone}";
+    }
+
+    /// <summary>
+    /// Kart numarasinin BIN'inden kart markasini tespit eder.
+    /// BiletBank/Lidio gateway, CardType bos gelirse Mastercard 2-series (2221-2720)
+    /// ve bazi Mastercard BIN'lerinde routing hatasi vermektedir; bu yuzden
+    /// CardType'i SOAP istegine dahil etmek icin kullaniyoruz.
+    /// Donen degerler: "Visa", "MasterCard", "AmericanExpress", "Troy", "" (bilinmeyen).
+    /// </summary>
+    private static string DetectCardType(string? cardNumber)
+    {
+        if (string.IsNullOrWhiteSpace(cardNumber))
+            return string.Empty;
+
+        var digits = new string(cardNumber.Where(char.IsDigit).ToArray());
+        if (digits.Length < 4)
+            return string.Empty;
+
+        // Visa: 4xxxxxx
+        if (digits[0] == '4')
+            return "Visa";
+
+        // American Express: 34, 37
+        if (digits.StartsWith("34") || digits.StartsWith("37"))
+            return "AmericanExpress";
+
+        // Troy (Turkiye yerli kart): 9792, ayrica bazi 65 araliklari
+        if (digits.StartsWith("9792"))
+            return "Troy";
+
+        // MasterCard klasik: 51-55
+        if (digits.Length >= 2)
+        {
+            var twoDigit = int.Parse(digits[..2]);
+            if (twoDigit >= 51 && twoDigit <= 55)
+                return "MasterCard";
+        }
+
+        // MasterCard 2-series (2017+): BIN 222100-272099
+        if (digits.Length >= 4)
+        {
+            var fourDigit = int.Parse(digits[..4]);
+            if (fourDigit >= 2221 && fourDigit <= 2720)
+                return "MasterCard";
+        }
+
+        return string.Empty;
     }
 }
