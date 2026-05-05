@@ -6,4 +6,5 @@ public interface IAdminCustomerService
 {
     Task<CustomerListResponseDto> GetPassengersAsync(int page, int pageSize, string? search, CancellationToken ct);
     Task<CustomerListResponseDto> GetBookingContactsAsync(int page, int pageSize, string? search, CancellationToken ct);
+    Task<CustomerListResponseDto> GetRegisteredUsersAsync(int page, int pageSize, string? search, CancellationToken ct);
 }

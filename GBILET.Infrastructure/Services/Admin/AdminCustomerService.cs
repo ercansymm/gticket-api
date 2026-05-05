@@ -150,4 +150,66 @@ public class AdminCustomerService : IAdminCustomerService
             }
         };
     }
+
+    public async Task<CustomerListResponseDto> GetRegisteredUsersAsync(
+        int page, int pageSize, string? search, CancellationToken ct)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _db.Users.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower();
+            query = query.Where(u =>
+                u.FullName.ToLower().Contains(s) ||
+                u.Email.ToLower().Contains(s) ||
+                (u.Phone != null && u.Phone.Contains(s)));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var users = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(u => new
+            {
+                u.Id,
+                u.FullName,
+                u.Email,
+                u.Phone
+            })
+            .ToListAsync(ct);
+
+        var userIds = users.Select(u => u.Id).ToList();
+
+        var bookingCounts = await _db.Bookings
+            .AsNoTracking()
+            .Where(b => b.UserId != null && userIds.Contains(b.UserId.Value))
+            .GroupBy(b => b.UserId!.Value)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+
+        var items = users.Select(u => new CustomerListItemDto
+        {
+            FullName = u.FullName,
+            Email = u.Email,
+            Phone = u.Phone,
+            BookingCount = bookingCounts.TryGetValue(u.Id, out var c) ? c : 0
+        }).ToList();
+
+        return new CustomerListResponseDto
+        {
+            Items = items,
+            Pagination = new PaginationInfo
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            }
+        };
+    }
 }

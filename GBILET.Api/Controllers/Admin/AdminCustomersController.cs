@@ -39,4 +39,15 @@ public class AdminCustomersController : ControllerBase
         var result = await _customerService.GetBookingContactsAsync(page, pageSize, search, ct);
         return Ok(result);
     }
+
+    [HttpGet("registered-users")]
+    public async Task<IActionResult> GetRegisteredUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var result = await _customerService.GetRegisteredUsersAsync(page, pageSize, search, ct);
+        return Ok(result);
+    }
 }
