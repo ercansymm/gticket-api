@@ -197,7 +197,8 @@ public class AdminCustomerService : IAdminCustomerService
             FullName = u.FullName,
             Email = u.Email,
             Phone = u.Phone,
-            BookingCount = bookingCounts.TryGetValue(u.Id, out var c) ? c : 0
+            BookingCount = bookingCounts.TryGetValue(u.Id, out var c) ? c : 0,
+            CreatedAt = u.CreatedAt
         }).ToList();
 
         return new CustomerListResponseDto
