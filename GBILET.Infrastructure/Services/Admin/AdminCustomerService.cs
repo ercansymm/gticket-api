@@ -179,7 +179,8 @@ public class AdminCustomerService : IAdminCustomerService
                 u.Id,
                 u.FullName,
                 u.Email,
-                u.Phone
+                u.Phone,
+                u.CreatedAt
             })
             .ToListAsync(ct);
 

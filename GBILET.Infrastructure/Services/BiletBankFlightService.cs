@@ -780,7 +780,7 @@ BrandedFares iceren: {rbWithBranded}
         if (request.PreferredAirlines is { Count: > 0 })
         {
             var airlinesXml = string.Join("", request.PreferredAirlines
-                .Select(a => $"<arr:string>{a}</arr:string>"));
+                .Select(a => $"<arr:string>{SecurityElement.Escape(a)}</arr:string>"));
             preferredAirlines = $@"
                <trev2:PreferedAirlines xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
                   {airlinesXml}

@@ -382,6 +382,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseMiddleware<GBILET.Api.Middleware.ExceptionHandlingMiddleware>();
 app.UseResponseCompression();
 app.UseStaticFiles();
 

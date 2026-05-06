@@ -103,8 +103,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -127,8 +126,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -212,8 +210,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -292,8 +289,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -601,8 +597,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -637,8 +632,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -714,9 +708,8 @@ public class FlightController : ControllerBase
             return StatusCode(500, new
             {
                 hasError = true,
-                errorMessage = $"{ex.Message} | {ex.StackTrace?.Split('\n').FirstOrDefault()?.Trim()}",
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                errorMessage = "Ödeme işlemi sırasında beklenmeyen bir hata oluştu.",
+                error = "Internal server error"
             });
         }
     }
@@ -762,8 +755,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -897,7 +889,7 @@ public class FlightController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[3DCallback] Exception");
-            return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString(ex.Message)}");
+            return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString("Ödeme işlemi tamamlanamadı. Lütfen destek ekibiyle iletişime geçin.")}");
         }
     }
 
@@ -1108,7 +1100,7 @@ public class FlightController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[RecoverBooking] Exception. BookingId={BookingId}", request?.BookingId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1194,8 +1186,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -1221,8 +1212,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -1248,8 +1238,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -1272,8 +1261,7 @@ public class FlightController : ControllerBase
         {
             return StatusCode(500, new
             {
-                error = ex.Message,
-                inner = ex.InnerException?.Message
+                error = "Internal server error"
             });
         }
     }
@@ -1330,8 +1318,6 @@ public class FlightController : ControllerBase
                 booking.PaidAt,
                 booking.TicketedAt,
                 booking.TicketTimeLimit,
-                booking.SessionId,
-                booking.SessionToken,
                 isGuest = booking.UserId == null,
                 booking.UserId,
                 booking.GuestSessionId,
@@ -1343,8 +1329,6 @@ public class FlightController : ControllerBase
                     p.LastName,
                     p.Gender,
                     p.BirthDate,
-                    p.CitizenNo,
-                    p.PassportNo,
                     p.Nationality,
                     p.TicketNumber,
                     p.Email,
@@ -1366,7 +1350,7 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1434,7 +1418,7 @@ public class FlightController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[GetBookingPaymentStatus] Error. BookingId={BookingId}", bookingId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1530,7 +1514,7 @@ public class FlightController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[RetryPayment] Error. BookingId={BookingId}", bookingId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1587,7 +1571,7 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1656,7 +1640,7 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1727,7 +1711,7 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1741,7 +1725,7 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1755,7 +1739,7 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1773,7 +1757,7 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -1842,7 +1826,7 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message, inner = ex.InnerException?.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -2450,18 +2434,9 @@ public class FlightController : ControllerBase
                                 ShoppingFileId = preBookResult.ShoppingFileId!
                             });
 
-                            Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] ReadShoppingFile returned {readResult?.Segments?.Count ?? 0} segments, HasError={readResult?.HasError}");
-                            if (readResult?.Segments != null)
-                            {
-                                foreach (var seg in readResult.Segments)
-                                {
-                                    Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] Segment: {seg.OriginCode} -> {seg.DestinationCode}, Flight: {seg.MarketingAirline}{seg.FlightNumber}, Dep: {seg.DepartureDay} {seg.DepartureTime}");
-                                }
-                            }
-
+                            _logger.LogDebug("[BookFlight] ReadShoppingFile returned {Count} segments, HasError={HasError}", readResult?.Segments?.Count ?? 0, readResult?.HasError);
                             if (!readResult.HasError && readResult.Segments.Count > 0)
                             {
-                                Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] Before clear: {booking.FlightSegments.Count} segments in DB");
                                 booking.FlightSegments.Clear();
                                 var bagStr = FormatBaggageAllowance(airBooking?.BaggageAllowances);
                                 foreach (var seg in readResult.Segments)
@@ -2483,17 +2458,11 @@ public class FlightController : ControllerBase
                                         Baggage = bagStr
                                     });
                                 }
-                                Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] After refresh: {booking.FlightSegments.Count} segments in DB");
                                 _logger.LogInformation("[BookFlight] Updated segments from ReadShoppingFile. Count={Count}", readResult.Segments.Count);
-                            }
-                            else
-                            {
-                                Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] Skipping refresh: HasError={readResult?.HasError}, SegmentCount={readResult?.Segments?.Count ?? 0}");
                             }
                         }
                         catch (Exception readEx)
                         {
-                            Console.WriteLine($"[SEGMENT-DEBUG] [BookFlight] ERROR: {readEx.Message}\n{readEx.StackTrace}");
                             _logger.LogWarning(readEx, "[BookFlight] ReadShoppingFile failed — keeping allocate segments.");
                         }
 
@@ -2527,9 +2496,10 @@ public class FlightController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "[BookFlight] Beklenmeyen hata");
             response.HasError = true;
-            response.ErrorMessage = $"Beklenmeyen hata: {ex.Message}";
-            response.Steps.Add($"HATA: {ex.Message}");
+            response.ErrorMessage = "Rezervasyon işlemi sırasında beklenmeyen bir hata oluştu.";
+            response.Steps.Add("HATA: Beklenmeyen bir hata oluştu.");
             return StatusCode(500, response);
         }
     }
