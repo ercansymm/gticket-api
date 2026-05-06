@@ -22,6 +22,9 @@ public class SupportTicket
     public SupportTicketType Type { get; set; }
     public string Subject { get; set; } = null!;
 
+    // Misafir e-posta (yalnızca guest ticket'larda — cevap maili için)
+    public string? GuestEmail { get; set; }
+
     // Durum
     public SupportTicketStatus Status { get; set; } = SupportTicketStatus.Open;
 

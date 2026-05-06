@@ -57,6 +57,7 @@ public class SupportTicketDetailDto
     public bool IsGuest => UserId == null;
     public string? UserFullName { get; set; }
     public string? UserEmail { get; set; }
+    public string? GuestEmail { get; set; }
     public string? UserPhone { get; set; }
 
     // Kapatma bilgisi
@@ -154,4 +155,5 @@ public class GuestCreateSupportTicketRequest
     public SupportTicketType Type { get; set; }
     public string Subject { get; set; } = null!;
     public string Message { get; set; } = null!;
+    public string? GuestEmail { get; set; }
 }
