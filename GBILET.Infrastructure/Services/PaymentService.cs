@@ -51,7 +51,8 @@ public class PaymentService : IPaymentService
                               $"?sid={Uri.EscapeDataString(pay.SessionId ?? "")}" +
                               $"&stk={Uri.EscapeDataString(pay.SessionToken ?? "")}" +
                               $"&sfid={Uri.EscapeDataString(pay.ShoppingFileId ?? "")}" +
-                              $"&bid={pay.BookingId}";
+                              $"&bid={pay.BookingId}" +
+                              $"&nonce={Uri.EscapeDataString(pay.CallbackNonce ?? "")}";
         }
 
         MakePaymentResponse bbResponse;

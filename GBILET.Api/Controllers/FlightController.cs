@@ -675,10 +675,11 @@ public class FlightController : ControllerBase
                     return BadRequest(new { error = "CVV zorunludur." });
             }
 
-            // ContinueUrl'u olustur — session bilgilerini query string'e gom
+            // Tek kullanımlık nonce üret — 3D callback replay saldırısını önler
+            var callbackNonce = Guid.NewGuid().ToString("N");
             var baseCallbackUrl = BuildCallbackUrl();
 
-            // Cache'e de yaz (fallback olarak) — ProductId dahil (FinalizeShopping icin gerekli)
+            // Cache'e yaz — nonce dahil (FinalizeShopping + replay koruması için)
             _cache.Set($"3d_session_{request.ShoppingFileId}", new ThreeDSessionData
             {
                 SessionId = request.SessionId,
@@ -686,8 +687,14 @@ public class FlightController : ControllerBase
                 ShoppingFileId = request.ShoppingFileId,
                 BookingId = request.BookingId,
                 ProductId = request.ProductId,
-                BillingInfo = request.BillingInfo
+                BillingInfo = request.BillingInfo,
+                Nonce = callbackNonce
             }, TimeSpan.FromMinutes(15));
+
+            // Nonce'u ayrıca doğrulama için kaydet
+            _cache.Set($"3d_nonce_{callbackNonce}", request.ShoppingFileId, TimeSpan.FromMinutes(15));
+
+            request.CallbackNonce = callbackNonce;
 
             var result = await _paymentService.ProcessPaymentAsync(new PaymentProcessRequest
             {
@@ -813,8 +820,21 @@ public class FlightController : ControllerBase
             var sessionToken = Request.Query["stk"].ToString();
             var shoppingFileId = Request.Query["sfid"].ToString();
             var bookingId = Guid.TryParse(Request.Query["bid"].ToString(), out var bid) ? bid : (Guid?)null;
+            var callbackNonce = Request.Query["nonce"].ToString();
             string? productId = null;
             ShoppingBillingInfo? billingInfo = null;
+
+            // Nonce doğrulama — replay saldırısını önler
+            if (!string.IsNullOrEmpty(callbackNonce))
+            {
+                if (!_cache.TryGetValue<string>($"3d_nonce_{callbackNonce}", out _))
+                {
+                    _logger.LogWarning("[3DCallback] Geçersiz veya zaten kullanılmış nonce. Nonce={Nonce}", callbackNonce);
+                    return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString("Geçersiz ödeme oturumu. Lütfen tekrar deneyin.")}");
+                }
+                // Nonce'u hemen tüket — tek kullanım
+                _cache.Remove($"3d_nonce_{callbackNonce}");
+            }
 
             // Query string'te yoksa cache'ten dene
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(sessionToken))

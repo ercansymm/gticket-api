@@ -80,6 +80,12 @@ public class MakePaymentRequest
     /// 3D Secure akisinda callback sonrasi FinalizeShopping'e iletilir.
     /// </summary>
     public ShoppingBillingInfo? BillingInfo { get; set; }
+
+    /// <summary>
+    /// Tek kullanımlık nonce — 3D callback replay saldırısını önler.
+    /// Controller tarafından set edilir, dışarıdan kabul edilmez.
+    /// </summary>
+    public string? CallbackNonce { get; set; }
 }
 
 public class CreditCardInfo
