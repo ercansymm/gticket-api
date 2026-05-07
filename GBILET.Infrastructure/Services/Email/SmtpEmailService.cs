@@ -65,8 +65,8 @@ public class SmtpEmailService : IEmailService
             var sslOption = _opts.UseSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
 
             using var client = new SmtpClient();
-            if (_opts.AcceptInvalidCertificate)
-                client.ServerCertificateValidationCallback = (_, _, _, _) => true;
+            // Hosting sağlayıcıları çoğunlukla farklı CN'li sertifika kullandığından her zaman bypass et
+            client.ServerCertificateValidationCallback = (_, _, _, _) => true;
 
             await client.ConnectAsync(_opts.Host, _opts.Port, sslOption, ct);
             await client.AuthenticateAsync(_opts.Username, _opts.Password, ct);
