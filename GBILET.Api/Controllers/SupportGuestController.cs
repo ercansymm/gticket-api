@@ -132,6 +132,11 @@ public class SupportGuestController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating guest support ticket for booking {BookingId}", bookingId);
+            return StatusCode(500, new { error = "Talep oluşturulurken bir hata oluştu." });
+        }
     }
 
     // ============================================================
@@ -180,6 +185,11 @@ public class SupportGuestController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding guest message to ticket {TicketId}", id);
+            return StatusCode(500, new { error = "Mesaj gönderilemedi." });
         }
     }
 

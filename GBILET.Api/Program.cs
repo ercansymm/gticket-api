@@ -379,6 +379,16 @@ using (var scope = app.Services.CreateScope())
     {
         // Kolon zaten varsa yut
     }
+
+    // SupportTickets tablosuna GuestEmail kolonu ekle (yoksa)
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"ALTER TABLE IF EXISTS ""SupportTickets"" ADD COLUMN IF NOT EXISTS ""GuestEmail"" text NULL");
+    }
+    catch
+    {
+        // Kolon zaten varsa yut
+    }
 }
 
 if (app.Environment.IsDevelopment())
