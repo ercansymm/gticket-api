@@ -62,8 +62,13 @@ public class SmtpEmailService : IEmailService
             message.Subject = subject;
             message.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = htmlBody };
 
+            var sslOption = _opts.UseSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+
             using var client = new SmtpClient();
-            await client.ConnectAsync(_opts.Host, _opts.Port, SecureSocketOptions.SslOnConnect, ct);
+            if (_opts.AcceptInvalidCertificate)
+                client.ServerCertificateValidationCallback = (_, _, _, _) => true;
+
+            await client.ConnectAsync(_opts.Host, _opts.Port, sslOption, ct);
             await client.AuthenticateAsync(_opts.Username, _opts.Password, ct);
             await client.SendAsync(message, ct);
             await client.DisconnectAsync(true, ct);

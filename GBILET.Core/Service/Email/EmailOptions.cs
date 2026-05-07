@@ -10,4 +10,6 @@ public class EmailOptions
     public string Password { get; set; } = string.Empty;
     public string FromName { get; set; } = "Atabilet Destek";
     public string FromEmail { get; set; } = string.Empty;
+    // Sertifika hostname uyuşmazlığını geç (hosting mail sunucuları için)
+    public bool AcceptInvalidCertificate { get; set; } = false;
 }
