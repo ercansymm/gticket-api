@@ -2,6 +2,13 @@ namespace GBILET.Core.Service.Email;
 
 public interface IEmailService
 {
+    Task SendTicketCreatedNotificationAsync(
+        string toEmail,
+        string toName,
+        string ticketNumber,
+        string subject,
+        CancellationToken ct = default);
+
     Task SendSupportReplyNotificationAsync(
         string toEmail,
         string toName,

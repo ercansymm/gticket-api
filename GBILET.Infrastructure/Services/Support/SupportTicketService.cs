@@ -99,6 +99,12 @@ public class SupportTicketService : ISupportTicketService
             "Support ticket {TicketNumber} created by user {UserId} (type={Type})",
             ticketNumber, userId, request.Type);
 
+        if (_email != null && !string.IsNullOrWhiteSpace(user.Email))
+        {
+            await _email.SendTicketCreatedNotificationAsync(
+                user.Email, user.FullName, ticketNumber, ticket.Subject, ct);
+        }
+
         return (await LoadDetailAsync(ticketId, ct))!;
     }
 
@@ -571,6 +577,13 @@ public class SupportTicketService : ISupportTicketService
         _logger.LogInformation(
             "Guest support ticket {TicketNumber} created for booking {BookingId} (type={Type})",
             ticketNumber, bookingId, request.Type);
+
+        var guestRecipientEmail = ticket.GuestEmail;
+        if (_email != null && !string.IsNullOrWhiteSpace(guestRecipientEmail))
+        {
+            await _email.SendTicketCreatedNotificationAsync(
+                guestRecipientEmail, passengerDisplayName, ticketNumber, ticket.Subject, ct);
+        }
 
         return (await LoadDetailAsync(ticketId, ct))!;
     }

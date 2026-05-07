@@ -18,6 +18,17 @@ public class SmtpEmailService : IEmailService
         _logger = logger;
     }
 
+    public async Task SendTicketCreatedNotificationAsync(
+        string toEmail,
+        string toName,
+        string ticketNumber,
+        string subject,
+        CancellationToken ct = default)
+    {
+        var html = BuildCreatedTemplate(toName, ticketNumber, subject);
+        await SendAsync(toEmail, toName, $"Destek Talebiniz Alındı — {ticketNumber}", html, ct);
+    }
+
     public async Task SendSupportReplyNotificationAsync(
         string toEmail,
         string toName,
@@ -146,6 +157,54 @@ public class SmtpEmailService : IEmailService
                     </div>
                     <a href="https://atabilet.com/destek-taleplerim" style="display:inline-block;background:#047857;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:600;">
                       Taleplerim
+                    </a>
+                  </td>
+                </tr>
+                <!-- Footer -->
+                <tr>
+                  <td style="background:#f8fafc;padding:20px 32px;border-top:1px solid #e5e7eb;">
+                    <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+                      Bu e-posta otomatik olarak gönderilmiştir. Lütfen bu adrese doğrudan yanıt vermeyiniz.<br>
+                      © {DateTime.UtcNow.Year} Atabilet.com — Tüm hakları saklıdır.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+        </html>
+        """;
+
+    private static string BuildCreatedTemplate(string name, string ticketNumber, string subject) => $"""
+        <!DOCTYPE html>
+        <html lang="tr">
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 0;">
+            <tr><td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;">
+                <!-- Header -->
+                <tr>
+                  <td style="background:#0a1628;padding:28px 32px;">
+                    <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:1px;">ATA<span style="color:#047857;">BİLET</span></h1>
+                    <p style="margin:4px 0 0;color:#94a3b8;font-size:13px;">atabilet.com — Destek Merkezi</p>
+                  </td>
+                </tr>
+                <!-- Body -->
+                <tr>
+                  <td style="padding:32px;">
+                    <p style="margin:0 0 16px;color:#374151;font-size:15px;">Merhaba <strong>{name}</strong>,</p>
+                    <p style="margin:0 0 24px;color:#374151;font-size:15px;">
+                      Destek talebiniz başarıyla alınmıştır. Destek ekibimiz en kısa sürede sizinle iletişime geçecektir.
+                    </p>
+                    <div style="background:#f0fdf4;border-left:4px solid #047857;border-radius:4px;padding:20px;margin-bottom:24px;">
+                      <p style="margin:0 0 8px;color:#047857;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Talep Bilgileri</p>
+                      <p style="margin:0 0 4px;color:#374151;font-size:14px;"><strong>Talep No:</strong> {ticketNumber}</p>
+                      <p style="margin:0;color:#374151;font-size:14px;"><strong>Konu:</strong> {System.Net.WebUtility.HtmlEncode(subject)}</p>
+                    </div>
+                    <a href="https://atabilet.com/destek-taleplerim" style="display:inline-block;background:#047857;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:600;">
+                      Talebi Görüntüle
                     </a>
                   </td>
                 </tr>
