@@ -12,12 +12,12 @@ public class SupportTicketService : ISupportTicketService
 {
     private readonly GTicketDbContext _db;
     private readonly ILogger<SupportTicketService> _logger;
-    private readonly IEmailService _email;
+    private readonly IEmailService? _email;
 
     public SupportTicketService(
         GTicketDbContext db,
         ILogger<SupportTicketService> logger,
-        IEmailService email)
+        IEmailService? email = null)
     {
         _db = db;
         _logger = logger;
