@@ -86,6 +86,13 @@ public class MakePaymentRequest
     /// Controller tarafından set edilir, dışarıdan kabul edilmez.
     /// </summary>
     public string? CallbackNonce { get; set; }
+
+    /// <summary>
+    /// 3D callback sonrası yönlendirilecek frontend base URL.
+    /// BFF tarafından gönderilir (ör. http://localhost:3000 veya https://atabilet.com).
+    /// Boşsa appsettings'teki FrontendUrl kullanılır.
+    /// </summary>
+    public string? FrontendBaseUrl { get; set; }
 }
 
 public class CreditCardInfo

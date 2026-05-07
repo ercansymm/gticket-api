@@ -14,4 +14,5 @@ public class ThreeDSessionData
     public ShoppingBillingInfo? BillingInfo { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? Nonce { get; set; }
+    public string? FrontendBaseUrl { get; set; }
 }

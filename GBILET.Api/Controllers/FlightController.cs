@@ -688,7 +688,8 @@ public class FlightController : ControllerBase
                 BookingId = request.BookingId,
                 ProductId = request.ProductId,
                 BillingInfo = request.BillingInfo,
-                Nonce = callbackNonce
+                Nonce = callbackNonce,
+                FrontendBaseUrl = string.IsNullOrWhiteSpace(request.FrontendBaseUrl) ? null : request.FrontendBaseUrl.TrimEnd('/')
             }, TimeSpan.FromMinutes(15));
 
             // Nonce'u ayrıca doğrulama için kaydet
@@ -837,6 +838,7 @@ public class FlightController : ControllerBase
             }
 
             // Query string'te yoksa cache'ten dene
+            string? cachedFrontendUrl = null;
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(sessionToken))
             {
                 if (!string.IsNullOrEmpty(shoppingFileId)
@@ -849,6 +851,7 @@ public class FlightController : ControllerBase
                     bookingId = cached.BookingId;
                     productId = cached.ProductId;
                     billingInfo = cached.BillingInfo;
+                    cachedFrontendUrl = cached.FrontendBaseUrl;
                     _logger.LogInformation("[3DCallback] Session cache'ten alindi. ShoppingFileId={ShoppingFileId}, ProductId={ProductId}", shoppingFileId, productId);
                 }
                 else
@@ -866,8 +869,12 @@ public class FlightController : ControllerBase
                 {
                     productId = cached.ProductId;
                     billingInfo = cached.BillingInfo;
+                    cachedFrontendUrl = cached.FrontendBaseUrl;
                 }
             }
+
+            // BFF'in gönderdiği frontend URL'i kullan, yoksa appsettings'teki fallback
+            var effectiveFrontendUrl = string.IsNullOrWhiteSpace(cachedFrontendUrl) ? _frontendUrl : cachedFrontendUrl;
 
             // BiletBank'a Complete3DPayment + Booking finalize (PaymentService icinde DB transaction)
             var completeRequest = new Complete3DPaymentRequest
@@ -897,13 +904,13 @@ public class FlightController : ControllerBase
                 var internalPnr = result.InternalPnr ?? "";
                 // Dogrudan /checkout/success'e yonlendiriyoruz (eski /payment/result ara
                 // ekrani arada gereksiz bir loading + buyuk tik gosteriyordu).
-                var successUrl = $"{_frontendUrl}/checkout/success?bookingId={bookingId}&pnr={Uri.EscapeDataString(bbPnr)}&internalPnr={Uri.EscapeDataString(internalPnr)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
+                var successUrl = $"{effectiveFrontendUrl}/checkout/success?bookingId={bookingId}&pnr={Uri.EscapeDataString(bbPnr)}&internalPnr={Uri.EscapeDataString(internalPnr)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
                 return Redirect(successUrl);
             }
             else
             {
                 var errorMsg = result.ErrorMessage ?? "Odeme basarisiz";
-                return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString(errorMsg)}&bookingId={bookingId}");
+                return Redirect($"{effectiveFrontendUrl}/checkout/failed?error={Uri.EscapeDataString(errorMsg)}&bookingId={bookingId}");
             }
         }
         catch (Exception ex)
