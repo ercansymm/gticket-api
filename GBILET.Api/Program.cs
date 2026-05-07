@@ -16,7 +16,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Security.Cryptography;
+using GBILET.Core.Service.Email;
 using GBILET.Core.Service.Support;
+using GBILET.Infrastructure.Services.Email;
 using GBILET.Infrastructure.Services.Support;
 using GBILET.Core.Models.Flight;
 using GBILET.Infrastructure.Caching;
@@ -224,6 +226,8 @@ builder.Services.AddSingleton<ITotpService, TotpService>();   // Stateless
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
 builder.Services.AddScoped<IBlogService, BlogService>();
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddSingleton<IGuestSupportTokenService, GuestSupportTokenService>();
 builder.Services.AddDataProtection(); // GuestSupportTokenService bunu kullanır

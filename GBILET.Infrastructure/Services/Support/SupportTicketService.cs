@@ -1,5 +1,6 @@
 using GBILET.Core.DTOs.Support;
 using GBILET.Core.Entities.Support;
+using GBILET.Core.Service.Email;
 using GBILET.Core.Service.Support;
 using GBILET.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -11,13 +12,16 @@ public class SupportTicketService : ISupportTicketService
 {
     private readonly GTicketDbContext _db;
     private readonly ILogger<SupportTicketService> _logger;
+    private readonly IEmailService _email;
 
     public SupportTicketService(
         GTicketDbContext db,
-        ILogger<SupportTicketService> logger)
+        ILogger<SupportTicketService> logger,
+        IEmailService email)
     {
         _db = db;
         _logger = logger;
+        _email = email;
     }
 
     // ============================================================
@@ -298,7 +302,9 @@ public class SupportTicketService : ISupportTicketService
         if (string.IsNullOrWhiteSpace(request.Body))
             throw new InvalidOperationException("Mesaj boş olamaz.");
 
-        var ticket = await _db.SupportTickets.FirstOrDefaultAsync(t => t.Id == ticketId, ct)
+        var ticket = await _db.SupportTickets
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.Id == ticketId, ct)
             ?? throw new KeyNotFoundException("Destek talebi bulunamadı.");
 
         if (ticket.Status == SupportTicketStatus.Closed)
@@ -329,6 +335,17 @@ public class SupportTicketService : ISupportTicketService
             "Admin {AdminId} replied to support ticket {TicketNumber}",
             adminUserId, ticket.TicketNumber);
 
+        // Kullanıcıya email bildirimi gönder
+        var recipientEmail = ticket.User?.Email ?? ticket.GuestEmail;
+        var recipientName = ticket.User?.FullName ?? "Değerli Müşterimiz";
+        if (!string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            await _email.SendSupportReplyNotificationAsync(
+                recipientEmail, recipientName,
+                ticket.TicketNumber, ticket.Subject,
+                message.Body, ct);
+        }
+
         return ToMessageDto(message);
     }
 
@@ -340,7 +357,9 @@ public class SupportTicketService : ISupportTicketService
         Guid adminUserId,
         CancellationToken ct = default)
     {
-        var ticket = await _db.SupportTickets.FirstOrDefaultAsync(t => t.Id == ticketId, ct)
+        var ticket = await _db.SupportTickets
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.Id == ticketId, ct)
             ?? throw new KeyNotFoundException("Destek talebi bulunamadı.");
 
         if (ticket.Status == SupportTicketStatus.Closed)
@@ -361,6 +380,16 @@ public class SupportTicketService : ISupportTicketService
         _logger.LogInformation(
             "Admin {AdminId} closed support ticket {TicketNumber}",
             adminUserId, ticket.TicketNumber);
+
+        // Kullanıcıya kapanma bildirimi gönder
+        var recipientEmail = ticket.User?.Email ?? ticket.GuestEmail;
+        var recipientName = ticket.User?.FullName ?? "Değerli Müşterimiz";
+        if (!string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            await _email.SendTicketClosedNotificationAsync(
+                recipientEmail, recipientName,
+                ticket.TicketNumber, ticket.Subject, ct);
+        }
 
         return (await LoadDetailAsync(ticketId, ct))!;
     }
