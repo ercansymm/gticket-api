@@ -91,7 +91,9 @@ public class FlightController : ControllerBase
                 .Select(p => new BookingEmailPassenger(
                     $"{p.FirstName} {p.LastName}".Trim(),
                     p.Type,
-                    p.TicketNumber))
+                    p.TicketNumber,
+                    p.CitizenNo ?? p.PassportNo,
+                    p.Phone))
                 .ToList();
 
             await _email.SendBookingConfirmationAsync(
@@ -1416,6 +1418,8 @@ public class FlightController : ControllerBase
                 isGuest = booking.UserId == null,
                 booking.UserId,
                 booking.GuestSessionId,
+                baseFare = booking.FareDetails.FirstOrDefault()?.BaseFare ?? 0m,
+                taxes = booking.FareDetails.FirstOrDefault()?.TotalTax ?? 0m,
                 passengers = booking.Passengers.Select(p => new
                 {
                     p.SequenceNo,
@@ -1425,6 +1429,8 @@ public class FlightController : ControllerBase
                     p.Gender,
                     p.BirthDate,
                     p.Nationality,
+                    p.CitizenNo,
+                    p.PassportNo,
                     p.TicketNumber,
                     p.Email,
                     p.Phone

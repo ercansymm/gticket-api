@@ -15,7 +15,9 @@ public record BookingEmailFlight(
 public record BookingEmailPassenger(
     string FullName,
     string Type,
-    string? TicketNumber);
+    string? TicketNumber,
+    string? CitizenNo = null,
+    string? Phone = null);
 
 public interface IEmailService
 {

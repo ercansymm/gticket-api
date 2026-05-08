@@ -235,6 +235,8 @@ public class SmtpEmailService : IEmailService
                         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;margin-bottom:24px;">
                           <tr style="background:#f8fafc;">
                             <td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:700;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Yolcu</td>
+                            <td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:700;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">TC / Pasaport</td>
+                            <td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:700;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Telefon</td>
                             <td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:700;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Tip</td>
                             <td style="padding:10px 16px;color:#6b7280;font-size:12px;font-weight:700;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Bilet No</td>
                           </tr>
@@ -340,10 +342,18 @@ public class SmtpEmailService : IEmailService
             var ticketDisplay = !string.IsNullOrEmpty(p.TicketNumber)
                 ? System.Net.WebUtility.HtmlEncode(p.TicketNumber)
                 : "<span style=\"color:#9ca3af;\">—</span>";
+            var citizenDisplay = !string.IsNullOrEmpty(p.CitizenNo)
+                ? System.Net.WebUtility.HtmlEncode(p.CitizenNo)
+                : "<span style=\"color:#9ca3af;\">—</span>";
+            var phoneDisplay = !string.IsNullOrEmpty(p.Phone)
+                ? System.Net.WebUtility.HtmlEncode(p.Phone)
+                : "<span style=\"color:#9ca3af;\">—</span>";
 
             sb.Append(
                 $"<tr>" +
                 $"<td style=\"padding:12px 16px;color:#374151;font-size:14px;{border}\">{System.Net.WebUtility.HtmlEncode(p.FullName)}</td>" +
+                $"<td style=\"padding:12px 16px;color:#374151;font-size:13px;font-family:monospace;{border}\">{citizenDisplay}</td>" +
+                $"<td style=\"padding:12px 16px;color:#6b7280;font-size:13px;{border}\">{phoneDisplay}</td>" +
                 $"<td style=\"padding:12px 16px;color:#6b7280;font-size:13px;{border}\">{typeLabel}</td>" +
                 $"<td style=\"padding:12px 16px;color:#374151;font-size:13px;font-family:monospace;{border}\">{ticketDisplay}</td>" +
                 $"</tr>"
