@@ -102,7 +102,7 @@ public class SupportTicketService : ISupportTicketService
         if (_email != null && !string.IsNullOrWhiteSpace(user.Email))
         {
             await _email.SendTicketCreatedNotificationAsync(
-                user.Email, user.FullName, ticketNumber, ticket.Subject, ct);
+                user.Email, user.FullName, ticketNumber, ticket.Subject, ticketId, ct);
         }
 
         return (await LoadDetailAsync(ticketId, ct))!;
@@ -346,10 +346,25 @@ public class SupportTicketService : ISupportTicketService
         var recipientName = ticket.User?.FullName ?? "Değerli Müşterimiz";
         if (!string.IsNullOrWhiteSpace(recipientEmail))
         {
+            var allMessages = await _db.SupportTicketMessages
+                .AsNoTracking()
+                .Where(m => m.TicketId == ticketId)
+                .OrderBy(m => m.CreatedAt)
+                .Select(m => new SupportTicketMessageDto
+                {
+                    Id = m.Id,
+                    SenderType = m.SenderType,
+                    SenderId = m.SenderId,
+                    SenderDisplayName = m.SenderDisplayName,
+                    Body = m.Body,
+                    CreatedAt = m.CreatedAt
+                })
+                .ToListAsync(ct);
+
             await _email.SendSupportReplyNotificationAsync(
                 recipientEmail, recipientName,
                 ticket.TicketNumber, ticket.Subject,
-                message.Body, ct);
+                message.Body, ticketId, allMessages, ct);
         }
 
         return ToMessageDto(message);
@@ -394,7 +409,7 @@ public class SupportTicketService : ISupportTicketService
         {
             await _email.SendTicketClosedNotificationAsync(
                 recipientEmail, recipientName,
-                ticket.TicketNumber, ticket.Subject, ct);
+                ticket.TicketNumber, ticket.Subject, ticketId, ct);
         }
 
         return (await LoadDetailAsync(ticketId, ct))!;
@@ -582,7 +597,7 @@ public class SupportTicketService : ISupportTicketService
         if (_email != null && !string.IsNullOrWhiteSpace(guestRecipientEmail))
         {
             await _email.SendTicketCreatedNotificationAsync(
-                guestRecipientEmail, passengerDisplayName, ticketNumber, ticket.Subject, ct);
+                guestRecipientEmail, passengerDisplayName, ticketNumber, ticket.Subject, ticketId, ct);
         }
 
         return (await LoadDetailAsync(ticketId, ct))!;
