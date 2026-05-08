@@ -76,13 +76,40 @@ public class AuthService : IAuthService
         return (true, null, ToDto(user));
     }
 
+    public async Task<(bool Success, string? Error, AuthUserDto? User)> GoogleLoginAsync(GoogleLoginRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return (false, "Google hesabında e-posta adresi bulunamadı.", null);
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+
+        if (user is null)
+        {
+            // Google ile ilk giriş — otomatik hesap oluştur
+            user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                FullName = request.Name?.Trim() ?? email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), 12),
+                Role = "Customer",
+                CustomerNumber = "C" + DateTime.UtcNow.ToString("yyMMddHHmmssfff"),
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return (true, null, ToDto(user));
+    }
+
     private static AuthUserDto ToDto(User u) => new()
     {
         Id = u.Id.ToString(),
         Email = u.Email,
         Name = u.FullName,
         Role = u.Role,
-        // Simple opaque token for downstream calls; NextAuth wraps its own JWT around this.
         Token = Guid.NewGuid().ToString("N")
     };
 }
