@@ -254,12 +254,13 @@ public static class FlightSearchMapper
             Equipment = firstSeg.Equipment,
 
             // Fiyat: RecommendationBox'taki combined fiyat (gidiş+dönüş toplamı)
+            // Note: BiletBank TotalFare excludes ServiceFee; add it to get the true customer price
             BaseFare = rb.BaseFare,
             Taxes = rb.Taxes,
             ServiceFee = rb.ServiceFee,
-            TotalFare = rb.TotalFare,
+            TotalFare = rb.TotalFare + rb.ServiceFee,
             Currency = rb.Currency ?? "TRY",
-            TotalFareFormatted = FormatPrice(rb.TotalFare, rb.Currency ?? "TRY"),
+            TotalFareFormatted = FormatPrice(rb.TotalFare + rb.ServiceFee, rb.Currency ?? "TRY"),
 
             IsRefundable = false,
             IsReservable = true,
@@ -390,12 +391,13 @@ public static class FlightSearchMapper
             Equipment = firstSegment?.Equipment,
 
             // Fiyat
+            // Note: BiletBank TotalFare excludes ServiceFee; add it to get the true customer price
             BaseFare = option.BaseFare,
             Taxes = option.Taxes,
             ServiceFee = option.ServiceFee,
-            TotalFare = option.TotalFare,
+            TotalFare = option.TotalFare + option.ServiceFee,
             Currency = option.Currency ?? "TRY",
-            TotalFareFormatted = FormatPrice(option.TotalFare, option.Currency ?? "TRY"),
+            TotalFareFormatted = FormatPrice(option.TotalFare + option.ServiceFee, option.Currency ?? "TRY"),
 
             // Durum
             IsRefundable = option.IsRefundable,
