@@ -269,10 +269,8 @@ builder.Services
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<GBILET.Core.Service.Auth.IAuthService, GBILET.Infrastructure.Services.AuthService>();
 
-// ============================================================
-// EMAIL — Resend + Channel queue + dispatcher hosted service
-// ============================================================
-builder.Services.AddAtabiletEmail(builder.Configuration);
+// NOTE: Resend email integration (AddAtabiletEmail) was removed.
+// SmtpEmailService is used instead and registered elsewhere if needed.
 
 
 var app = builder.Build();
