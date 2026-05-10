@@ -65,7 +65,9 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
                 "http://localhost:3001",      // gticket-admin (admin panel dev)
                 "https://atabilet.com",       // production müşteri
                 "https://www.atabilet.com",
-                "https://admin.atabilet.com"  // production admin
+                "https://admin.atabilet.com", // production admin
+                "https://devtest.atabilet.com",       // devtest müşteri
+                "https://devtest-admin.atabilet.com"  // devtest admin
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
