@@ -62,12 +62,16 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.AddPolicy("FrontendPolicy", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:3000",      // gticket-front (müşteri)
-                "http://localhost:5173",      // gticket-front Vite
-                "http://localhost:3001",      // gticket-admin (admin panel dev)
-                "https://atabilet.com",       // production müşteri
+                "http://localhost:3000",              // gticket-front (müşteri)
+                "http://localhost:5173",              // gticket-front Vite
+                "http://localhost:3001",              // gticket-admin (admin panel dev)
+                "http://localhost:3010",              // devtest-front local
+                "http://localhost:3011",              // devtest-admin local
+                "https://atabilet.com",               // production müşteri
                 "https://www.atabilet.com",
-                "https://admin.atabilet.com"  // production admin
+                "https://admin.atabilet.com",         // production admin
+                "https://devtest.atabilet.com",       // devtest müşteri
+                "https://devtest-admin.atabilet.com"  // devtest admin
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
