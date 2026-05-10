@@ -4,6 +4,7 @@ using GBILET.Core.Service.Flight;
 using GBILET.Core.Service.Ticket;
 using GBILET.Core.Helpers;
 using GBILET.Infrastructure.Data;
+using GBILET.Infrastructure.Extensions;
 using GBILET.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -24,6 +25,7 @@ using GBILET.Infrastructure.Resilience;
 using GBILET.Infrastructure.Services.FlightChangeRules;
 using Polly;
 using Polly.Extensions.Http;
+using Prometheus;
 
 
 // PostgreSQL: DateTimeKind.Unspecified olan DateTime değerlerini kabul et
@@ -263,6 +265,11 @@ builder.Services
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<GBILET.Core.Service.Auth.IAuthService, GBILET.Infrastructure.Services.AuthService>();
 
+// ============================================================
+// EMAIL — Resend + Channel queue + dispatcher hosted service
+// ============================================================
+builder.Services.AddAtabiletEmail(builder.Configuration);
+
 
 var app = builder.Build();
 
@@ -370,6 +377,46 @@ using (var scope = app.Services.CreateScope())
                 ADD COLUMN IF NOT EXISTS "GuestSessionId" uuid NULL
                     REFERENCES "GuestSessions"("Id");
             """);
+
+    // Email log tablolari (yoksa olustur) — EnsureCreated mevcut DB'de yeni tablo eklemiyor
+    try
+    {
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "SentEmails" (
+                "Id"                 uuid         NOT NULL PRIMARY KEY,
+                "EmailType"          varchar(64)  NOT NULL,
+                "IdempotencyKey"     varchar(128) NOT NULL,
+                "ToAddress"          varchar(256) NOT NULL,
+                "Subject"            varchar(256) NOT NULL,
+                "ProviderMessageId"  varchar(128) NULL,
+                "BookingId"          uuid         NULL,
+                "InternalPnr"        varchar(32)  NULL,
+                "SentAt"             timestamp with time zone NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS "IX_SentEmails_IdempotencyKey" ON "SentEmails" ("IdempotencyKey");
+            CREATE INDEX IF NOT EXISTS "IX_SentEmails_SentAt"          ON "SentEmails" ("SentAt");
+            CREATE INDEX IF NOT EXISTS "IX_SentEmails_InternalPnr"     ON "SentEmails" ("InternalPnr");
+
+            CREATE TABLE IF NOT EXISTS "FailedEmails" (
+                "Id"                 uuid         NOT NULL PRIMARY KEY,
+                "EmailType"          varchar(64)  NOT NULL,
+                "IdempotencyKey"     varchar(128) NOT NULL,
+                "ToAddress"          varchar(256) NOT NULL,
+                "Subject"            varchar(256) NOT NULL,
+                "ErrorMessage"       varchar(500) NOT NULL,
+                "AttemptCount"       integer      NOT NULL DEFAULT 1,
+                "BookingId"          uuid         NULL,
+                "InternalPnr"        varchar(32)  NULL,
+                "FailedAt"           timestamp with time zone NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS "IX_FailedEmails_IdempotencyKey" ON "FailedEmails" ("IdempotencyKey");
+            CREATE INDEX IF NOT EXISTS "IX_FailedEmails_FailedAt"       ON "FailedEmails" ("FailedAt");
+            """);
+    }
+    catch
+    {
+        // Tablolar zaten varsa yut
+    }
     }
     catch
     {
@@ -392,10 +439,12 @@ var uploadDir = Path.Combine(
     "uploads", "blog");
 Directory.CreateDirectory(uploadDir);
 app.UseForwardedHeaders();
+app.UseHttpMetrics();
 app.UseCors("FrontendPolicy");
 app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers().RequireRateLimiting("fixed");
+app.MapMetrics("/metrics");
 await app.RunAsync();
