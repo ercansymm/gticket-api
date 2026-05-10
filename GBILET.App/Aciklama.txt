@@ -1,9 +1,0 @@
-﻿İş akışları buradan yürür.
-gelen istek ne istiyor hangi controller hangi action çalışacak
-örneğin
-http://localhost:5000/Account/Login
-Account controller'ında Login action'ı çalışır.
-Eğer http://localhost:5000/Account/Register gelirse Account controller'ında Register action'ı çalışır.
-Eğer http://localhost:5000/Account/Register/5 gelirse Account controller'ında Register action'ı çalışır ve 5 parametre olarak gönderilir.
-Eğer http://localhost:5000/Account/Register/5/abc gelirse Account controller'ında Register action'ı çalışır ve 5 ve abc parametre olarak gönderilir.
-Eğer http://localhost:5000/Account/Register/5/abc/true gelirse Account controller'ında Register action'ı çalışır ve 5, abc ve true parametre olarak gönderilir.

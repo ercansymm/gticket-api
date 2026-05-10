@@ -35,5 +35,14 @@ namespace GBILET.Api.Controllers
                 return Unauthorized(new { error });
             return Ok(user);
         }
+
+        [HttpPost("google-login")]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request, CancellationToken ct)
+        {
+            var (success, error, user) = await _authService.GoogleLoginAsync(request, ct);
+            if (!success)
+                return BadRequest(new { error });
+            return Ok(user);
+        }
     }
 }

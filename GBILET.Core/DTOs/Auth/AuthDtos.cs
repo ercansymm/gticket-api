@@ -22,3 +22,11 @@ public class AuthUserDto
     public string Role { get; set; } = "Agent";
     public string Token { get; set; } = string.Empty;
 }
+
+public class GoogleLoginRequest
+{
+    public string GoogleId { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Picture { get; set; }
+}

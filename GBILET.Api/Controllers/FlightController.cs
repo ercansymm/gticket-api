@@ -4,6 +4,7 @@ using GBILET.Core.Helpers;
 using GBILET.Core.Interfaces;
 using GBILET.Core.Models.Flight;
 using GBILET.Core.Service;
+using GBILET.Core.Service.Email;
 using GBILET.Core.Service.Flight;
 using GBILET.Infrastructure.Resilience;
 using GBILET.Infrastructure.Services;
@@ -25,6 +26,7 @@ public class FlightController : ControllerBase
     private readonly string? _appBaseUrl;
     private readonly FlightAllocateService _flightAllocateService;
     private readonly SessionRecoveryExecutor _sessionRecoveryExecutor;
+    private readonly IEmailService? _email;
 
     public FlightController(
         IFlightService flightService,
@@ -34,7 +36,8 @@ public class FlightController : ControllerBase
         ILogger<FlightController> logger,
         IConfiguration configuration,
         FlightAllocateService flightAllocateService,
-        SessionRecoveryExecutor sessionRecoveryExecutor)
+        SessionRecoveryExecutor sessionRecoveryExecutor,
+        IEmailService? email = null)
     {
         _flightService = flightService;
         _bookingRepository = bookingRepository;
@@ -45,12 +48,67 @@ public class FlightController : ControllerBase
         _appBaseUrl = configuration["AppBaseUrl"];
         _flightAllocateService = flightAllocateService;
         _sessionRecoveryExecutor = sessionRecoveryExecutor;
+        _email = email;
     }
 
     private string BuildCallbackUrl() =>
         !string.IsNullOrEmpty(_appBaseUrl)
             ? $"{_appBaseUrl.TrimEnd('/')}/api/Flight/3d-callback"
             : $"{Request.Scheme}://{Request.Host}/api/Flight/3d-callback";
+
+    private async Task TrySendBookingConfirmationAsync(Booking booking)
+    {
+        if (_email == null) return;
+        try
+        {
+            var contactEmail = booking.Passengers
+                .FirstOrDefault(p => !string.IsNullOrEmpty(p.Email))?.Email;
+            if (string.IsNullOrEmpty(contactEmail)) return;
+
+            var contactName = booking.Passengers
+                .OrderBy(p => p.SequenceNo)
+                .Select(p => $"{p.FirstName} {p.LastName}".Trim())
+                .FirstOrDefault() ?? "Değerli Müşterimiz";
+
+            var pnr = booking.InternalPnr ?? booking.PNR ?? booking.Id.ToString();
+            var pdfUrl = $"{_frontendUrl}/api/Ticket/pdf/booking/{booking.Id}";
+
+            var flights = booking.FlightSegments
+                .OrderBy(s => s.SequenceNo)
+                .Select(s => new BookingEmailFlight(
+                    s.OriginCode,
+                    s.DestinationCode,
+                    s.FlightNumber,
+                    s.MarketingAirline,
+                    s.DepartureDate,
+                    s.DepartureTime,
+                    s.ArrivalTime,
+                    s.Baggage))
+                .ToList();
+
+            var passengers = booking.Passengers
+                .OrderBy(p => p.SequenceNo)
+                .Select(p => new BookingEmailPassenger(
+                    $"{p.FirstName} {p.LastName}".Trim(),
+                    p.Type,
+                    p.TicketNumber,
+                    p.CitizenNo ?? p.PassportNo,
+                    p.Phone))
+                .ToList();
+
+            await _email.SendBookingConfirmationAsync(
+                contactEmail, contactName, pnr, booking.Id,
+                flights, passengers,
+                booking.GrandTotal, booking.Currency,
+                pdfUrl);
+
+            _logger.LogInformation("[BookingConfirmation] Email sent for booking {BookingId}", booking.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[BookingConfirmation] Email failed for booking {BookingId}", booking.Id);
+        }
+    }
 
 
 
@@ -688,7 +746,8 @@ public class FlightController : ControllerBase
                 BookingId = request.BookingId,
                 ProductId = request.ProductId,
                 BillingInfo = request.BillingInfo,
-                Nonce = callbackNonce
+                Nonce = callbackNonce,
+                FrontendBaseUrl = string.IsNullOrWhiteSpace(request.FrontendBaseUrl) ? null : request.FrontendBaseUrl.TrimEnd('/')
             }, TimeSpan.FromMinutes(15));
 
             // Nonce'u ayrıca doğrulama için kaydet
@@ -837,6 +896,7 @@ public class FlightController : ControllerBase
             }
 
             // Query string'te yoksa cache'ten dene
+            string? cachedFrontendUrl = null;
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(sessionToken))
             {
                 if (!string.IsNullOrEmpty(shoppingFileId)
@@ -849,6 +909,7 @@ public class FlightController : ControllerBase
                     bookingId = cached.BookingId;
                     productId = cached.ProductId;
                     billingInfo = cached.BillingInfo;
+                    cachedFrontendUrl = cached.FrontendBaseUrl;
                     _logger.LogInformation("[3DCallback] Session cache'ten alindi. ShoppingFileId={ShoppingFileId}, ProductId={ProductId}", shoppingFileId, productId);
                 }
                 else
@@ -866,8 +927,12 @@ public class FlightController : ControllerBase
                 {
                     productId = cached.ProductId;
                     billingInfo = cached.BillingInfo;
+                    cachedFrontendUrl = cached.FrontendBaseUrl;
                 }
             }
+
+            // BFF'in gönderdiği frontend URL'i kullan, yoksa appsettings'teki fallback
+            var effectiveFrontendUrl = string.IsNullOrWhiteSpace(cachedFrontendUrl) ? _frontendUrl : cachedFrontendUrl;
 
             // BiletBank'a Complete3DPayment + Booking finalize (PaymentService icinde DB transaction)
             var completeRequest = new Complete3DPaymentRequest
@@ -895,15 +960,23 @@ public class FlightController : ControllerBase
                 // olarak gonderiliyor. Frontend ATA PNR'i oncelikli gosteriyor.
                 var bbPnr = result.PNR ?? "";
                 var internalPnr = result.InternalPnr ?? "";
-                // Dogrudan /checkout/success'e yonlendiriyoruz (eski /payment/result ara
-                // ekrani arada gereksiz bir loading + buyuk tik gosteriyordu).
-                var successUrl = $"{_frontendUrl}/checkout/success?bookingId={bookingId}&pnr={Uri.EscapeDataString(bbPnr)}&internalPnr={Uri.EscapeDataString(internalPnr)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
+
+                // AutoFinalized = true ise biletleme PaymentService içinde yapıldı; email gönder.
+                // AutoFinalized = false ise frontend /finalize-shopping çağırır, email orada gönderilir.
+                if (result.AutoFinalized && bookingId.HasValue)
+                {
+                    var finalizedBooking = await _bookingRepository.GetByIdAsync(bookingId.Value);
+                    if (finalizedBooking != null)
+                        _ = TrySendBookingConfirmationAsync(finalizedBooking);
+                }
+
+                var successUrl = $"{effectiveFrontendUrl}/checkout/success?bookingId={bookingId}&pnr={Uri.EscapeDataString(bbPnr)}&internalPnr={Uri.EscapeDataString(internalPnr)}&shoppingFileId={Uri.EscapeDataString(shoppingFileId)}&finalized={result.AutoFinalized}";
                 return Redirect(successUrl);
             }
             else
             {
                 var errorMsg = result.ErrorMessage ?? "Odeme basarisiz";
-                return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString(errorMsg)}&bookingId={bookingId}");
+                return Redirect($"{effectiveFrontendUrl}/checkout/failed?error={Uri.EscapeDataString(errorMsg)}&bookingId={bookingId}");
             }
         }
         catch (Exception ex)
@@ -1080,6 +1153,8 @@ public class FlightController : ControllerBase
                             IsSuccess = true,
                             CreatedAt = DateTime.UtcNow
                         });
+
+                        _ = TrySendBookingConfirmationAsync(bookingToUpdate);
                     }
                 }
                 catch (Exception dbEx)
@@ -1192,6 +1267,8 @@ public class FlightController : ControllerBase
                             IsSuccess = true,
                             CreatedAt = DateTime.UtcNow
                         });
+
+                        _ = TrySendBookingConfirmationAsync(booking);
                     }
                 }
                 catch (Exception dbEx)
@@ -1341,6 +1418,8 @@ public class FlightController : ControllerBase
                 isGuest = booking.UserId == null,
                 booking.UserId,
                 booking.GuestSessionId,
+                baseFare = booking.FareDetails.FirstOrDefault()?.BaseFare ?? 0m,
+                taxes = booking.FareDetails.FirstOrDefault()?.TotalTax ?? 0m,
                 passengers = booking.Passengers.Select(p => new
                 {
                     p.SequenceNo,
@@ -1350,6 +1429,8 @@ public class FlightController : ControllerBase
                     p.Gender,
                     p.BirthDate,
                     p.Nationality,
+                    p.CitizenNo,
+                    p.PassportNo,
                     p.TicketNumber,
                     p.Email,
                     p.Phone
