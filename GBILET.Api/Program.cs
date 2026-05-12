@@ -271,12 +271,6 @@ builder.Services
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<GBILET.Core.Service.Auth.IAuthService, GBILET.Infrastructure.Services.AuthService>();
 
-// ============================================================
-// EMAIL — Resend + Channel queue + dispatcher hosted service
-// ============================================================
-builder.Services.AddAtabiletEmail(builder.Configuration);
-
-
 var app = builder.Build();
 
 
