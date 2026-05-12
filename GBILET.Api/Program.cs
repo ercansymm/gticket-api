@@ -70,8 +70,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
                 "https://atabilet.com",               // production müşteri
                 "https://www.atabilet.com",
                 "https://admin.atabilet.com",         // production admin
-                "https://devtest.atabilet.com",       // devtest müşteri
-                "https://devtest-admin.atabilet.com"  // devtest admin
+                "https://devtest.atabilet.com",        // devtest müşteri
+                "https://devtest-admin.atabilet.com"   // devtest admin
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
