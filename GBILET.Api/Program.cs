@@ -1,11 +1,13 @@
 ﻿using GBILET.Core.Interfaces;
 using GBILET.Core.Service;
 using GBILET.Core.Service.Flight;
+using GBILET.Core.Service.Sms;
 using GBILET.Core.Service.Ticket;
 using GBILET.Core.Helpers;
 using GBILET.Infrastructure.Data;
 using GBILET.Infrastructure.Extensions;
 using GBILET.Infrastructure.Services;
+using GBILET.Infrastructure.Services.Sms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.Threading.RateLimiting;
@@ -273,6 +275,15 @@ builder.Services
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<GBILET.Core.Service.Auth.IAuthService, GBILET.Infrastructure.Services.AuthService>();
+
+// ============================================================
+// SMS & OTP
+// ============================================================
+builder.Services.AddHttpClient<ISmsService, NetGsmSmsService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddScoped<IOtpService, OtpService>();
 
 var app = builder.Build();
 

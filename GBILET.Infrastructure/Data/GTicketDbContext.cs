@@ -41,6 +41,7 @@ public class GTicketDbContext : DbContext
     }
 
     public DbSet<User> Users { get; set; }
+    public DbSet<OtpCode> OtpCodes { get; set; }
     public DbSet<GuestSession> GuestSessions { get; set; }
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<Passenger> Passengers { get; set; }
@@ -148,6 +149,16 @@ public class GTicketDbContext : DbContext
             e.HasKey(u => u.Id);
             e.HasIndex(u => u.Email).IsUnique();
             e.HasIndex(u => u.CustomerNumber).IsUnique();
+        });
+
+        // OtpCode
+        modelBuilder.Entity<OtpCode>(e =>
+        {
+            e.HasKey(o => o.Id);
+            e.Property(o => o.Phone).HasMaxLength(20).IsRequired();
+            e.Property(o => o.Code).HasMaxLength(10).IsRequired();
+            e.HasIndex(o => new { o.Phone, o.Purpose, o.IsUsed });
+            e.HasIndex(o => o.ExpiresAt);
         });
 
         // Airport

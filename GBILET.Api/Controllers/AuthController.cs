@@ -1,4 +1,4 @@
-﻿using GBILET.Core.DTOs.Auth;
+using GBILET.Core.DTOs.Auth;
 using GBILET.Core.Service.Auth;
 using Microsoft.AspNetCore.Mvc;
 
@@ -43,6 +43,63 @@ namespace GBILET.Api.Controllers
             if (!success)
                 return BadRequest(new { error });
             return Ok(user);
+        }
+
+        /// <summary>Kayıt / giriş sonrası telefon OTP doğrulaması.</summary>
+        [HttpPost("verify-phone")]
+        public async Task<IActionResult> VerifyPhone([FromBody] VerifyPhoneRequest request, CancellationToken ct)
+        {
+            var (success, error) = await _authService.VerifyPhoneAsync(request, ct);
+            if (!success)
+                return BadRequest(new { error });
+            return Ok(new { message = "Telefon doğrulandı." });
+        }
+
+        /// <summary>OTP'yi yeniden gönderir (süresi dolmuş veya kaybolmuş kodlar için).</summary>
+        [HttpPost("resend-otp")]
+        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest request, CancellationToken ct)
+        {
+            var (success, error) = await _authService.ResendOtpAsync(request, ct);
+            if (!success)
+                return BadRequest(new { error });
+            return Ok(new { message = "Doğrulama kodu tekrar gönderildi." });
+        }
+
+        /// <summary>
+        /// Giriş yapmış kullanıcı şifre değiştirme OTP'si ister.
+        /// BFF, X-User-Id header'ı ile kullanıcı kimliğini iletir.
+        /// </summary>
+        [HttpPost("request-password-change")]
+        public async Task<IActionResult> RequestPasswordChange(CancellationToken ct)
+        {
+            var userId = GetUserIdFromHeader();
+            if (userId == Guid.Empty)
+                return BadRequest(new { error = "Geçersiz kullanıcı kimliği." });
+
+            var (success, error) = await _authService.RequestPasswordChangeAsync(userId, ct);
+            if (!success)
+                return BadRequest(new { error });
+            return Ok(new { message = "Doğrulama kodu telefonunuza gönderildi." });
+        }
+
+        /// <summary>OTP + yeni şifre ile şifre değişimini tamamlar.</summary>
+        [HttpPost("confirm-password-change")]
+        public async Task<IActionResult> ConfirmPasswordChange([FromBody] ChangePasswordRequest request, CancellationToken ct)
+        {
+            var userId = GetUserIdFromHeader();
+            if (userId == Guid.Empty)
+                return BadRequest(new { error = "Geçersiz kullanıcı kimliği." });
+
+            var (success, error) = await _authService.ConfirmPasswordChangeAsync(userId, request, ct);
+            if (!success)
+                return BadRequest(new { error });
+            return Ok(new { message = "Şifreniz başarıyla güncellendi." });
+        }
+
+        private Guid GetUserIdFromHeader()
+        {
+            var header = Request.Headers["X-User-Id"].FirstOrDefault();
+            return Guid.TryParse(header, out var id) ? id : Guid.Empty;
         }
     }
 }

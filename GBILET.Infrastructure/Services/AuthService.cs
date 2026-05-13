@@ -1,6 +1,8 @@
 using GBILET.Core.DTOs.Auth;
 using GBILET.Core.Entities;
+using GBILET.Core.Enums;
 using GBILET.Core.Service.Auth;
+using GBILET.Core.Service.Sms;
 using GBILET.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,10 +11,14 @@ namespace GBILET.Infrastructure.Services;
 public class AuthService : IAuthService
 {
     private readonly GTicketDbContext _db;
+    private readonly IOtpService _otp;
+    private readonly ISmsService _sms;
 
-    public AuthService(GTicketDbContext db)
+    public AuthService(GTicketDbContext db, IOtpService otp, ISmsService sms)
     {
-        _db = db;
+        _db  = db;
+        _otp = otp;
+        _sms = sms;
     }
 
     public async Task<(bool Success, string? Error, AuthUserDto? User)> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
@@ -26,28 +32,44 @@ public class AuthService : IAuthService
         if (request.Password.Length < 6)
             return (false, "Şifre en az 6 karakter olmalıdır.", null);
 
+        if (string.IsNullOrWhiteSpace(request.Phone))
+            return (false, "Telefon numarası zorunludur.", null);
+
         var email = request.Email.Trim().ToLowerInvariant();
 
-        var exists = await _db.Users.AnyAsync(u => u.Email == email, ct);
-        if (exists)
+        if (await _db.Users.AnyAsync(u => u.Email == email, ct))
             return (false, "Bu e-posta zaten kayıtlı.", null);
 
         var user = new User
         {
-            Id = Guid.NewGuid(),
-            Email = email,
-            FullName = request.FullName.Trim(),
-            Phone = request.Phone?.Trim(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, 12),
-            Role = "Customer",
-            CustomerNumber = "C" + DateTime.UtcNow.ToString("yyMMddHHmmssfff"),
-            CreatedAt = DateTime.UtcNow
+            Id               = Guid.NewGuid(),
+            Email            = email,
+            FullName         = request.FullName.Trim(),
+            Phone            = request.Phone.Trim(),
+            IsPhoneVerified  = false,
+            PasswordHash     = BCrypt.Net.BCrypt.HashPassword(request.Password, 12),
+            Role             = "Customer",
+            CustomerNumber   = "C" + DateTime.UtcNow.ToString("yyMMddHHmmssfff"),
+            CreatedAt        = DateTime.UtcNow
         };
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
 
-        return (true, null, ToDto(user));
+        // OTP gönder (fire-and-forget değil — hata olursa kullanıcı bilgilendirilsin)
+        var code = await _otp.GenerateAndStoreAsync(user.Phone, OtpPurpose.PhoneVerification, ct);
+        _ = _sms.SendOtpAsync(user.Phone, code, "kayıt doğrulama", ct);
+
+        return (true, null, new AuthUserDto
+        {
+            Id                        = user.Id.ToString(),
+            Email                     = user.Email,
+            Name                      = user.FullName,
+            Role                      = user.Role,
+            Token                     = string.Empty,
+            RequiresPhoneVerification = true,
+            MaskedPhone               = MaskPhone(user.Phone)
+        });
     }
 
     public async Task<(bool Success, string? Error, AuthUserDto? User)> LoginAsync(LoginRequest request, CancellationToken ct = default)
@@ -56,22 +78,34 @@ public class AuthService : IAuthService
             return (false, "E-posta ve şifre zorunludur.", null);
 
         var email = request.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        var user  = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
         if (user is null)
             return (false, "E-posta veya şifre hatalı.", null);
 
         bool valid;
-        try
-        {
-            valid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-        }
-        catch
-        {
-            valid = false;
-        }
+        try { valid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash); }
+        catch { valid = false; }
 
         if (!valid)
             return (false, "E-posta veya şifre hatalı.", null);
+
+        // Telefon doğrulanmamışsa OTP akışına yönlendir
+        if (!user.IsPhoneVerified && !string.IsNullOrWhiteSpace(user.Phone))
+        {
+            var code = await _otp.GenerateAndStoreAsync(user.Phone, OtpPurpose.PhoneVerification, ct);
+            _ = _sms.SendOtpAsync(user.Phone, code, "giriş doğrulama", ct);
+
+            return (true, null, new AuthUserDto
+            {
+                Id                        = user.Id.ToString(),
+                Email                     = user.Email,
+                Name                      = user.FullName,
+                Role                      = user.Role,
+                Token                     = string.Empty,
+                RequiresPhoneVerification = true,
+                MaskedPhone               = MaskPhone(user.Phone)
+            });
+        }
 
         return (true, null, ToDto(user));
     }
@@ -82,20 +116,20 @@ public class AuthService : IAuthService
             return (false, "Google hesabında e-posta adresi bulunamadı.", null);
 
         var email = request.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        var user  = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
 
         if (user is null)
         {
-            // Google ile ilk giriş — otomatik hesap oluştur
             user = new User
             {
-                Id = Guid.NewGuid(),
-                Email = email,
-                FullName = request.Name?.Trim() ?? email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), 12),
-                Role = "Customer",
-                CustomerNumber = "C" + DateTime.UtcNow.ToString("yyMMddHHmmssfff"),
-                CreatedAt = DateTime.UtcNow
+                Id              = Guid.NewGuid(),
+                Email           = email,
+                FullName        = request.Name?.Trim() ?? email,
+                PasswordHash    = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), 12),
+                Role            = "Customer",
+                IsPhoneVerified = true, // Google OAuth zaten doğrulanmış hesap
+                CustomerNumber  = "C" + DateTime.UtcNow.ToString("yyMMddHHmmssfff"),
+                CreatedAt       = DateTime.UtcNow
             };
             _db.Users.Add(user);
             await _db.SaveChangesAsync(ct);
@@ -104,12 +138,123 @@ public class AuthService : IAuthService
         return (true, null, ToDto(user));
     }
 
+    public async Task<(bool Success, string? Error)> VerifyPhoneAsync(VerifyPhoneRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Phone) || string.IsNullOrWhiteSpace(request.Code))
+            return (false, "Telefon ve kod zorunludur.");
+
+        var result = await _otp.ValidateAsync(request.Phone, request.Code, OtpPurpose.PhoneVerification, ct);
+
+        return result.Status switch
+        {
+            OtpValidationStatus.Success => await MarkPhoneVerifiedAsync(request.Phone, ct),
+            OtpValidationStatus.InvalidCode =>
+                (false, result.RemainingAttempts > 0
+                    ? $"Kod hatalı. {result.RemainingAttempts} deneme hakkınız kaldı."
+                    : "Kod hatalı. Deneme hakkınız doldu."),
+            OtpValidationStatus.Expired         => (false, "Kodun süresi dolmuş. Yeni kod isteyin."),
+            OtpValidationStatus.MaxAttemptsReached => (false, "Çok fazla hatalı giriş. Yeni kod isteyin."),
+            _                                   => (false, "Geçersiz veya süresi dolmuş kod.")
+        };
+    }
+
+    public async Task<(bool Success, string? Error)> ResendOtpAsync(ResendOtpRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Phone))
+            return (false, "Telefon numarası zorunludur.");
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Phone == request.Phone, ct);
+        if (user is null)
+            return (false, "Bu telefon numarasıyla kayıtlı hesap bulunamadı.");
+
+        if (user.IsPhoneVerified)
+            return (false, "Bu numara zaten doğrulanmış.");
+
+        var code = await _otp.GenerateAndStoreAsync(request.Phone, OtpPurpose.PhoneVerification, ct);
+        _ = _sms.SendOtpAsync(request.Phone, code, "kayıt doğrulama", ct);
+
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Error)> RequestPasswordChangeAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await _db.Users.FindAsync(new object[] { userId }, ct);
+        if (user is null)
+            return (false, "Kullanıcı bulunamadı.");
+
+        if (string.IsNullOrWhiteSpace(user.Phone))
+            return (false, "Hesabınızda kayıtlı telefon numarası yok.");
+
+        var code = await _otp.GenerateAndStoreAsync(user.Phone, OtpPurpose.PasswordChange, ct);
+        _ = _sms.SendOtpAsync(user.Phone, code, "şifre değiştirme", ct);
+
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Error)> ConfirmPasswordChangeAsync(Guid userId, ChangePasswordRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.NewPassword))
+            return (false, "Kod ve yeni şifre zorunludur.");
+
+        if (request.NewPassword.Length < 6)
+            return (false, "Şifre en az 6 karakter olmalıdır.");
+
+        var user = await _db.Users.FindAsync(new object[] { userId }, ct);
+        if (user is null)
+            return (false, "Kullanıcı bulunamadı.");
+
+        if (string.IsNullOrWhiteSpace(user.Phone))
+            return (false, "Hesabınızda kayıtlı telefon numarası yok.");
+
+        var result = await _otp.ValidateAsync(user.Phone, request.Code, OtpPurpose.PasswordChange, ct);
+
+        if (result.Status != OtpValidationStatus.Success)
+        {
+            return result.Status switch
+            {
+                OtpValidationStatus.InvalidCode =>
+                    (false, result.RemainingAttempts > 0
+                        ? $"Kod hatalı. {result.RemainingAttempts} deneme hakkınız kaldı."
+                        : "Kod hatalı. Deneme hakkınız doldu."),
+                OtpValidationStatus.Expired            => (false, "Kodun süresi dolmuş. Yeni kod isteyin."),
+                OtpValidationStatus.MaxAttemptsReached => (false, "Çok fazla hatalı giriş. Yeni kod isteyin."),
+                _                                      => (false, "Geçersiz kod.")
+            };
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, 12);
+        await _db.SaveChangesAsync(ct);
+
+        return (true, null);
+    }
+
+    // --- Helpers ---
+
+    private async Task<(bool, string?)> MarkPhoneVerifiedAsync(string phone, CancellationToken ct)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Phone == phone, ct);
+        if (user is null) return (false, "Kullanıcı bulunamadı.");
+
+        user.IsPhoneVerified = true;
+        await _db.SaveChangesAsync(ct);
+        return (true, null);
+    }
+
     private static AuthUserDto ToDto(User u) => new()
     {
-        Id = u.Id.ToString(),
+        Id    = u.Id.ToString(),
         Email = u.Email,
-        Name = u.FullName,
-        Role = u.Role,
+        Name  = u.FullName,
+        Role  = u.Role,
         Token = Guid.NewGuid().ToString("N")
     };
+
+    // "+905321234567" → "+90 532 *** **67"
+    private static string MaskPhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return "***";
+        var digits = new string(phone.Where(char.IsDigit).ToArray());
+        if (digits.Length < 4) return "***";
+        return phone[..^4] + "****";
+    }
 }

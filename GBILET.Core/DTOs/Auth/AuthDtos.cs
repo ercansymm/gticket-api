@@ -21,6 +21,8 @@ public class AuthUserDto
     public string Name { get; set; } = string.Empty;
     public string Role { get; set; } = "Agent";
     public string Token { get; set; } = string.Empty;
+    public bool RequiresPhoneVerification { get; set; } = false;
+    public string? MaskedPhone { get; set; }
 }
 
 public class GoogleLoginRequest
@@ -29,4 +31,21 @@ public class GoogleLoginRequest
     public string Email { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Picture { get; set; }
+}
+
+public class VerifyPhoneRequest
+{
+    public string Phone { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+}
+
+public class ResendOtpRequest
+{
+    public string Phone { get; set; } = string.Empty;
+}
+
+public class ChangePasswordRequest
+{
+    public string Code { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
 }

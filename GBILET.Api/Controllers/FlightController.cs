@@ -6,6 +6,7 @@ using GBILET.Core.Models.Flight;
 using GBILET.Core.Service;
 using GBILET.Core.Service.Email;
 using GBILET.Core.Service.Flight;
+using GBILET.Core.Service.Sms;
 using GBILET.Infrastructure.Resilience;
 using GBILET.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,7 @@ public class FlightController : ControllerBase
     private readonly FlightAllocateService _flightAllocateService;
     private readonly SessionRecoveryExecutor _sessionRecoveryExecutor;
     private readonly IEmailService? _email;
+    private readonly ISmsService? _sms;
 
     public FlightController(
         IFlightService flightService,
@@ -37,7 +39,8 @@ public class FlightController : ControllerBase
         IConfiguration configuration,
         FlightAllocateService flightAllocateService,
         SessionRecoveryExecutor sessionRecoveryExecutor,
-        IEmailService? email = null)
+        IEmailService? email = null,
+        ISmsService? sms = null)
     {
         _flightService = flightService;
         _bookingRepository = bookingRepository;
@@ -49,6 +52,7 @@ public class FlightController : ControllerBase
         _flightAllocateService = flightAllocateService;
         _sessionRecoveryExecutor = sessionRecoveryExecutor;
         _email = email;
+        _sms = sms;
     }
 
     private string BuildCallbackUrl() =>
@@ -58,55 +62,85 @@ public class FlightController : ControllerBase
 
     private async Task TrySendBookingConfirmationAsync(Booking booking)
     {
-        if (_email == null) return;
-        try
+        var contactPassenger = booking.Passengers.OrderBy(p => p.SequenceNo).FirstOrDefault();
+        var contactName = contactPassenger != null
+            ? $"{contactPassenger.FirstName} {contactPassenger.LastName}".Trim()
+            : "Değerli Müşterimiz";
+        var pnr = booking.InternalPnr ?? booking.PNR ?? booking.Id.ToString();
+
+        // Email bildirimi
+        if (_email != null)
         {
-            var contactEmail = booking.Passengers
-                .FirstOrDefault(p => !string.IsNullOrEmpty(p.Email))?.Email;
-            if (string.IsNullOrEmpty(contactEmail)) return;
+            try
+            {
+                var contactEmail = booking.Passengers
+                    .FirstOrDefault(p => !string.IsNullOrEmpty(p.Email))?.Email;
 
-            var contactName = booking.Passengers
-                .OrderBy(p => p.SequenceNo)
-                .Select(p => $"{p.FirstName} {p.LastName}".Trim())
-                .FirstOrDefault() ?? "Değerli Müşterimiz";
+                if (!string.IsNullOrEmpty(contactEmail))
+                {
+                    var pdfUrl = $"{_frontendUrl}/api/Ticket/pdf/booking/{booking.Id}";
 
-            var pnr = booking.InternalPnr ?? booking.PNR ?? booking.Id.ToString();
-            var pdfUrl = $"{_frontendUrl}/api/Ticket/pdf/booking/{booking.Id}";
+                    var flights = booking.FlightSegments
+                        .OrderBy(s => s.SequenceNo)
+                        .Select(s => new BookingEmailFlight(
+                            s.OriginCode, s.DestinationCode, s.FlightNumber,
+                            s.MarketingAirline, s.DepartureDate, s.DepartureTime,
+                            s.ArrivalTime, s.Baggage))
+                        .ToList();
 
-            var flights = booking.FlightSegments
-                .OrderBy(s => s.SequenceNo)
-                .Select(s => new BookingEmailFlight(
-                    s.OriginCode,
-                    s.DestinationCode,
-                    s.FlightNumber,
-                    s.MarketingAirline,
-                    s.DepartureDate,
-                    s.DepartureTime,
-                    s.ArrivalTime,
-                    s.Baggage))
-                .ToList();
+                    var passengers = booking.Passengers
+                        .OrderBy(p => p.SequenceNo)
+                        .Select(p => new BookingEmailPassenger(
+                            $"{p.FirstName} {p.LastName}".Trim(),
+                            p.Type, p.TicketNumber,
+                            p.CitizenNo ?? p.PassportNo, p.Phone))
+                        .ToList();
 
-            var passengers = booking.Passengers
-                .OrderBy(p => p.SequenceNo)
-                .Select(p => new BookingEmailPassenger(
-                    $"{p.FirstName} {p.LastName}".Trim(),
-                    p.Type,
-                    p.TicketNumber,
-                    p.CitizenNo ?? p.PassportNo,
-                    p.Phone))
-                .ToList();
+                    await _email.SendBookingConfirmationAsync(
+                        contactEmail, contactName, pnr, booking.Id,
+                        flights, passengers,
+                        booking.GrandTotal, booking.Currency, pdfUrl);
 
-            await _email.SendBookingConfirmationAsync(
-                contactEmail, contactName, pnr, booking.Id,
-                flights, passengers,
-                booking.GrandTotal, booking.Currency,
-                pdfUrl);
-
-            _logger.LogInformation("[BookingConfirmation] Email sent for booking {BookingId}", booking.Id);
+                    _logger.LogInformation("[BookingConfirmation] Email sent for booking {BookingId}", booking.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[BookingConfirmation] Email failed for booking {BookingId}", booking.Id);
+            }
         }
-        catch (Exception ex)
+
+        // SMS bildirimi
+        if (_sms != null)
         {
-            _logger.LogError(ex, "[BookingConfirmation] Email failed for booking {BookingId}", booking.Id);
+            try
+            {
+                var contactPhone = booking.Passengers
+                    .OrderBy(p => p.SequenceNo)
+                    .FirstOrDefault(p => !string.IsNullOrEmpty(p.Phone))?.Phone;
+
+                if (!string.IsNullOrEmpty(contactPhone))
+                {
+                    var firstFlight = booking.FlightSegments.OrderBy(s => s.SequenceNo).FirstOrDefault();
+                    var origin      = firstFlight?.OriginCode ?? booking.Origin ?? "?";
+                    var destination = firstFlight?.DestinationCode ?? booking.Destination ?? "?";
+
+                    DateTime departureTime = DateTime.UtcNow;
+                    if (firstFlight != null &&
+                        DateTime.TryParse($"{firstFlight.DepartureDate} {firstFlight.DepartureTime}", out var dt))
+                        departureTime = dt;
+
+                    _ = _sms.SendTicketConfirmationAsync(
+                        contactPhone, contactName, pnr,
+                        origin, destination, departureTime);
+
+                    _logger.LogInformation("[BookingConfirmation] SMS gönderildi. BookingId={BookingId}", booking.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[BookingConfirmation] SMS failed for booking {BookingId}", booking.Id);
+            }
         }
     }
 
