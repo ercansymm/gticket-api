@@ -58,15 +58,17 @@ public class NetGsmSmsService : ISmsService
             var response = await _http.PostAsync(ApiUrl, content, ct);
             var body = await response.Content.ReadAsStringAsync(ct);
 
-            // NetGSM başarılı yanıt olarak job ID (sayısal) döndürür; hata kodları 30, 20, 50 gibi sabitlerdir
-            if (response.IsSuccessStatusCode && long.TryParse(body.Trim(), out _))
+            // NetGSM hata kodları 2 haneli sabitlerdir (20, 30, 40, 70, 80).
+            // Başarılı yanıt ise 10+ haneli job ID'dir.
+            var trimmed = body.Trim();
+            if (response.IsSuccessStatusCode && long.TryParse(trimmed, out _) && trimmed.Length > 5)
             {
-                _logger.LogInformation("[NetGSM] SMS gönderildi. GSM={Gsm}, JobId={JobId}", Mask(gsm), body.Trim());
+                _logger.LogInformation("[NetGSM] SMS gönderildi. GSM={Gsm}, JobId={JobId}", Mask(gsm), trimmed);
                 return true;
             }
 
-            _logger.LogWarning("[NetGSM] SMS gönderilemedi. GSM={Gsm}, StatusCode={Status}, Body={Body}",
-                Mask(gsm), (int)response.StatusCode, body.Trim());
+            _logger.LogWarning("[NetGSM] SMS gönderilemedi. GSM={Gsm}, StatusCode={Status}, Body={Body} (hata kodu veya geçersiz yanıt)",
+                Mask(gsm), (int)response.StatusCode, trimmed);
             return false;
         }
         catch (Exception ex)
