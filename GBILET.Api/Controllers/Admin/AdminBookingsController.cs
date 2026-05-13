@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using GBILET.Core.DTOs.Admin;
 using GBILET.Core.Helpers;
+using GBILET.Core.Interfaces;
 using GBILET.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,10 +17,12 @@ namespace GBILET.Api.Controllers.Admin;
 public class AdminBookingsController : ControllerBase
 {
     private readonly GTicketDbContext _db;
+    private readonly IBookingSyncService _syncService;
 
-    public AdminBookingsController(GTicketDbContext db)
+    public AdminBookingsController(GTicketDbContext db, IBookingSyncService syncService)
     {
         _db = db;
+        _syncService = syncService;
     }
 
     // GET /api/admin/bookings?page=1&pageSize=20&search=IST&status=confirmed&sortBy=createdAt&sortDir=desc
@@ -128,7 +132,9 @@ public class AdminBookingsController : ControllerBase
     {
         var booking = await _db.Bookings
             .Include(b => b.Passengers)
+            .Include(b => b.FlightSegments)
             .Include(b => b.BookingLogs)
+            .Include(b => b.ChangeLog)
             .Where(b => b.Id == id)
             .FirstOrDefaultAsync(ct);
 
@@ -190,5 +196,50 @@ public class AdminBookingsController : ControllerBase
         };
 
         return Ok(detail);
+    }
+
+    // GET /api/admin/bookings/{id}/sync-preview
+    [HttpGet("{id:guid}/sync-preview")]
+    public async Task<IActionResult> SyncPreview(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _syncService.PreviewAsync(id, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // POST /api/admin/bookings/{id}/sync-confirm
+    [HttpPost("{id:guid}/sync-confirm")]
+    public async Task<IActionResult> SyncConfirm(Guid id, CancellationToken ct)
+    {
+        var adminId = GetAdminUserId();
+        if (adminId == null)
+            return Unauthorized(new { error = "Admin oturumu bulunamadı." });
+
+        try
+        {
+            await _syncService.ConfirmAsync(id, adminId.Value, ct);
+            return Ok(new { message = "Rezervasyon güncellendi, müşteriye email gönderildi." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private Guid? GetAdminUserId()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst("sub")?.Value
+                    ?? User.FindFirst("adminUserId")?.Value;
+
+        if (Guid.TryParse(claim, out var id))
+            return id;
+        return null;
     }
 }

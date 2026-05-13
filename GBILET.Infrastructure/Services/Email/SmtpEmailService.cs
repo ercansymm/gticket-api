@@ -1,5 +1,6 @@
 using GBILET.Core.DTOs.Support;
 using GBILET.Core.Entities.Support;
+using GBILET.Core.Interfaces;
 using GBILET.Core.Service.Email;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -497,5 +498,102 @@ public class SmtpEmailService : IEmailService
             </body>
             </html>
             """;
+    }
+
+    public async Task SendBookingUpdatedAsync(
+        string toEmail,
+        string toName,
+        string pnr,
+        Guid bookingId,
+        IReadOnlyList<BookingFieldChange> changes,
+        string pdfDownloadUrl,
+        CancellationToken ct = default)
+    {
+        var subject = $"Rezervasyonunuz Güncellendi - PNR: {pnr}";
+        var html = BuildBookingUpdatedHtml(toName, pnr, changes, pdfDownloadUrl);
+        await SendAsync(toEmail, toName, subject, html, ct);
+    }
+
+    private static string BuildBookingUpdatedHtml(
+        string toName,
+        string pnr,
+        IReadOnlyList<BookingFieldChange> changes,
+        string pdfDownloadUrl)
+    {
+        var rows = string.Join("", changes.Select(c => $"""
+            <tr>
+              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;">{c.FieldName}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#dc2626;text-decoration:line-through;">{c.OldValue}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#047857;font-weight:600;">{c.NewValue}</td>
+            </tr>
+        """));
+
+        var isCancelled = changes.Any(c => c.FieldName == "Durum" && c.NewValue == "İptal");
+        var headerColor = isCancelled ? "#dc2626" : "#047857";
+        var headerText = isCancelled ? "Rezervasyonunuz İptal Edildi" : "Rezervasyonunuz Güncellendi";
+        var headerSubText = isCancelled
+            ? "Rezervasyonunuza ilişkin değişiklik aşağıda belirtilmiştir."
+            : "Rezervasyonunuz güncellendi. Değişiklik detayları aşağıdadır.";
+
+        return $$"""
+        <!DOCTYPE html>
+        <html lang="tr">
+        <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+        <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
+            <tr><td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <tr>
+                  <td style="background:{{headerColor}};padding:24px 32px;text-align:center;">
+                    <p style="margin:0;color:#fff;font-size:22px;font-weight:700;">{{headerText}}</p>
+                    <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">{{headerSubText}}</p>
+                  </td>
+                </tr>
+                <!-- Body -->
+                <tr>
+                  <td style="padding:32px;">
+                    <p style="margin:0 0 8px;color:#374151;">Sayın <strong>{{toName}}</strong>,</p>
+                    <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">PNR numaranız: <strong style="color:#0a1628;">{{pnr}}</strong></p>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;margin-bottom:24px;">
+                      <thead>
+                        <tr style="background:#f9fafb;">
+                          <th style="padding:10px 12px;text-align:left;font-size:12px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">ALAN</th>
+                          <th style="padding:10px 12px;text-align:left;font-size:12px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">ESKİ</th>
+                          <th style="padding:10px 12px;text-align:left;font-size:12px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">YENİ</th>
+                        </tr>
+                      </thead>
+                      <tbody>{{rows}}</tbody>
+                    </table>
+
+                    {{(isCancelled ? "" : $"""
+                    <p style="text-align:center;margin:0 0 24px;">
+                      <a href="{pdfDownloadUrl}"
+                         style="display:inline-block;background:#047857;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;font-size:14px;">
+                        Güncel E-Biletinizi İndirin
+                      </a>
+                    </p>
+                    """)}}
+
+                    <p style="margin:0;color:#6b7280;font-size:13px;">Sorularınız için müşteri hizmetlerimizle iletişime geçebilirsiniz.<br>
+                    Acil Durum Hattı: <strong>0532 015 26 38</strong></p>
+                  </td>
+                </tr>
+                <!-- Footer -->
+                <tr>
+                  <td style="background:#f8fafc;padding:16px 32px;border-top:1px solid #e5e7eb;">
+                    <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+                      Bu e-posta otomatik olarak gönderilmiştir. Lütfen bu adrese doğrudan yanıt vermeyiniz.<br>
+                      © {{DateTime.UtcNow.Year}} Atabilet.com — Tüm hakları saklıdır.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+        </html>
+        """;
     }
 }

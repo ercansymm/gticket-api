@@ -52,6 +52,7 @@ public class GTicketDbContext : DbContext
     public DbSet<TripBooking> TripBookings { get; set; }
     public DbSet<TripPassenger> TripPassengers { get; set; }
     public DbSet<BookingLog> BookingLogs { get; set; }
+    public DbSet<BookingChangeLog> BookingChangeLogs { get; set; }
     public DbSet<SystemLog> SystemLogs { get; set; }
     public DbSet<Airport> Airports { get; set; }
     public DbSet<Airline> Airlines { get; set; }
@@ -91,6 +92,7 @@ public class GTicketDbContext : DbContext
             e.HasMany(b => b.FareDetails).WithOne(f => f.Booking).HasForeignKey(f => f.BookingId);
             e.HasOne(b => b.BillingInfo).WithOne(bi => bi.Booking).HasForeignKey<BillingInfo>(bi => bi.BookingId);
             e.HasMany(b => b.BookingLogs).WithOne(l => l.Booking).HasForeignKey(l => l.BookingId);
+            e.HasMany(b => b.ChangeLog).WithOne(cl => cl.Booking).HasForeignKey(cl => cl.BookingId);
         });
 
         // Trip

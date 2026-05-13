@@ -1,4 +1,5 @@
 using GBILET.Core.DTOs.Support;
+using GBILET.Core.Interfaces;
 
 namespace GBILET.Core.Service.Email;
 
@@ -56,6 +57,15 @@ public interface IEmailService
         IReadOnlyList<BookingEmailPassenger> passengers,
         decimal? grandTotal,
         string? currency,
+        string pdfDownloadUrl,
+        CancellationToken ct = default);
+
+    Task SendBookingUpdatedAsync(
+        string toEmail,
+        string toName,
+        string pnr,
+        Guid bookingId,
+        IReadOnlyList<BookingFieldChange> changes,
         string pdfDownloadUrl,
         CancellationToken ct = default);
 }

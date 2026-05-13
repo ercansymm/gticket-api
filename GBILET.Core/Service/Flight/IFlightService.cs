@@ -17,4 +17,5 @@ public interface IFlightService
     Task<PokeShoppingFileResponse> PokeShoppingFileAsync(PokeShoppingFileRequest request);
     Task<ReadShoppingFileResponse> ReadShoppingFileAsync(ReadShoppingFileRequest request);
     Task<LogoutResponse> LogoutAsync(LogoutRequest request);
+    Task<ReadShoppingFileResponse> ReadShoppingFileWithAutoLoginAsync(string shoppingFileId, CancellationToken ct = default);
 }

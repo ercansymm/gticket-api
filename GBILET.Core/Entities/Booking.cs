@@ -86,6 +86,7 @@ public class Booking
     public List<FareDetail> FareDetails { get; set; } = new();
     public BillingInfo? BillingInfo { get; set; }
     public List<BookingLog> BookingLogs { get; set; } = new();
+    public List<BookingChangeLog> ChangeLog { get; set; } = new();
 
 
     

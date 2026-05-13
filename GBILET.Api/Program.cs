@@ -235,6 +235,7 @@ builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
+builder.Services.AddScoped<IBookingSyncService, BookingSyncService>();
 builder.Services.AddSingleton<IGuestSupportTokenService, GuestSupportTokenService>();
 builder.Services.AddDataProtection(); // GuestSupportTokenService bunu kullanır
 builder.Services.AddMemoryCache();

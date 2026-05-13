@@ -3780,4 +3780,27 @@ xmlns:trev=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Base"">
 
         return string.Empty;
     }
+
+    public async Task<ReadShoppingFileResponse> ReadShoppingFileWithAutoLoginAsync(string shoppingFileId, CancellationToken ct = default)
+    {
+        var login = await LoginAsync();
+        if (login.HasError)
+            return new ReadShoppingFileResponse { HasError = true, ErrorMessage = $"Login basarisiz: {login.ErrorMessage}" };
+
+        try
+        {
+            var result = await ReadShoppingFileAsync(new ReadShoppingFileRequest
+            {
+                SessionId = login.SessionId ?? "",
+                SessionToken = login.SessionToken ?? "",
+                ShoppingFileId = shoppingFileId
+            });
+            return result;
+        }
+        finally
+        {
+            if (!string.IsNullOrEmpty(login.SessionId))
+                await LogoutAsync(new LogoutRequest { SessionId = login.SessionId, SessionToken = login.SessionToken ?? "" });
+        }
+    }
 }
