@@ -58,7 +58,7 @@ public class AuthService : IAuthService
 
         // OTP gönder (fire-and-forget değil — hata olursa kullanıcı bilgilendirilsin)
         var code = await _otp.GenerateAndStoreAsync(user.Phone, OtpPurpose.PhoneVerification, ct);
-        _ = _sms.SendOtpAsync(user.Phone, code, "kayıt doğrulama", ct);
+        _ = _sms.SendOtpAsync(user.Phone, code, "kayit dogrulama", ct);
 
         return (true, null, new AuthUserDto
         {
@@ -93,7 +93,7 @@ public class AuthService : IAuthService
         if (!user.IsPhoneVerified && !string.IsNullOrWhiteSpace(user.Phone))
         {
             var code = await _otp.GenerateAndStoreAsync(user.Phone, OtpPurpose.PhoneVerification, ct);
-            _ = _sms.SendOtpAsync(user.Phone, code, "giriş doğrulama", ct);
+            _ = _sms.SendOtpAsync(user.Phone, code, "giris dogrulama", ct);
 
             return (true, null, new AuthUserDto
             {
@@ -171,7 +171,7 @@ public class AuthService : IAuthService
             return (false, "Bu numara zaten doğrulanmış.");
 
         var code = await _otp.GenerateAndStoreAsync(request.Phone, OtpPurpose.PhoneVerification, ct);
-        _ = _sms.SendOtpAsync(request.Phone, code, "kayıt doğrulama", ct);
+        _ = _sms.SendOtpAsync(request.Phone, code, "kayit dogrulama", ct);
 
         return (true, null);
     }
@@ -186,7 +186,7 @@ public class AuthService : IAuthService
             return (false, "Hesabınızda kayıtlı telefon numarası yok.");
 
         var code = await _otp.GenerateAndStoreAsync(user.Phone, OtpPurpose.PasswordChange, ct);
-        _ = _sms.SendOtpAsync(user.Phone, code, "şifre değiştirme", ct);
+        _ = _sms.SendOtpAsync(user.Phone, code, "sifre degistirme", ct);
 
         return (true, null);
     }

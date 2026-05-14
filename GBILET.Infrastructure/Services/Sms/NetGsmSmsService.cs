@@ -20,7 +20,7 @@ public class NetGsmSmsService : ISmsService
         _logger = logger;
         _userCode   = config["NetGsm:UserCode"]   ?? throw new InvalidOperationException("NetGsm:UserCode eksik");
         _password   = config["NetGsm:Password"]   ?? throw new InvalidOperationException("NetGsm:Password eksik");
-        _senderName = config["NetGsm:SenderName"] ?? "ATABILET";
+        _senderName = config["NetGsm:SenderName"] ?? "G TRAVELLTD";
     }
 
     public async Task<bool> SendOtpAsync(string phone, string code, string purposeLabel, CancellationToken ct = default)
