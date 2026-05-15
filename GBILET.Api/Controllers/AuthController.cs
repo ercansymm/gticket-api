@@ -96,6 +96,26 @@ namespace GBILET.Api.Controllers
             return Ok(new { message = "Şifreniz başarıyla güncellendi." });
         }
 
+        /// <summary>Telefon numarası bilinmeden şifre sıfırlama OTP'si gönderir (misafir akışı).</summary>
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken ct)
+        {
+            var (success, error, maskedPhone) = await _authService.ForgotPasswordAsync(request, ct);
+            if (!success)
+                return BadRequest(new { error });
+            return Ok(new { message = "Kod gönderildi.", maskedPhone });
+        }
+
+        /// <summary>OTP + yeni şifre ile şifre sıfırlamayı tamamlar (giriş yapmadan).</summary>
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
+        {
+            var (success, error) = await _authService.ResetPasswordAsync(request, ct);
+            if (!success)
+                return BadRequest(new { error });
+            return Ok(new { message = "Şifreniz başarıyla güncellendi." });
+        }
+
         private Guid GetUserIdFromHeader()
         {
             var header = Request.Headers["X-User-Id"].FirstOrDefault();

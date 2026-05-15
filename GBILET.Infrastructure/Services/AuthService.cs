@@ -140,39 +140,120 @@ public class AuthService : IAuthService
 
     public async Task<(bool Success, string? Error)> VerifyPhoneAsync(VerifyPhoneRequest request, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Phone) || string.IsNullOrWhiteSpace(request.Code))
-            return (false, "Telefon ve kod zorunludur.");
+        if (string.IsNullOrWhiteSpace(request.Code))
+            return (false, "Doğrulama kodu zorunludur.");
 
-        var result = await _otp.ValidateAsync(request.Phone, request.Code, OtpPurpose.PhoneVerification, ct);
+        string? phone = request.Phone;
+
+        // Email ile gelen isteklerde telefonu veritabanından çek
+        if (string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(request.Email))
+        {
+            var u = await _db.Users.FirstOrDefaultAsync(
+                x => x.Email == request.Email.Trim().ToLowerInvariant(), ct);
+            if (u is null) return (false, "Hesap bulunamadı.");
+            phone = u.Phone;
+        }
+
+        if (string.IsNullOrWhiteSpace(phone))
+            return (false, "Telefon numarası belirlenemedi.");
+
+        var result = await _otp.ValidateAsync(phone, request.Code, OtpPurpose.PhoneVerification, ct);
 
         return result.Status switch
         {
-            OtpValidationStatus.Success => await MarkPhoneVerifiedAsync(request.Phone, ct),
+            OtpValidationStatus.Success => await MarkPhoneVerifiedAsync(phone, ct),
             OtpValidationStatus.InvalidCode =>
                 (false, result.RemainingAttempts > 0
                     ? $"Kod hatalı. {result.RemainingAttempts} deneme hakkınız kaldı."
                     : "Kod hatalı. Deneme hakkınız doldu."),
-            OtpValidationStatus.Expired         => (false, "Kodun süresi dolmuş. Yeni kod isteyin."),
+            OtpValidationStatus.Expired            => (false, "Kodun süresi dolmuş. Yeni kod isteyin."),
             OtpValidationStatus.MaxAttemptsReached => (false, "Çok fazla hatalı giriş. Yeni kod isteyin."),
-            _                                   => (false, "Geçersiz veya süresi dolmuş kod.")
+            _                                      => (false, "Geçersiz veya süresi dolmuş kod.")
         };
     }
 
     public async Task<(bool Success, string? Error)> ResendOtpAsync(ResendOtpRequest request, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Phone))
+        string? phone = request.Phone;
+
+        // Email ile gelen isteklerde telefonu veritabanından çek
+        if (string.IsNullOrWhiteSpace(phone) && !string.IsNullOrWhiteSpace(request.Email))
+        {
+            var byEmail = await _db.Users.FirstOrDefaultAsync(
+                u => u.Email == request.Email.Trim().ToLowerInvariant(), ct);
+            if (byEmail is null) return (false, "Bu e-posta ile kayıtlı hesap bulunamadı.");
+            phone = byEmail.Phone;
+        }
+
+        if (string.IsNullOrWhiteSpace(phone))
             return (false, "Telefon numarası zorunludur.");
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Phone == request.Phone, ct);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Phone == phone, ct);
         if (user is null)
             return (false, "Bu telefon numarasıyla kayıtlı hesap bulunamadı.");
 
         if (user.IsPhoneVerified)
             return (false, "Bu numara zaten doğrulanmış.");
 
-        var code = await _otp.GenerateAndStoreAsync(request.Phone, OtpPurpose.PhoneVerification, ct);
-        _ = _sms.SendOtpAsync(request.Phone, code, "kayit dogrulama", ct);
+        var code = await _otp.GenerateAndStoreAsync(phone, OtpPurpose.PhoneVerification, ct);
+        _ = _sms.SendOtpAsync(phone, code, "kayit dogrulama", ct);
 
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Error, string? MaskedPhone)> ForgotPasswordAsync(
+        ForgotPasswordRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return (false, "E-posta zorunludur.", null);
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user  = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+
+        // Güvenlik: kullanıcı bulunamasa bile hata vermiyoruz
+        if (user is null || string.IsNullOrWhiteSpace(user.Phone))
+            return (true, null, null);
+
+        var code = await _otp.GenerateAndStoreAsync(user.Phone, OtpPurpose.ForgotPassword, ct);
+        _ = _sms.SendOtpAsync(user.Phone, code, "sifre sifirlama", ct);
+
+        return (true, null, MaskPhone(user.Phone));
+    }
+
+    public async Task<(bool Success, string? Error)> ResetPasswordAsync(
+        ResetPasswordRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Code)  ||
+            string.IsNullOrWhiteSpace(request.NewPassword))
+            return (false, "Tüm alanlar zorunludur.");
+
+        if (request.NewPassword.Length < 6)
+            return (false, "Şifre en az 6 karakter olmalıdır.");
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user  = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        if (user is null || string.IsNullOrWhiteSpace(user.Phone))
+            return (false, "Hesap bulunamadı.");
+
+        var result = await _otp.ValidateAsync(user.Phone, request.Code, OtpPurpose.ForgotPassword, ct);
+
+        if (result.Status != OtpValidationStatus.Success)
+        {
+            return result.Status switch
+            {
+                OtpValidationStatus.InvalidCode =>
+                    (false, result.RemainingAttempts > 0
+                        ? $"Kod hatalı. {result.RemainingAttempts} deneme hakkınız kaldı."
+                        : "Kod hatalı. Deneme hakkınız doldu."),
+                OtpValidationStatus.Expired            => (false, "Kodun süresi dolmuş. Yeni kod isteyin."),
+                OtpValidationStatus.MaxAttemptsReached => (false, "Çok fazla hatalı giriş. Yeni kod isteyin."),
+                _                                      => (false, "Geçersiz kod.")
+            };
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, 12);
+        await _db.SaveChangesAsync(ct);
         return (true, null);
     }
 

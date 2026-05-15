@@ -35,17 +35,32 @@ public class GoogleLoginRequest
 
 public class VerifyPhoneRequest
 {
-    public string Phone { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    // Email ile alternatif arama (login OTP akışında kullanılır)
+    public string? Email { get; set; }
     public string Code { get; set; } = string.Empty;
 }
 
 public class ResendOtpRequest
 {
-    public string Phone { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
 }
 
 public class ChangePasswordRequest
 {
+    public string Code { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public class ForgotPasswordRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public class ResetPasswordRequest
+{
+    public string Email { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
 }
