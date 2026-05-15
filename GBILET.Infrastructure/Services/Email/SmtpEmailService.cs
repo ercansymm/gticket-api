@@ -132,19 +132,10 @@ public class SmtpEmailService : IEmailService
     private static string BuildEmailHeader(string subtitle) => $"""
         <tr>
           <td style="background:#0a1628;padding:28px 32px 24px;">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td>
-                  <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:0.3px;font-family:Arial,sans-serif;">
-                    ATA<span style="color:#db2525;">BİLET</span>
-                  </h1>
-                  <p style="margin:6px 0 0;color:rgba(255,255,255,0.75);font-size:13px;font-family:Arial,sans-serif;">{System.Net.WebUtility.HtmlEncode(subtitle)}</p>
-                </td>
-                <td align="right" style="vertical-align:middle;">
-                  <span style="color:rgba(255,255,255,0.75);font-size:11px;font-family:Arial,sans-serif;letter-spacing:0.5px;">atabilet.com</span>
-                </td>
-              </tr>
-            </table>
+            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:0.3px;font-family:Arial,sans-serif;">
+              ATA<span style="color:#db2525;">BİLET</span>
+            </h1>
+            <p style="margin:6px 0 0;color:#cbd5e1;font-size:13px;font-weight:500;font-family:Arial,sans-serif;">{System.Net.WebUtility.HtmlEncode(subtitle)}</p>
           </td>
         </tr>
         """;
@@ -214,7 +205,7 @@ public class SmtpEmailService : IEmailService
             : string.Empty;
 
         var bodyRows = $"""
-            {BuildEmailHeader("atabilet.com — Uçuş Bileti")}
+            {BuildEmailHeader("Uçuş Bileti")}
 
             <!-- Success banner -->
             <tr>
@@ -404,7 +395,7 @@ public class SmtpEmailService : IEmailService
         var ticketUrl = $"https://atabilet.com/destek-taleplerim/{ticketId}";
 
         var bodyRows = $"""
-            {BuildEmailHeader("atabilet.com — Destek Merkezi")}
+            {BuildEmailHeader("Destek Merkezi")}
 
             <!-- Status band -->
             <tr>
@@ -491,7 +482,7 @@ public class SmtpEmailService : IEmailService
         var conversationHtml = BuildConversationHtml(allMessages);
 
         var bodyRows = $"""
-            {BuildEmailHeader("atabilet.com — Destek Merkezi")}
+            {BuildEmailHeader("Destek Merkezi")}
 
             <!-- Notification band -->
             <tr>
@@ -546,7 +537,7 @@ public class SmtpEmailService : IEmailService
         var ticketUrl = $"https://atabilet.com/destek-taleplerim/{ticketId}";
 
         var bodyRows = $"""
-            {BuildEmailHeader("atabilet.com — Destek Merkezi")}
+            {BuildEmailHeader("Destek Merkezi")}
 
             <!-- Resolved band -->
             <tr>
@@ -701,7 +692,6 @@ public class SmtpEmailService : IEmailService
               <td style="background:#0a1628;padding:12px 32px;">
                 <p style="margin:0;color:#ffffff;font-size:16px;font-weight:700;font-family:Arial,sans-serif;">
                   ATA<span style="color:#db2525;">BİLET</span>
-                  <span style="color:#475569;font-size:12px;font-weight:400;margin-left:10px;">atabilet.com</span>
                 </p>
               </td>
             </tr>
