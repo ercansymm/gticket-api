@@ -138,10 +138,10 @@ public class SmtpEmailService : IEmailService
                   <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:0.3px;font-family:Arial,sans-serif;">
                     ATA<span style="color:#db2525;">BİLET</span>
                   </h1>
-                  <p style="margin:6px 0 0;color:rgba(255,255,255,0.55);font-size:13px;font-family:Arial,sans-serif;">{System.Net.WebUtility.HtmlEncode(subtitle)}</p>
+                  <p style="margin:6px 0 0;color:rgba(255,255,255,0.75);font-size:13px;font-family:Arial,sans-serif;">{System.Net.WebUtility.HtmlEncode(subtitle)}</p>
                 </td>
                 <td align="right" style="vertical-align:middle;">
-                  <span style="color:rgba(255,255,255,0.3);font-size:11px;font-family:Arial,sans-serif;letter-spacing:0.5px;">atabilet.com</span>
+                  <span style="color:rgba(255,255,255,0.75);font-size:11px;font-family:Arial,sans-serif;letter-spacing:0.5px;">atabilet.com</span>
                 </td>
               </tr>
             </table>
@@ -408,8 +408,8 @@ public class SmtpEmailService : IEmailService
 
             <!-- Status band -->
             <tr>
-              <td style="background:#0c4a6e;padding:18px 32px;">
-                <p style="margin:0;color:#7dd3fc;font-size:14px;font-weight:600;font-family:Arial,sans-serif;">
+              <td style="background:#0a1628;padding:18px 32px;">
+                <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;font-weight:600;font-family:Arial,sans-serif;">
                   &#128338; Talebiniz alındı — en kısa sürede dönüş yapacağız
                 </p>
               </td>
@@ -427,13 +427,13 @@ public class SmtpEmailService : IEmailService
 
                 <!-- Ticket card -->
                 <table width="100%" cellpadding="0" cellspacing="0"
-                       style="border:1px solid #e0f2fe;border-radius:8px;overflow:hidden;margin-bottom:28px;background:#f0f9ff;">
+                       style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:28px;background:#f8fafc;">
                   <tr>
                     <td style="padding:20px 24px;">
                       <table width="100%" cellpadding="0" cellspacing="0">
                         <tr>
                           <td>
-                            <p style="margin:0 0 12px;color:#0369a1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:Arial,sans-serif;">
+                            <p style="margin:0 0 12px;color:#047857;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:Arial,sans-serif;">
                               Talep Bilgileri
                             </p>
                             <table cellpadding="0" cellspacing="0">
@@ -461,7 +461,7 @@ public class SmtpEmailService : IEmailService
                   <tr>
                     <td>
                       <a href="{ticketUrl}"
-                         style="display:inline-block;background:#0a1628;color:#ffffff;text-decoration:none;padding:13px 30px;border-radius:7px;font-size:14px;font-weight:600;font-family:Arial,sans-serif;">
+                         style="display:inline-block;background:#db2525;color:#ffffff;text-decoration:none;padding:13px 30px;border-radius:7px;font-size:14px;font-weight:600;font-family:Arial,sans-serif;">
                         Talebi Görüntüle
                       </a>
                     </td>
@@ -584,7 +584,7 @@ public class SmtpEmailService : IEmailService
                   <tr>
                     <td>
                       <a href="{ticketUrl}"
-                         style="display:inline-block;background:#0a1628;color:#ffffff;text-decoration:none;padding:13px 30px;border-radius:7px;font-size:14px;font-weight:600;font-family:Arial,sans-serif;">
+                         style="display:inline-block;background:#047857;color:#ffffff;text-decoration:none;padding:13px 30px;border-radius:7px;font-size:14px;font-weight:600;font-family:Arial,sans-serif;">
                         Talebi Görüntüle
                       </a>
                     </td>
@@ -618,7 +618,7 @@ public class SmtpEmailService : IEmailService
         {
             var isAdmin = msg.SenderType == SupportMessageSenderType.Admin;
             var bg = isAdmin ? "#f0fdf4" : "#f8fafc";
-            var borderColor = isAdmin ? "#047857" : "#d1d5db";
+            var borderColor = isAdmin ? "#047857" : "#94a3b8";
             var nameColor = isAdmin ? "#047857" : "#374151";
             var nameWeight = isAdmin ? "700" : "600";
             var label = isAdmin ? "Destek Ekibi" : System.Net.WebUtility.HtmlEncode(msg.SenderDisplayName);
