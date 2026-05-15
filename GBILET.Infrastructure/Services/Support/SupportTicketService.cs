@@ -101,8 +101,15 @@ public class SupportTicketService : ISupportTicketService
 
         if (_email != null && !string.IsNullOrWhiteSpace(user.Email))
         {
-            await _email.SendTicketCreatedNotificationAsync(
-                user.Email, user.FullName, ticketNumber, ticket.Subject, ticketId, ct);
+            try
+            {
+                await _email.SendTicketCreatedNotificationAsync(
+                    user.Email, user.FullName, ticketNumber, ticket.Subject, ticketId, ct);
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogWarning(emailEx, "Ticket created but notification email failed for {TicketNumber}", ticketNumber);
+            }
         }
 
         return (await LoadDetailAsync(ticketId, ct))!;
@@ -596,8 +603,15 @@ public class SupportTicketService : ISupportTicketService
         var guestRecipientEmail = ticket.GuestEmail;
         if (_email != null && !string.IsNullOrWhiteSpace(guestRecipientEmail))
         {
-            await _email.SendTicketCreatedNotificationAsync(
-                guestRecipientEmail, passengerDisplayName, ticketNumber, ticket.Subject, ticketId, ct);
+            try
+            {
+                await _email.SendTicketCreatedNotificationAsync(
+                    guestRecipientEmail, passengerDisplayName, ticketNumber, ticket.Subject, ticketId, ct);
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogWarning(emailEx, "Guest ticket created but notification email failed for {TicketNumber}", ticketNumber);
+            }
         }
 
         return (await LoadDetailAsync(ticketId, ct))!;

@@ -437,14 +437,65 @@ using (var scope = app.Services.CreateScope())
         // Kolon zaten varsa yut
     }
 
-    // SupportTickets tablosuna GuestEmail kolonu ekle (yoksa)
+    // SupportTickets tablosunu oluştur (EnsureCreated mevcut DB'de yeni tablo eklemiyor)
     try
     {
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "SupportTickets" (
+                "Id"                uuid                        NOT NULL,
+                "TicketNumber"      character varying(32)       NOT NULL,
+                "UserId"            uuid                        NULL,
+                "GuestSessionId"    uuid                        NULL,
+                "BookingId"         uuid                        NULL,
+                "Type"              integer                     NOT NULL,
+                "Subject"           character varying(200)      NOT NULL,
+                "GuestEmail"        text                        NULL,
+                "Status"            integer                     NOT NULL,
+                "ClosedAt"          timestamp without time zone NULL,
+                "ClosedByAdminId"   uuid                        NULL,
+                "LastActivityAt"    timestamp without time zone NOT NULL,
+                "CreatedAt"         timestamp without time zone NOT NULL,
+                "UpdatedAt"         timestamp without time zone NOT NULL,
+                CONSTRAINT "PK_SupportTickets" PRIMARY KEY ("Id")
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_SupportTickets_TicketNumber" ON "SupportTickets" ("TicketNumber");
+            CREATE INDEX IF NOT EXISTS "IX_SupportTickets_UserId"           ON "SupportTickets" ("UserId");
+            CREATE INDEX IF NOT EXISTS "IX_SupportTickets_GuestSessionId"   ON "SupportTickets" ("GuestSessionId");
+            CREATE INDEX IF NOT EXISTS "IX_SupportTickets_Status"           ON "SupportTickets" ("Status");
+            CREATE INDEX IF NOT EXISTS "IX_SupportTickets_Type"             ON "SupportTickets" ("Type");
+            CREATE INDEX IF NOT EXISTS "IX_SupportTickets_LastActivityAt"   ON "SupportTickets" ("LastActivityAt");
+            CREATE INDEX IF NOT EXISTS "IX_SupportTickets_CreatedAt"        ON "SupportTickets" ("CreatedAt");
+
+            CREATE TABLE IF NOT EXISTS "SupportTicketMessages" (
+                "Id"                uuid                        NOT NULL,
+                "TicketId"          uuid                        NOT NULL,
+                "SenderType"        integer                     NOT NULL,
+                "SenderId"          uuid                        NULL,
+                "SenderDisplayName" character varying(128)      NOT NULL,
+                "Body"              text                        NOT NULL,
+                "CreatedAt"         timestamp without time zone NOT NULL,
+                CONSTRAINT "PK_SupportTicketMessages" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_SupportTicketMessages_SupportTickets_TicketId"
+                    FOREIGN KEY ("TicketId") REFERENCES "SupportTickets" ("Id") ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS "IX_SupportTicketMessages_TicketId"  ON "SupportTicketMessages" ("TicketId");
+            CREATE INDEX IF NOT EXISTS "IX_SupportTicketMessages_CreatedAt" ON "SupportTicketMessages" ("CreatedAt");
+            """);
+    }
+    catch
+    {
+        // Tablolar zaten varsa yut
+    }
+
+    // SupportTickets tablosuna eksik kolonları ekle (eski migration uygulanmamış olabilir)
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"ALTER TABLE IF EXISTS ""SupportTickets"" ADD COLUMN IF NOT EXISTS ""GuestSessionId"" uuid NULL");
         db.Database.ExecuteSqlRaw(@"ALTER TABLE IF EXISTS ""SupportTickets"" ADD COLUMN IF NOT EXISTS ""GuestEmail"" text NULL");
     }
     catch
     {
-        // Kolon zaten varsa yut
+        // Kolonlar zaten varsa yut
     }
 }
 
