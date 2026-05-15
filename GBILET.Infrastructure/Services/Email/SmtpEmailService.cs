@@ -138,10 +138,10 @@ public class SmtpEmailService : IEmailService
                   <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:0.3px;font-family:Arial,sans-serif;">
                     ATA<span style="color:#db2525;">BİLET</span>
                   </h1>
-                  <p style="margin:6px 0 0;color:#64748b;font-size:13px;font-family:Arial,sans-serif;">{System.Net.WebUtility.HtmlEncode(subtitle)}</p>
+                  <p style="margin:6px 0 0;color:rgba(255,255,255,0.55);font-size:13px;font-family:Arial,sans-serif;">{System.Net.WebUtility.HtmlEncode(subtitle)}</p>
                 </td>
                 <td align="right" style="vertical-align:middle;">
-                  <span style="color:#1e3a5f;font-size:11px;font-family:Arial,sans-serif;letter-spacing:0.5px;">atabilet.com</span>
+                  <span style="color:rgba(255,255,255,0.3);font-size:11px;font-family:Arial,sans-serif;letter-spacing:0.5px;">atabilet.com</span>
                 </td>
               </tr>
             </table>
@@ -218,29 +218,21 @@ public class SmtpEmailService : IEmailService
 
             <!-- Success banner -->
             <tr>
-              <td style="background:#047857;padding:22px 32px;">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td>
-                      <p style="margin:0;color:#ffffff;font-size:19px;font-weight:700;font-family:Arial,sans-serif;">
-                        &#10003; Biletiniz Başarıyla Oluşturuldu
-                      </p>
-                      <p style="margin:5px 0 0;color:#a7f3d0;font-size:13px;font-family:Arial,sans-serif;">
-                        Uçuş ve yolcu bilgileriniz aşağıda yer almaktadır.
-                      </p>
-                    </td>
-                    <td align="right" style="padding-left:16px;">
-                      <div style="background:#065f46;border-radius:8px;padding:12px 18px;display:inline-block;text-align:center;min-width:110px;">
-                        <p style="margin:0;color:#6ee7b7;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:Arial,sans-serif;">
-                          Rezervasyon Kodu
-                        </p>
-                        <p style="margin:4px 0 0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:3px;font-family:Arial,sans-serif;">
-                          {System.Net.WebUtility.HtmlEncode(pnr)}
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                </table>
+              <td style="background:#047857;padding:26px 32px;text-align:center;">
+                <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;font-family:Arial,sans-serif;">
+                  &#10003; Biletiniz Başarıyla Oluşturuldu
+                </p>
+                <p style="margin:6px 0 16px;color:#a7f3d0;font-size:13px;font-family:Arial,sans-serif;">
+                  Uçuş ve yolcu bilgileriniz aşağıda yer almaktadır.
+                </p>
+                <div style="display:inline-block;background:#065f46;border-radius:8px;padding:12px 28px;text-align:center;">
+                  <p style="margin:0;color:#6ee7b7;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif;">
+                    Rezervasyon Kodu
+                  </p>
+                  <p style="margin:5px 0 0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:5px;font-family:Arial,sans-serif;">
+                    {System.Net.WebUtility.HtmlEncode(pnr)}
+                  </p>
+                </div>
               </td>
             </tr>
 
@@ -393,7 +385,7 @@ public class SmtpEmailService : IEmailService
                 $"<tr>" +
                 $"<td style=\"padding:13px 16px;color:#1e293b;font-size:14px;font-weight:600;{border}font-family:Arial,sans-serif;\">{System.Net.WebUtility.HtmlEncode(p.FullName)}</td>" +
                 $"<td style=\"padding:13px 16px;color:#374151;font-size:13px;font-family:monospace;{border}\">{citizenDisplay}</td>" +
-                $"<td style=\"padding:13px 16px;color:#6b7280;font-size:13px;{border}font-family:Arial,sans-serif;\">{phoneDisplay}</td>" +
+                $"<td style=\"padding:13px 16px;color:#6b7280;font-size:13px;white-space:nowrap;{border}font-family:Arial,sans-serif;\">{phoneDisplay}</td>" +
                 $"<td style=\"padding:13px 16px;font-size:12px;{border}font-family:Arial,sans-serif;\">" +
                 $"<span style=\"background:#f0fdf4;color:#065f46;padding:3px 8px;border-radius:4px;font-weight:600;\">{typeLabel}</span></td>" +
                 $"<td style=\"padding:13px 16px;color:#374151;font-size:13px;font-family:monospace;{border}\">{ticketDisplay}</td>" +
@@ -641,7 +633,7 @@ public class SmtpEmailService : IEmailService
                       <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
                         <tr>
                           <td style="color:{nameColor};font-size:13px;font-weight:{nameWeight};font-family:Arial,sans-serif;">{label}</td>
-                          <td align="right" style="color:#9ca3af;font-size:11px;font-family:Arial,sans-serif;">{time}</td>
+                          <td align="right" style="color:#9ca3af;font-size:11px;white-space:nowrap;font-family:Arial,sans-serif;">{time}</td>
                         </tr>
                       </table>
                       <p style="margin:0;color:#374151;font-size:14px;line-height:1.7;white-space:pre-wrap;font-family:Arial,sans-serif;">{body}</p>
