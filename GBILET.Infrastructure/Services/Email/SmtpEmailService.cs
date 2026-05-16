@@ -220,8 +220,11 @@ public class SmtpEmailService : IEmailService
                   <p style="margin:0;color:#6ee7b7;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif;">
                     Rezervasyon Kodu
                   </p>
-                  <p style="margin:5px 0 0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:5px;font-family:Arial,sans-serif;">
+                  <p style="margin:5px 0 0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:5px;font-family:Arial,sans-serif;cursor:pointer;-webkit-user-select:all;user-select:all;" title="Tıklayarak seçin, ardından Ctrl+C ile kopyalayın">
                     {System.Net.WebUtility.HtmlEncode(pnr)}
+                  </p>
+                  <p style="margin:6px 0 0;color:#6ee7b7;font-size:10px;font-family:Arial,sans-serif;opacity:0.85;">
+                    &#128203; Tıklayın → Ctrl+C ile kopyalayın
                   </p>
                 </div>
               </td>
