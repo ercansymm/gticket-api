@@ -78,7 +78,7 @@ public class FlightController : ControllerBase
 
                 if (!string.IsNullOrEmpty(contactEmail))
                 {
-                    var pdfUrl = $"{_frontendUrl}/api/Ticket/pdf/booking/{booking.Id}";
+                    var pdfUrl = $"{_frontendUrl}/api/ticket/pdf/booking/{booking.Id}";
 
                     var flights = booking.FlightSegments
                         .OrderBy(s => s.SequenceNo)

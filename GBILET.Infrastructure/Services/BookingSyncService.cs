@@ -207,7 +207,7 @@ public class BookingSyncService : IBookingSyncService
                 return;
             }
 
-            var pdfUrl = $"/api/Ticket/pdf/booking/{booking.Id}";
+            var pdfUrl = $"/api/ticket/pdf/booking/{booking.Id}";
 
             await _emailService.SendBookingUpdatedAsync(
                 toEmail: contactPassenger.Email,
