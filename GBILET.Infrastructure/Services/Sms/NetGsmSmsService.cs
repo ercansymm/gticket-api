@@ -36,10 +36,14 @@ public class NetGsmSmsService : ISmsService
         string origin,
         string destination,
         DateTime departureTime,
+        bool isRoundTrip,
+        int passengerCount,
+        string airline,
         CancellationToken ct = default)
     {
         var date = departureTime.ToString("dd.MM.yyyy HH:mm");
-        var message = $"Sayin {passengerName}, {date} tarihli {origin}-{destination} ucusunuzun bileti Atabilet tarafindan kesilmistir. PNR: {pnr}. Iletisim: info@atabilet.com veya web sitemiz uzerinden destek talebi acabilirsiniz. Iyi gunler.";
+        var tripType = isRoundTrip ? "GIDIS DONUS" : "TEK YON";
+        var message = $"Sn {passengerName}, {date} {origin}-{destination} PNR:{pnr} {tripType} {passengerCount} KISILIK {airline} BILETINIZ DUZENLENMISTIR. IYI UCUSLAR DILERIZ. ATABILET (+908503020282) B002";
         return await SendAsync(NormalizePhone(phone), message, ct);
     }
 

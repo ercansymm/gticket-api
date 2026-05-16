@@ -130,9 +130,15 @@ public class FlightController : ControllerBase
                         DateTime.TryParse($"{firstFlight.DepartureDate} {firstFlight.DepartureTime}", out var dt))
                         departureTime = dt;
 
+                    var isRoundTrip = booking.FlightSegments
+                        .Any(s => s.OriginCode == destination && s.DestinationCode == origin);
+                    var passengerCount = booking.AdultCount + booking.ChildCount + booking.InfantCount;
+                    var airline = FlightMappings.GetAirlineName(firstFlight?.MarketingAirline ?? booking.AirlineCode);
+
                     _ = _sms.SendTicketConfirmationAsync(
                         contactPhone, contactName, pnr,
-                        origin, destination, departureTime);
+                        origin, destination, departureTime,
+                        isRoundTrip, passengerCount, airline);
 
                     _logger.LogInformation("[BookingConfirmation] SMS gönderildi. BookingId={BookingId}", booking.Id);
                 }
