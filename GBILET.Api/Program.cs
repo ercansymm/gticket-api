@@ -71,7 +71,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
                 "http://localhost:3011",              // devtest-admin local
                 "https://atabilet.com",               // production müşteri
                 "https://www.atabilet.com",
-                "https://admin.atabilet.com",         // production admin
+                "https://anbadmin.atabilet.com",      // production admin (obscure subdomain)
                 "https://devtest.atabilet.com",        // devtest müşteri
                 "https://devtest-admin.atabilet.com"   // devtest admin
               )
