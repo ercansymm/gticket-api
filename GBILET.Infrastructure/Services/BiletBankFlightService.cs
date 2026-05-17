@@ -1994,6 +1994,19 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
             // PaxReferences: nil olarak gonderilir — BiletBank yolcu-urun eslestirmesini
             // Type ve SequenceNo uzerinden otomatik yapar. Tek bir ProductItemId ile
             // tum yolculari eslestirmek yanlis sonuc verir (CHD/INF farkli ProductItemId'ye sahiptir).
+            // BiletBank davranışı: i:nil="true" ile gönderilen PassportNo "boş ama mevcut" sayılır
+            // ve PassportNoNullCheck validation tetiklenir. Yurt içi uçuşlarda (TC varsa) bu
+            // elementleri TAMAMEN GÖNDERMEMEK gerekir. Resmi örnek request de bunu yapmıyor.
+            var passportCountryXml = !string.IsNullOrEmpty(safePassportCountry)
+                ? $"<trev2:PassportCountry>{safePassportCountry}</trev2:PassportCountry>"
+                : "";
+            var passportNoXml = !string.IsNullOrEmpty(safePassportNo)
+                ? $"<trev2:PassportNo>{safePassportNo}</trev2:PassportNo>"
+                : "";
+            var passportValidDateXml = passportValidDateValue != null
+                ? $"<trev2:PassportValidDate>{passportValidDateValue}</trev2:PassportValidDate>"
+                : "";
+
             passengersXml.Append($@"
             <trev2:T_Passenger>
               <trev2:BirthDate>{birthDate}</trev2:BirthDate>
@@ -2005,9 +2018,9 @@ xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
               <trev2:IfContact>{isContact.ToString().ToLowerInvariant()}</trev2:IfContact>
               <trev2:LastName>{safeLastName}</trev2:LastName>
               <trev2:Nationality>{safeNationality}</trev2:Nationality>
-              {(string.IsNullOrEmpty(safePassportCountry) ? "<trev2:PassportCountry i:nil=\"true\"/>" : $"<trev2:PassportCountry>{safePassportCountry}</trev2:PassportCountry>")}
-              {(string.IsNullOrEmpty(safePassportNo) ? "<trev2:PassportNo i:nil=\"true\"/>" : $"<trev2:PassportNo>{safePassportNo}</trev2:PassportNo>")}
-              {(passportValidDateValue != null ? $"<trev2:PassportValidDate>{passportValidDateValue}</trev2:PassportValidDate>" : "<trev2:PassportValidDate i:nil=\"true\"/>")}
+              {passportCountryXml}
+              {passportNoXml}
+              {passportValidDateXml}
               <trev2:PaxReferences i:nil=""true""/>
               <trev2:Phone>{phoneNumber}</trev2:Phone>
               <trev2:SequenceNo>{pax.SequenceNo}</trev2:SequenceNo>
