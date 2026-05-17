@@ -41,6 +41,14 @@ QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.UseSentry(o =>
+{
+    o.Dsn = builder.Configuration["Sentry:Dsn"] ?? "";
+    o.Debug = false;
+    o.TracesSampleRate = 1.0;
+    o.Environment = builder.Environment.EnvironmentName;
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
