@@ -135,7 +135,7 @@ public class TicketPdfService : ITicketPdfService
                         text.Span("www.atabilet.com").FontSize(8).FontColor(GrayColor);
                     });
                     info.Item().PaddingTop(2).AlignRight()
-                        .Text("Acil Durum Bilet Hatti: 0532 015 26 38").FontSize(8).FontColor(GrayColor);
+                        .Text("Bilet Hatti: 0850 302 0282 ").FontSize(8).FontColor(GrayColor);
                 });
             });
 
