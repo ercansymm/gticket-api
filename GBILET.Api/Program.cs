@@ -141,6 +141,20 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
+    // Payment endpoint'leri — kart deneme/brute-force koruması
+    // 5 deneme / dk per IP. BFF tarafında da 3 req/dk rate-limit var; bu ikinci savunma hattı.
+    options.AddPolicy("payment", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        });
+    });
+
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.ContentType = "application/json";

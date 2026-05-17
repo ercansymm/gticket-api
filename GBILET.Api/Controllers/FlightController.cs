@@ -10,6 +10,7 @@ using GBILET.Core.Service.Sms;
 using GBILET.Infrastructure.Resilience;
 using GBILET.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace GBILET.Api.Controllers;
@@ -736,6 +737,7 @@ public class FlightController : ControllerBase
     }
 
     [HttpPost("make-payment")]
+    [EnableRateLimiting("payment")]
     public async Task<IActionResult> MakePayment([FromBody] MakePaymentRequest? request)
     {
         try
@@ -743,8 +745,8 @@ public class FlightController : ControllerBase
             if (request == null)
                 return BadRequest(new { error = "Request body parse edilemedi. JSON formatini kontrol edin." });
 
-            _logger.LogInformation("[MakePayment] Gelen request: Amount={Amount}, PaymentType={PaymentType}, SessionId={SessionId}, ShoppingFileId={ShoppingFileId}, ProductId={ProductId}",
-                request.Amount, request.PaymentType, request.SessionId, request.ShoppingFileId, request.ProductId);
+            _logger.LogInformation("[MakePayment] Gelen request: Amount={Amount}, PaymentType={PaymentType}, ShoppingFileId={ShoppingFileId}, ProductId={ProductId}, HasSession={HasSession}",
+                request.Amount, request.PaymentType, request.ShoppingFileId, request.ProductId, !string.IsNullOrEmpty(request.SessionId));
 
             if (string.IsNullOrWhiteSpace(request.SessionId) || string.IsNullOrWhiteSpace(request.SessionToken))
                 return BadRequest(new { error = "SessionId ve SessionToken alanlari zorunludur." });
@@ -826,6 +828,7 @@ public class FlightController : ControllerBase
     /// 3D callback sonrasi FinalizeShopping yapmak icin session bilgilerine ihtiyac vardir.
     /// </summary>
     [HttpPost("complete-3d-payment")]
+    [EnableRateLimiting("payment")]
     public async Task<IActionResult> Complete3DPayment([FromBody] Complete3DPaymentRequest? request)
     {
         try
@@ -880,11 +883,11 @@ public class FlightController : ControllerBase
             _logger.LogInformation("[3DCallback] Request received. Method={Method}, ContentType={ContentType}",
                 Request.Method, Request.ContentType);
 
-            // Gelen tum query string parametrelerini logla
-            foreach (var key in Request.Query.Keys)
+            // Hassas alanlar (sid/stk/nonce/PaRes/MD) log'a yazılmaz — sadece varlık bilgisi
+            var sensitiveKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                _logger.LogInformation("[3DCallback] QueryString param: {Key}={Value}", key, Request.Query[key].ToString());
-            }
+                "sid", "stk", "nonce", "PaRes", "MD", "cavv", "eci", "xid"
+            };
 
             // Bankadan gelen tum form parametrelerini topla
             var bankParams = new Dictionary<string, string>();
@@ -895,17 +898,18 @@ public class FlightController : ControllerBase
                 foreach (var key in form.Keys)
                 {
                     bankParams[key] = form[key].ToString();
-                    _logger.LogInformation("[3DCallback] Form param: {Key}={Value}",
-                        key, key.Equals("PaRes", StringComparison.OrdinalIgnoreCase) ? "[MASKED]" : form[key].ToString());
+                    _logger.LogDebug("[3DCallback] Form param received: {Key}={Value}",
+                        key, sensitiveKeys.Contains(key) ? "[MASKED]" : form[key].ToString());
                 }
             }
 
             foreach (var key in Request.Query.Keys)
             {
-                if (!bankParams.ContainsKey(key) && key != "sid" && key != "stk" && key != "sfid" && key != "bid")
+                if (!bankParams.ContainsKey(key) && key != "sid" && key != "stk" && key != "sfid" && key != "bid" && key != "nonce")
                 {
                     bankParams[key] = Request.Query[key].ToString();
-                    _logger.LogInformation("[3DCallback] Query param: {Key}={Value}", key, Request.Query[key].ToString());
+                    _logger.LogDebug("[3DCallback] Query param received: {Key}={Value}",
+                        key, sensitiveKeys.Contains(key) ? "[MASKED]" : Request.Query[key].ToString());
                 }
             }
 
@@ -923,17 +927,29 @@ public class FlightController : ControllerBase
             string? productId = null;
             ShoppingBillingInfo? billingInfo = null;
 
-            // Nonce doğrulama — replay saldırısını önler
-            if (!string.IsNullOrEmpty(callbackNonce))
+            // Nonce doğrulama — replay saldırısını önler. Nonce ZORUNLU.
+            if (string.IsNullOrEmpty(callbackNonce))
             {
-                if (!_cache.TryGetValue<string>($"3d_nonce_{callbackNonce}", out _))
-                {
-                    _logger.LogWarning("[3DCallback] Geçersiz veya zaten kullanılmış nonce. Nonce={Nonce}", callbackNonce);
-                    return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString("Geçersiz ödeme oturumu. Lütfen tekrar deneyin.")}");
-                }
-                // Nonce'u hemen tüket — tek kullanım
-                _cache.Remove($"3d_nonce_{callbackNonce}");
+                _logger.LogWarning("[3DCallback] Nonce parametresi yok. Callback reddedildi.");
+                return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString("Geçersiz ödeme oturumu. Lütfen tekrar deneyin.")}");
             }
+
+            if (!_cache.TryGetValue<string>($"3d_nonce_{callbackNonce}", out var nonceShoppingFileId))
+            {
+                _logger.LogWarning("[3DCallback] Geçersiz veya zaten kullanılmış nonce.");
+                return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString("Geçersiz ödeme oturumu. Lütfen tekrar deneyin.")}");
+            }
+
+            // ShoppingFileId nonce ile eşleşmiyorsa cross-session attack — reddet
+            if (!string.IsNullOrEmpty(shoppingFileId) && !string.Equals(shoppingFileId, nonceShoppingFileId, StringComparison.Ordinal))
+            {
+                _logger.LogWarning("[3DCallback] Nonce ile ShoppingFileId uyuşmuyor. Callback reddedildi.");
+                _cache.Remove($"3d_nonce_{callbackNonce}");
+                return Redirect($"{_frontendUrl}/checkout/failed?error={Uri.EscapeDataString("Geçersiz ödeme oturumu. Lütfen tekrar deneyin.")}");
+            }
+
+            // Nonce'u hemen tüket — tek kullanım, replay engellenir
+            _cache.Remove($"3d_nonce_{callbackNonce}");
 
             // Query string'te yoksa cache'ten dene
             string? cachedFrontendUrl = null;
@@ -1570,6 +1586,7 @@ public class FlightController : ControllerBase
     /// sadece kart bilgisi yenilenir.
     /// </summary>
     [HttpPost("booking/{bookingId}/retry-payment")]
+    [EnableRateLimiting("payment")]
     public async Task<IActionResult> RetryPayment(Guid bookingId, [FromBody] RetryPaymentRequest? request)
     {
         try
