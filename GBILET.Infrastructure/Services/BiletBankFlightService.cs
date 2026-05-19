@@ -297,7 +297,8 @@ public class BiletBankFlightService : IFlightService
                 SearchId = rawResponse.SearchId,
                 ShoppingFileId = rawResponse.ShoppingFileId,
                 SessionId = rawResponse.SessionId,
-                SessionToken = rawResponse.SessionToken
+                SessionToken = rawResponse.SessionToken,
+                CustomerCommissionByProductId = BuildCommissionMap(rawResponse, request)
             };
 
             var cacheOptions = new MemoryCacheEntryOptions()
@@ -306,11 +307,47 @@ public class BiletBankFlightService : IFlightService
             _cache.Set(cacheKey, sessionData, cacheOptions);
 
             _logger.LogInformation(
-                "[SearchFlightDto] Session cached: SearchId={SearchId}, SessionId={SessionId}",
-                rawResponse.SearchId, rawResponse.SessionId);
+                "[SearchFlightDto] Session cached: SearchId={SearchId}, SessionId={SessionId}, CommissionProductCount={CommCount}",
+                rawResponse.SearchId, rawResponse.SessionId, sessionData.CustomerCommissionByProductId.Count);
         }
 
         return dto;
+    }
+
+    /// <summary>
+    /// BB AirSearch response'undaki her FlightOption.ProductId için toplam acente komisyonunu
+    /// hesaplar (CustomerCommission.Value × yolcu sayısı, tüm pax tipleri için).
+    /// Allocate request'inde SelectedServiceFee.Amount alanına bu değer yazılır.
+    /// </summary>
+    private static Dictionary<string, decimal> BuildCommissionMap(AirSearchResponse rawResponse, SearchRequest request)
+    {
+        var map = new Dictionary<string, decimal>();
+
+        foreach (var option in rawResponse.FlightOptions)
+        {
+            if (string.IsNullOrEmpty(option.ProductId)) continue;
+
+            decimal total = 0;
+            foreach (var pfi in option.PassengerFareItems)
+            {
+                var perPax = pfi.CustomerCommission?.Value ?? 0;
+                if (perPax <= 0) continue;
+
+                var count = pfi.PaxCode?.ToUpperInvariant() switch
+                {
+                    "ADT" => request.AdultCount,
+                    "CHD" => request.ChildCount,
+                    "INF" => request.InfantCount,
+                    _ => 0
+                };
+                total += perPax * count;
+            }
+
+            if (total > 0)
+                map[option.ProductId] = total;
+        }
+
+        return map;
     }
 
     public async Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request)
