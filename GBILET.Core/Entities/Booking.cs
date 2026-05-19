@@ -12,6 +12,7 @@ public class Booking
     public Guid? UserId { get; set; }
     public Guid? BiletBankFileId { get; set; }
     public string? PNR { get; set; }
+    public string? InternalPnr { get; set; }
     public string Status { get; set; } = "Created";
     public decimal? GrandTotal { get; set; }
     public string? Currency { get; set; } = "TRY";
@@ -34,6 +35,14 @@ public class Booking
     public string? SessionId { get; set; }
     public string? SessionToken { get; set; }
     public string? ProductItemId { get; set; }
+    public string? ProductId { get; set; }
+    public string? ShoppingFileId { get; set; }
+
+    /// <summary>
+    /// Ayni rezervasyon icin kac kez odeme denemesi yapildi (3D fail vb.).
+    /// 3 deneme ustu retry'a izin verme.
+    /// </summary>
+    public int PaymentAttemptCount { get; set; } = 0;
 
     // Komisyon
     public decimal ServiceFee { get; set; } = 0;
@@ -45,6 +54,13 @@ public class Booking
     public DateTime? PaidAt { get; set; }
     public DateTime? TicketedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
+
+    /// <summary>
+    /// Biletleme son tarihi (TKTL / Reservation_ExpiresAt). Bu süre dolduğunda PNR
+    /// havayolu/GDS tarafında otomatik düşer ve koltuk yeniden satışa açılır.
+    /// MakePreBooking response'undaki TimeTable.Reservation_ExpiresAt'ten gelir.
+    /// </summary>
+    public DateTime? TicketTimeLimit { get; set; }
 
     // Hata takibi
     public string? LastError { get; set; }
@@ -70,4 +86,12 @@ public class Booking
     public List<FareDetail> FareDetails { get; set; } = new();
     public BillingInfo? BillingInfo { get; set; }
     public List<BookingLog> BookingLogs { get; set; } = new();
+    public List<BookingChangeLog> ChangeLog { get; set; } = new();
+
+
+    
+     
+    
+
+
 }

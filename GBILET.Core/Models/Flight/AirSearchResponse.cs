@@ -15,7 +15,24 @@ public class AirSearchResponse
 
     public List<FlightOption> FlightOptions { get; set; } = [];
     public List<RecommendationBox> RecommendationBoxes { get; set; } = [];
-}
+
+    /// <summary>
+    /// Ge�ici: XML'deki element isimlerini debug i�in tutar.
+    /// </summary>
+    public List<string>? DebugElementNames { get; set; }
+    /// <summary>
+    /// Ge�ici: �lk T_FlightOption'un ilk 2000 karakteri.
+    /// </summary>
+    public string? DebugFirstFlightOptionXml { get; set; }
+    /// <summary>
+    /// Ge�ici: �lk T_RecommendationBox'un ilk 2000 karakteri.
+    /// </summary>
+    public string? DebugFirstRecommendationBoxXml { get; set; }
+    /// <summary>
+    /// Çoklu origin aramasında başarısız olan sub-search'lerin hata mesajları.
+    /// Partial failure (bazı başarılı, bazı hatalı) durumunda diagnostik için kullanılır.
+    /// </summary>
+    public List<string>? SubSearchErrors { get; set; }}
 
 public class FlightOption
 {
@@ -204,7 +221,17 @@ public class RecommendationBox
     public decimal TotalFare { get; set; }
     public List<RecommendationFlight> OutboundFlights { get; set; } = [];
     public List<RecommendationFlight> InboundFlights { get; set; } = [];
+    /// <summary>
+    /// MP (Multi-city) aramalarda 3. ve sonraki bacak uçuşları.
+    /// BiletBank SOAP yanıtında "OtherFlights" elementi altında gelir.
+    /// </summary>
+    public List<RecommendationFlight> OtherFlights { get; set; } = [];
     public List<BrandedFareItem> BrandedFareItems { get; set; } = [];
+    /// <summary>
+    /// DepartureFlights + ReturnFlights altındaki tüm FlightId'ler (önce departure, sonra return).
+    /// Allocate SubOptions için kullanılır.
+    /// </summary>
+    public List<Guid> SubOptionFlightIds { get; set; } = [];
 }
 
 public class RecommendationFlight

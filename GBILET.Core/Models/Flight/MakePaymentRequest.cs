@@ -1,4 +1,5 @@
-namespace GBILET.Core.Models.Flight;
+﻿namespace GBILET.Core.Models.Flight;
+
 
 public class MakePaymentRequest
 {
@@ -19,8 +20,9 @@ public class MakePaymentRequest
 
     /// <summary>
     /// Odeme yapilacak ProductId (AirBookings[0].ProductId).
+    /// SOAP isteklerinde kullanilmaz, sadece loglama/takip icin opsiyoneldir.
     /// </summary>
-    public string ProductId { get; set; } = null!;
+    public string? ProductId { get; set; }
 
     /// <summary>
     /// Odeme tutari.
@@ -33,19 +35,64 @@ public class MakePaymentRequest
     public string Currency { get; set; } = "TRY";
 
     /// <summary>
-    /// Odeme tipi: "CreditCard" veya "RunningAccount".
+    /// Odeme tipi:
+    ///   "CreditCard"        → 3D Secure kredi karti odemesi (MakePayment_Init3DPayment)
+    ///   "CreditCardDirect"  → 3D'siz dogrudan kredi karti odemesi (MakePayment_FromCreditCard)
+    ///   "RunningAccount"    → Cari hesap odemesi (MakePayment_FromRunningAccount)
     /// </summary>
     public string PaymentType { get; set; } = "CreditCard";
 
     /// <summary>
-    /// Kredi karti bilgileri (PaymentType = CreditCard ise zorunlu).
+    /// Kredi karti bilgileri (PaymentType = "CreditCard" veya "CreditCardDirect" ise zorunlu).
     /// </summary>
     public CreditCardInfo? CreditCard { get; set; }
+
+    /// <summary>
+    /// Taksitli odeme icin secilen taksit secenegi ID'si.
+    /// MakePayment response'undaki InstallmentOptions listesinden secilir.
+    /// Bos birakilirsa tek cekim (pesin) olarak islem yapilir.
+    /// </summary>
+    public string? InstallmentOptionId { get; set; }
+
+    /// <summary>
+    /// Kismi odeme mi? Varsayilan: false (tam odeme).
+    /// </summary>
+    public bool IsPartialPayment { get; set; } = false;
+
+    /// <summary>
+    /// Son satici komisyonunu dus? Varsayilan: false.
+    /// </summary>
+    public bool DeductLastSellerCommission { get; set; } = false;
 
     /// <summary>
     /// DB'deki booking ID'si (odeme kaydini eslestirir).
     /// </summary>
     public Guid? BookingId { get; set; }
+
+    /// <summary>
+    /// 3D Secure callback URL'i. Frontend tarafindan verilmezse
+    /// sunucu kendi base URL'ini kullanir.
+    /// </summary>
+    public string? ContinueUrl { get; set; }
+
+    /// <summary>
+    /// Fatura bilgileri (FinalizeShopping icin cache'e kaydedilir).
+    /// 3D Secure akisinda callback sonrasi FinalizeShopping'e iletilir.
+    /// </summary>
+    public ShoppingBillingInfo? BillingInfo { get; set; }
+
+    /// <summary>
+    /// Tek kullanımlık nonce — 3D callback replay saldırısını önler.
+    /// Controller tarafından set edilir, dışarıdan kabul edilmez.
+    /// </summary>
+    public string? CallbackNonce { get; set; }
+
+    /// <summary>
+    /// 3D callback sonrası yönlendirilecek frontend base URL.
+    /// BFF tarafından gönderilir (ör. http://localhost:3000 veya https://atabilet.com).
+    /// Boşsa appsettings'teki FrontendUrl kullanılır.
+    /// </summary>
+    public string? FrontendBaseUrl { get; set; }
 }
 
 public class CreditCardInfo
@@ -56,17 +103,17 @@ public class CreditCardInfo
     public string CardHolderName { get; set; } = null!;
 
     /// <summary>
-    /// Kart numarasi (16 hane).
+    /// Kart numarasi (16 hane, bosluksuz).
     /// </summary>
     public string CardNumber { get; set; } = null!;
 
     /// <summary>
-    /// Son kullanma ayi (MM).
+    /// Son kullanma ayi (MM). Ornek: "01", "12"
     /// </summary>
     public string ExpiryMonth { get; set; } = null!;
 
     /// <summary>
-    /// Son kullanma yili (YYYY).
+    /// Son kullanma yili (YYYY). Ornek: "2026"
     /// </summary>
     public string ExpiryYear { get; set; } = null!;
 

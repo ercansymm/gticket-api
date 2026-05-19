@@ -26,4 +26,10 @@ public class FinalizeShoppingRequest
     /// DB'deki booking ID'si (durum guncelleme icin).
     /// </summary>
     public Guid? BookingId { get; set; }
+
+    /// <summary>
+    /// Fatura bilgileri (FinalizeShopping icin gerekli).
+    /// Null gonderilirse varsayilan degerler kullanilir.
+    /// </summary>
+    public ShoppingBillingInfo? BillingInfo { get; set; }
 }

@@ -9,6 +9,12 @@ public class FlightSearchResponseDto
     public string? SessionToken { get; set; }
     public List<FlightResultDto> Flights { get; set; } = [];
     public FlightFilterOptionsDto? FilterOptions { get; set; }
+
+    /// <summary>
+    /// Geçici debug bilgisi — BiletBank XML yapısını incelemek için.
+    /// Sorun çözüldükten sonra kaldırılacak.
+    /// </summary>
+    public object? _debug { get; set; }
 }
 
 public class FlightResultDto
@@ -78,15 +84,51 @@ public class FlightResultDto
     public decimal CustomerCommissionMax { get; set; }
     public decimal CustomerCommissionValue { get; set; }
 
-    // Branded Fare (ham veri)
-    public List<BrandedFareItem> BrandedFareItems { get; set; } = [];
+    /// <summary>
+    /// Varsayilan (en dusuk fiyatli) branded fare paket ID'si.
+    /// Frontend allocate'e bunu gonderir, kullanici degistirmedikce.
+    /// </summary>
+    public string? DefaultBrandedFareItemId { get; set; }
+
+    // Bagaj ham veri
     public List<FreeBaggageAllowance> FreeBaggageAllowances { get; set; } = [];
 
-    // Paket seçenekleri (EcoFly, ExtraFly, PrimeFly vb.)
+    // Paket secenekleri (EcoFly, ExtraFly, PrimeFly vb.) — tum paketler
     public List<BrandedFareOptionDto> FarePackages { get; set; } = [];
 
     // Bagaj bilgisi özeti
     public BaggageInfoDto? BaggageInfo { get; set; }
+
+    // RecommendationBox (RT bundle) alanları
+    // BiletBank RT aramasında T_FlightOption yerine T_RecommendationBox dönebilir.
+    // Bu durumda gidiş+dönüş tek bir ürün olarak paketlenir.
+    /// <summary>
+    /// true ise bu uçuş bir RecommendationBox'tan gelmiş RT bundle'ıdır.
+    /// </summary>
+    public bool IsRoundTripBundle { get; set; }
+    /// <summary>
+    /// Bundle içindeki dönüş bacağı mı? true ise IsReturnLeg=true, allocate için BundleProductId kullanılır.
+    /// </summary>
+    public bool IsReturnLeg { get; set; }
+    /// <summary>
+    /// Dönüş bacağı için asıl RecommendationBox ProductId'si — allocate bu ID ile yapılır.
+    /// </summary>
+    public string? BundleProductId { get; set; }
+
+    /// <summary>
+    /// Gidiş bacağının FlightId'si — allocate SubOptions için.
+    /// </summary>
+    public string? DepartureFlightId { get; set; }
+
+    /// <summary>
+    /// Dönüş bacağının FlightId'si — allocate SubOptions için.
+    /// </summary>
+    public string? ReturnFlightId { get; set; }
+
+    /// <summary>
+    /// RecommendationBox sonuçları için tüm gidiş+dönüş FlightId listesi — Allocate SubOptions için.
+    /// </summary>
+    public List<Guid>? SubOptionFlightIds { get; set; }
 }
 
 public class FlightSegmentDto
@@ -147,7 +189,38 @@ public class BrandedFareOptionDto
     public string? TotalFareFormatted { get; set; }
     public string? CabinClass { get; set; }
     public string? BookingClass { get; set; }
+
+    /// <summary>
+    /// Bu paketin baz fiyata gore fark tutari.
+    /// Negatif ise baz fiyattan ucuz, pozitif ise pahali.
+    /// </summary>
+    public decimal PriceDifference { get; set; }
+    public string? PriceDifferenceFormatted { get; set; }
+
+    /// <summary>
+    /// Yolcu bazli fiyat dagilimi (ADT, CHD, INF)
+    /// </summary>
+    public List<PassengerFareBreakdownDto> PassengerFares { get; set; } = [];
+
+    /// <summary>
+    /// Paket kurallari (bagaj, iade, degisiklik vb.)
+    /// </summary>
     public List<BrandedRuleDto> Rules { get; set; } = [];
+
+    /// <summary>
+    /// Bu paket en dusuk fiyatli mi? (varsayilan secim icin)
+    /// </summary>
+    public bool IsDefault { get; set; }
+}
+
+public class PassengerFareBreakdownDto
+{
+    public string? PassengerType { get; set; }
+    public int PassengerCount { get; set; }
+    public decimal BaseFare { get; set; }
+    public decimal Taxes { get; set; }
+    public decimal TotalFare { get; set; }
+    public string? Currency { get; set; }
 }
 
 public class BrandedRuleDto

@@ -29,4 +29,27 @@ public class AllocateRequest
     /// Response'ta LastSellerCommission olarak yansir.
     /// </summary>
     public decimal SelectedServiceFee { get; set; } = 0;
+
+    /// <summary>
+    /// AirSearch response'undaki brandedFareItems listesinden secilen paketin ID'si.
+    /// Gonderilmezse sistem otomatik en dusuk paketi secer.
+    /// </summary>
+    public string? BrandedFareItemId { get; set; }
+
+    /// <summary>
+    /// Round-trip: Donus ucusunun ProductId'si.
+    /// Verilirse Allocate XML'inde ikinci IO_AllocationItem olusturulur.
+    /// </summary>
+    public string? ReturnProductId { get; set; }
+
+    /// <summary>
+    /// Round-trip: Donus ucusunun BrandedFareItemId'si.
+    /// </summary>
+    public string? ReturnBrandedFareItemId { get; set; }
+
+    /// <summary>
+    /// RecommendationBox bundle: gidis+donus FlightId GUID'leri.
+    /// Allocate XML'inde SubOptions olarak gonderilir.
+    /// </summary>
+    public List<string>? SubOptionFlightIds { get; set; }
 }

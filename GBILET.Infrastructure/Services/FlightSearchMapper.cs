@@ -9,7 +9,8 @@ public static class FlightSearchMapper
 {
     public static FlightSearchResponseDto MapToDto(
         AirSearchResponse response,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        string? requestedFlightClass = null)
     {
         var dto = new FlightSearchResponseDto
         {
@@ -23,15 +24,277 @@ public static class FlightSearchMapper
         if (response.HasError)
             return dto;
 
+        // RecommendationBox'taki BrandedFareItems'ı ProductId bazlı index'le
+        // BrandedFareVersion=v2 kullanıldığında paket bilgileri T_FlightOption'da değil
+        // T_RecommendationBox altında döner
+        var rbBrandedFaresByProductId = new Dictionary<string, List<BrandedFareItem>>();
+        foreach (var rb in response.RecommendationBoxes)
+        {
+            if (!string.IsNullOrEmpty(rb.ProductId) && rb.BrandedFareItems.Count > 0)
+            {
+                rbBrandedFaresByProductId[rb.ProductId] = rb.BrandedFareItems;
+            }
+        }
+
         foreach (var option in response.FlightOptions)
         {
+            // FlightOption'da BrandedFareItems boşsa RecommendationBox'tan al
+            if (option.BrandedFareItems.Count == 0
+                && !string.IsNullOrEmpty(option.ProductId)
+                && rbBrandedFaresByProductId.TryGetValue(option.ProductId, out var rbBrandedFares))
+            {
+                option.BrandedFareItems = rbBrandedFares;
+            }
+
             var flight = MapFlightOption(option, logger);
             dto.Flights.Add(flight);
         }
 
+        // FlightOption yoksa (RT aramalarda BiletBank yalnızca RecommendationBox dönebilir):
+        // Her RecommendationBox'ı gidiş + dönüş olarak iki ayrı FlightResultDto'ya dönüştür.
+        if (response.FlightOptions.Count == 0 && response.RecommendationBoxes.Count > 0)
+        {
+            foreach (var rb in response.RecommendationBoxes)
+            {
+                var rbFlights = MapRecommendationBox(rb, logger);
+                dto.Flights.AddRange(rbFlights);
+            }
+        }
+
+        // BiletBank may return flights from all cabin classes even when a specific
+        // FlightClass was requested. Filter to only the requested class.
+        if (!string.IsNullOrEmpty(requestedFlightClass))
+        {
+            var before = dto.Flights.Count;
+            dto.Flights = dto.Flights
+                .Where(f => string.Equals(f.CabinClass, requestedFlightClass, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (dto.Flights.Count < before)
+            {
+                logger?.LogInformation(
+                    "[MapToDto] Filtered flights by requested cabin class '{RequestedClass}': {Before} -> {After}",
+                    requestedFlightClass, before, dto.Flights.Count);
+            }
+        }
+
         dto.FilterOptions = BuildFilterOptions(dto.Flights);
 
+        // DEBUG: Mapping bittikten sonra tüm sayıları topla — flights boş geliyorsa tanı için
+        var brandElements = response.DebugElementNames?
+            .Where(e => e.Contains("Brand", StringComparison.OrdinalIgnoreCase)
+                     || e.Contains("Baggage", StringComparison.OrdinalIgnoreCase)
+                     || e.Contains("FreeBag", StringComparison.OrdinalIgnoreCase))
+            .ToList() ?? [];
+
+        var firstRb = response.RecommendationBoxes.FirstOrDefault();
+
+        dto._debug = new
+        {
+            totalElementNames = response.DebugElementNames?.Count ?? 0,
+            brandRelatedElements = brandElements,
+            allElementNames = response.DebugElementNames,
+            flightOptionCount = response.FlightOptions.Count,
+            recommendationBoxCount = response.RecommendationBoxes.Count,
+            mappedFlightCount = dto.Flights.Count,
+            firstFlightOptionBrandedFareCount = response.FlightOptions.FirstOrDefault()?.BrandedFareItems.Count ?? -1,
+            firstRecommendationBoxBrandedFareCount = response.RecommendationBoxes.FirstOrDefault()?.BrandedFareItems.Count ?? -1,
+            // RecommendationBox segment tanısı — flights boş geliyorsa buraya bak
+            firstRbOutboundFlightCount = firstRb?.OutboundFlights.Count ?? -1,
+            firstRbInboundFlightCount = firstRb?.InboundFlights.Count ?? -1,
+            firstRbOtherFlightCount = firstRb?.OtherFlights.Count ?? -1,
+            firstRbFirstOutboundSegmentCount = firstRb?.OutboundFlights.FirstOrDefault()?.Segments.Count ?? -1,
+            firstRbFirstInboundSegmentCount = firstRb?.InboundFlights.FirstOrDefault()?.Segments.Count ?? -1,
+            firstFlightOptionXml = response.DebugFirstFlightOptionXml,
+            firstRecommendationBoxXml = response.DebugFirstRecommendationBoxXml,
+            subSearchErrors = response.SubSearchErrors,
+        };
+
         return dto;
+    }
+
+    /// <summary>
+    /// Bir RecommendationBox'ı FlightResultDto listesine dönüştürür:
+    ///   1. Gidiş bacağı (OutboundFlights) — IsRoundTripBundle=true, IsReturnLeg=false
+    ///   2. Dönüş bacağı (InboundFlights)  — IsRoundTripBundle=true, IsReturnLeg=true
+    ///   3+ Diğer bacaklar (OtherFlights) — MP aramalarda 3. ve sonraki bacaklar
+    /// Her DTO aynı ProductId'yi paylaşır (bundle tek bir allocate ile rezerve edilir).
+    /// </summary>
+    private static List<FlightResultDto> MapRecommendationBox(RecommendationBox rb, ILogger? logger)
+    {
+        var result = new List<FlightResultDto>();
+
+        logger?.LogInformation(
+            "[MapRecommendationBox] ProductId={ProductId}, BrandedFareItems={BrandedFareItemCount}, OutboundFlights={OutboundCount}, InboundFlights={InboundCount}, OtherFlights={OtherCount}",
+            rb.ProductId, rb.BrandedFareItems.Count, rb.OutboundFlights.Count, rb.InboundFlights.Count, rb.OtherFlights.Count);
+
+        // Gidiş bacakları
+        foreach (var outbound in rb.OutboundFlights)
+        {
+            var dto = MapRecommendationFlight(outbound, rb, isReturnLeg: false, logger);
+            if (dto != null) result.Add(dto);
+        }
+
+        // Dönüş bacakları — segment SequenceNo'ları 2'ye zorla (frontend split için)
+        foreach (var inbound in rb.InboundFlights)
+        {
+            // Inbound segmentlerin SequenceNo'sunu 2 yap
+            foreach (var seg in inbound.Segments)
+                seg.SequenceNo = 2;
+
+            var dto = MapRecommendationFlight(inbound, rb, isReturnLeg: true, logger);
+            if (dto != null) result.Add(dto);
+        }
+
+        // OtherFlights: MP (Multi-city) 3. ve sonraki bacaklar — SequenceNo=3+ olarak zorla
+        for (int i = 0; i < rb.OtherFlights.Count; i++)
+        {
+            var other = rb.OtherFlights[i];
+            var legNo = 3 + i;
+            // 3. bacaktan itibaren SequenceNo ata (3, 4, 5...)
+            foreach (var seg in other.Segments)
+                seg.SequenceNo = legNo;
+
+            var dto = MapRecommendationFlight(other, rb, isReturnLeg: false, logger);
+            if (dto != null)
+            {
+                // Unique ProductId — outbound ile çakışmasın (React key + frontend tanımlama)
+                var otherOrigin = other.Segments.FirstOrDefault()?.OriginCode ?? "";
+                dto.ProductId = $"{rb.ProductId}_leg{legNo}_{other.FlightId ?? otherOrigin}";
+                result.Add(dto);
+            }
+        }
+
+        return result;
+    }
+
+    private static FlightResultDto? MapRecommendationFlight(
+        RecommendationFlight flight,
+        RecommendationBox rb,
+        bool isReturnLeg,
+        ILogger? logger)
+    {
+        if (flight.Segments.Count == 0) return null;
+
+        var firstSeg = flight.Segments.First();
+        var lastSeg = flight.Segments.Last();
+
+        var segmentDtos = new List<FlightSegmentDto>();
+        for (int i = 0; i < flight.Segments.Count; i++)
+        {
+            var seg = flight.Segments[i];
+            var segDto = MapSegment(seg);
+
+            if (i > 0)
+            {
+                var prevSeg = flight.Segments[i - 1];
+                var layover = CalculateLayoverMinutes(prevSeg, seg);
+                if (layover.HasValue)
+                {
+                    segDto.LayoverMinutes = layover.Value;
+                    segDto.LayoverFormatted = FormatDuration(layover.Value);
+                }
+            }
+
+            segmentDtos.Add(segDto);
+        }
+
+        var (totalHours, totalMinutes, totalDurationMinutes) = CalculateTotalDuration(firstSeg, lastSeg);
+        int stopCount = flight.Segments.Count - 1;
+        bool isDirect = stopCount == 0;
+        string stopText = BuildStopText(flight.Segments, stopCount, isDirect);
+
+        string airlineCode = firstSeg.MarketingAirline ?? "";
+        string airlineName = FlightMappings.GetAirlineName(airlineCode);
+        string originCode = firstSeg.OriginCode ?? "";
+        string destinationCode = lastSeg.DestinationCode ?? "";
+        var cabinClass = DetermineCabinClass(firstSeg.BookingClass, firstSeg.FareType);
+        var cabinClassName = FlightMappings.GetFareTypeName(cabinClass);
+
+        // ProductId: gidiş ve dönüş bacağı aynı box.ProductId'yi paylaşır.
+        // Dönüş bacağına "_ret" suffix ekleriz ki frontend duplikat olarak görmesin.
+        // Allocate'te BundleProductId (asıl) kullanılır.
+        var productId = isReturnLeg
+            ? $"{rb.ProductId}_ret_{flight.FlightId ?? originCode}"
+            : rb.ProductId;
+
+        // RecommendationBox BrandedFareItems → FarePackages + DefaultBrandedFareItemId
+        var farePackages = MapBrandedFarePackages(rb.BrandedFareItems, rb.Currency ?? "TRY");
+        var defaultBrandedFareItemId = farePackages.FirstOrDefault(p => p.IsDefault)?.BrandedFareItemId;
+
+        if (!isReturnLeg)
+        {
+            logger?.LogInformation(
+                "[MapRecommendationFlight] ProductId={ProductId}, FarePackages={Count}, Default={DefaultId}",
+                rb.ProductId, farePackages.Count, defaultBrandedFareItemId ?? "(null)");
+        }
+
+        return new FlightResultDto
+        {
+            ProductId = productId,
+            ProductItemId = rb.ProductId, // her iki bacak için de asıl ID
+
+            AirlineCode = airlineCode,
+            AirlineName = airlineName,
+            FlightNumber = firstSeg.FlightNumber,
+
+            OriginCode = originCode,
+            OriginName = FlightMappings.GetAirportName(originCode),
+            DestinationCode = destinationCode,
+            DestinationName = FlightMappings.GetAirportName(destinationCode),
+
+            DepartureDate = firstSeg.DepartureDay,
+            DepartureTime = firstSeg.DepartureTime,
+            ArrivalDate = lastSeg.ArrivalDay,
+            ArrivalTime = lastSeg.ArrivalTime,
+            DurationHours = totalHours,
+            DurationMinutes = totalMinutes,
+            DurationFormatted = FormatDuration(totalDurationMinutes),
+
+            Equipment = firstSeg.Equipment,
+
+            // Fiyat: RecommendationBox'taki combined fiyat (gidiş+dönüş toplamı)
+            // Note: BiletBank TotalFare excludes ServiceFee; add it to get the true customer price
+            BaseFare = rb.BaseFare,
+            Taxes = rb.Taxes,
+            ServiceFee = rb.ServiceFee,
+            TotalFare = rb.TotalFare + rb.ServiceFee,
+            Currency = rb.Currency ?? "TRY",
+            TotalFareFormatted = FormatPrice(rb.TotalFare + rb.ServiceFee, rb.Currency ?? "TRY"),
+
+            IsRefundable = false,
+            IsReservable = true,
+            RefundableText = "İade politikası için araştırın",
+
+            FareType = FlightMappings.GetFareTypeName(firstSeg.FareType),
+            BookingClass = firstSeg.BookingClass,
+            BookingClassName = FlightMappings.GetBookingClassName(firstSeg.BookingClass),
+            CabinClass = cabinClass,
+            CabinClassName = cabinClassName,
+
+            AvailableSeats = 0,
+            AvailableSeatsText = null,
+
+            StopCount = stopCount,
+            IsDirect = isDirect,
+            StopText = stopText,
+
+            Segments = segmentDtos,
+
+            FarePackages = farePackages,
+            DefaultBrandedFareItemId = defaultBrandedFareItemId,
+            BaggageInfo = null,
+            FreeBaggageAllowances = [],
+
+            // Bundle marker alanları
+            IsRoundTripBundle = true,
+            IsReturnLeg = isReturnLeg,
+            BundleProductId = rb.ProductId,
+
+            DepartureFlightId = isReturnLeg ? null : flight.FlightId,
+            ReturnFlightId = isReturnLeg ? flight.FlightId : null,
+            SubOptionFlightIds = rb.SubOptionFlightIds.Count > 0 ? rb.SubOptionFlightIds : null,
+        };
     }
 
     private static FlightResultDto MapFlightOption(FlightOption option, ILogger? logger)
@@ -128,12 +391,13 @@ public static class FlightSearchMapper
             Equipment = firstSegment?.Equipment,
 
             // Fiyat
+            // Note: BiletBank TotalFare excludes ServiceFee; add it to get the true customer price
             BaseFare = option.BaseFare,
             Taxes = option.Taxes,
             ServiceFee = option.ServiceFee,
-            TotalFare = option.TotalFare,
+            TotalFare = option.TotalFare + option.ServiceFee,
             Currency = option.Currency ?? "TRY",
-            TotalFareFormatted = FormatPrice(option.TotalFare, option.Currency ?? "TRY"),
+            TotalFareFormatted = FormatPrice(option.TotalFare + option.ServiceFee, option.Currency ?? "TRY"),
 
             // Durum
             IsRefundable = option.IsRefundable,
@@ -164,16 +428,19 @@ public static class FlightSearchMapper
             CustomerCommissionMax = commMax,
             CustomerCommissionValue = commVal,
 
-            // Branded / baggage (ham veri)
-            BrandedFareItems = option.BrandedFareItems,
+            // Bagaj ham veri
             FreeBaggageAllowances = option.FreeBaggageAllowances,
 
-            // Paketler (düzleştirilmiş)
+            // Paketler (tum branded fare secenekleri)
             FarePackages = MapBrandedFarePackages(option),
 
             // Bagaj özeti
             BaggageInfo = MapBaggageInfo(option.FreeBaggageAllowances)
         };
+
+        // Default (en dusuk fiyatli) paketi isaretle
+        var defaultPkg = result.FarePackages.FirstOrDefault(p => p.IsDefault);
+        result.DefaultBrandedFareItemId = defaultPkg?.BrandedFareItemId;
 
         return result;
     }
@@ -414,28 +681,66 @@ public static class FlightSearchMapper
 
     private static List<BrandedFareOptionDto> MapBrandedFarePackages(FlightOption option)
     {
+        return MapBrandedFarePackages(option.BrandedFareItems, option.Currency ?? "TRY");
+    }
+
+    private static List<BrandedFareOptionDto> MapBrandedFarePackages(List<BrandedFareItem> brandedFareItems, string currency)
+    {
         var packages = new List<BrandedFareOptionDto>();
 
-        foreach (var bfi in option.BrandedFareItems)
+        if (brandedFareItems.Count == 0)
+            return packages;
+
+        // En dusuk fiyatli paketin toplam fiyatini bul (fark hesabi icin)
+        var minTotalFare = brandedFareItems
+            .Select(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue)
+            .Min();
+
+        // Tum paketleri fiyata gore sirala ve dondur
+        var sortedItems = brandedFareItems
+            .OrderBy(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue)
+            .ToList();
+
+        bool defaultMarked = false;
+
+        foreach (var bfi in sortedItems)
         {
             var firstPax = bfi.BrandedFarePassengers.FirstOrDefault();
             var firstComponent = firstPax?.FareComponents.FirstOrDefault();
+            var itemCurrency = firstPax?.PassengerFareInfo?.Currency ?? currency;
+            var totalFare = bfi.TotalFareInfo?.TotalFare ?? 0;
+            var priceDiff = totalFare - minTotalFare;
+            var isDefault = !defaultMarked;
+
+            if (isDefault)
+                defaultMarked = true;
 
             var package = new BrandedFareOptionDto
             {
                 BrandedFareItemId = bfi.BrandedFareItemId,
-                TotalFare = bfi.TotalFareInfo?.TotalFare ?? 0,
+                TotalFare = totalFare,
                 TotalTaxes = bfi.TotalFareInfo?.TotalTaxes ?? 0,
                 CabinClass = firstComponent?.CabinClass,
-                BookingClass = firstComponent?.BookingClass
+                BookingClass = firstComponent?.BookingClass,
+                Currency = itemCurrency,
+                TotalFareFormatted = FormatPrice(totalFare, itemCurrency),
+                PriceDifference = priceDiff,
+                PriceDifferenceFormatted = priceDiff == 0 ? null : $"+{FormatPrice(priceDiff, itemCurrency)}",
+                IsDefault = isDefault
             };
 
-            foreach (var brandedItem in bfi.BrandedItems)
-            {
-                package.BrandCode = brandedItem.BrandCode;
-                package.BrandName = brandedItem.BrandName;
+            // BrandedItem'i BrandId uzerinden esleştir (paket adi, kurallar)
+            var brandId = firstComponent?.BrandId;
+            var matchedBrandedItem = bfi.BrandedItems
+                .FirstOrDefault(bi => bi.BrandId == brandId)
+                ?? bfi.BrandedItems.FirstOrDefault();
 
-                package.Rules = brandedItem.BrandedRules.Select(r => new BrandedRuleDto
+            if (matchedBrandedItem != null)
+            {
+                package.BrandCode = matchedBrandedItem.BrandCode;
+                package.BrandName = matchedBrandedItem.BrandName;
+
+                package.Rules = matchedBrandedItem.BrandedRules.Select(r => new BrandedRuleDto
                 {
                     Description = r.RuleDescription,
                     IsIncluded = r.Application is "F" or "C",
@@ -445,9 +750,19 @@ public static class FlightSearchMapper
                 }).ToList();
             }
 
-            var currency = firstPax?.PassengerFareInfo?.Currency ?? option.Currency ?? "TRY";
-            package.Currency = currency;
-            package.TotalFareFormatted = FormatPrice(package.TotalFare, currency);
+            // Yolcu bazli fiyat kirilimi
+            foreach (var pax in bfi.BrandedFarePassengers)
+            {
+                package.PassengerFares.Add(new PassengerFareBreakdownDto
+                {
+                    PassengerType = pax.PassengerType,
+                    PassengerCount = pax.PassengerCount,
+                    BaseFare = pax.PassengerFareInfo?.BaseFare ?? 0,
+                    Taxes = pax.PassengerFareInfo?.Taxes ?? 0,
+                    TotalFare = pax.PassengerFareInfo?.TotalFare ?? 0,
+                    Currency = pax.PassengerFareInfo?.Currency ?? itemCurrency
+                });
+            }
 
             packages.Add(package);
         }

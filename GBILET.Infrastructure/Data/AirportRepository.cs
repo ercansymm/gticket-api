@@ -1,5 +1,4 @@
 using GBILET.Core.Entities;
-using GBILET.Core.Entities;
 using GBILET.Core.Service;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -150,7 +149,7 @@ public class AirportRepository : IAirportRepository
         var cityTr = NormalizeTurkish(airport.CityTr.ToLowerInvariant());
         var cityEn = airport.CityEn.ToLowerInvariant();
 
-        // Exact IATA code match — highest priority
+        // Exact IATA code match ï¿½ highest priority
         if (iata == normalizedQuery) return 1000;
 
         // IATA code starts with query
@@ -227,17 +226,17 @@ public class AirportRepository : IAirportRepository
     {
         if (string.IsNullOrEmpty(input)) return input;
         return input
-            .Replace('ý', 'i')
-            .Replace('Ý', 'i')
-            .Replace('ð', 'g')
-            .Replace('Ð', 'g')
-            .Replace('ü', 'u')
-            .Replace('Ü', 'u')
-            .Replace('þ', 's')
-            .Replace('Þ', 's')
-            .Replace('ö', 'o')
-            .Replace('Ö', 'o')
-            .Replace('ç', 'c')
-            .Replace('Ç', 'c');
+            .Replace('ï¿½', 'i')
+            .Replace('ï¿½', 'i')
+            .Replace('ï¿½', 'g')
+            .Replace('ï¿½', 'g')
+            .Replace('ï¿½', 'u')
+            .Replace('ï¿½', 'u')
+            .Replace('ï¿½', 's')
+            .Replace('ï¿½', 's')
+            .Replace('ï¿½', 'o')
+            .Replace('ï¿½', 'o')
+            .Replace('ï¿½', 'c')
+            .Replace('ï¿½', 'c');
     }
 }

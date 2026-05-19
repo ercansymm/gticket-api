@@ -4,9 +4,11 @@ using GBILET.Core.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GBILET.Api.Controllers;
-
+ 
+ //api controller
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/lookup/airlines")]
 public class AirlineController : ControllerBase
 {
     private readonly IAirlineRepository _airlineRepository;

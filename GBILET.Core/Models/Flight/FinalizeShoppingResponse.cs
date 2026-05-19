@@ -6,9 +6,19 @@ public class FinalizeShoppingResponse
     public string? ErrorMessage { get; set; }
 
     /// <summary>
+    /// Biletleme basarili mi? (Status = Booking/Ticketed/Reservation ise true)
+    /// </summary>
+    public bool IsFinalized { get; set; }
+
+    /// <summary>
     /// PNR kodu
     /// </summary>
     public string? BookingCode { get; set; }
+
+    /// <summary>
+    /// Bizim urettigimiz internal PNR kodu
+    /// </summary>
+    public string? InternalPnr { get; set; }
 
     /// <summary>
     /// Biletleme durumu (Ticketed, Confirmed, Failed vb.)
@@ -34,6 +44,16 @@ public class FinalizeShoppingResponse
     /// Toplam tutar
     /// </summary>
     public decimal TotalFare { get; set; }
+
+    /// <summary>
+    /// Debug: Gonderilen SOAP request
+    /// </summary>
+    public string? RawSoapRequest { get; set; }
+
+    /// <summary>
+    /// Debug: Alinan SOAP response
+    /// </summary>
+    public string? RawSoapResponse { get; set; }
 }
 
 public class TicketInfo

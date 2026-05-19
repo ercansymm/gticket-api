@@ -12,8 +12,10 @@ public interface IFlightService
     Task<MakePreBookingResponse> MakePreBookingAsync(MakePreBookingRequest request);
     Task<RemoveProductResponse> RemoveProductAsync(RemoveProductRequest request);
     Task<MakePaymentResponse> MakePaymentAsync(MakePaymentRequest request);
+    Task<MakePaymentResponse> Complete3DPaymentAsync(Complete3DPaymentRequest request);
     Task<FinalizeShoppingResponse> FinalizeShoppingAsync(FinalizeShoppingRequest request);
     Task<PokeShoppingFileResponse> PokeShoppingFileAsync(PokeShoppingFileRequest request);
     Task<ReadShoppingFileResponse> ReadShoppingFileAsync(ReadShoppingFileRequest request);
     Task<LogoutResponse> LogoutAsync(LogoutRequest request);
+    Task<ReadShoppingFileResponse> ReadShoppingFileWithAutoLoginAsync(string shoppingFileId, CancellationToken ct = default);
 }

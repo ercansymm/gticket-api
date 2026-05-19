@@ -19,8 +19,9 @@ public class MakePreBookingRequest
 
     /// <summary>
     /// Allocate response'taki AirBookings[0].BrandedFareItems[0].BrandedFareItemId degeri.
+    /// Opsiyonel - bazi havayollari (orn. AnadoluJet) branded fare desteklemez.
     /// </summary>
-    public string BrandedFareItemId { get; set; } = null!;
+    public string? BrandedFareItemId { get; set; }
 
     /// <summary>
     /// Allocate response'taki ShoppingFileId degeri.
@@ -28,17 +29,17 @@ public class MakePreBookingRequest
     public string ShoppingFileId { get; set; } = null!;
 
     /// <summary>
-    /// Kayitli kullanici ID'si — opsiyonel, verilmezse misafir oturumu olusturulur.
+    /// Kayitli kullanici ID'si - opsiyonel, verilmezse misafir oturumu olusturulur.
     /// </summary>
     public Guid? UserId { get; set; }
 
     /// <summary>
-    /// Yolcu listesi — DB'ye booking kaydý olusturmak icin gerekli.
+    /// Yolcu listesi - DB'ye booking kaydi olusturmak icin gerekli.
     /// </summary>
     public List<UpdatePassengerItem> Passengers { get; set; } = [];
 
     /// <summary>
-    /// Rezervasyon sahibi iletisim bilgileri — DB kaydý icin gerekli.
+    /// Rezervasyon sahibi iletisim bilgileri - DB kaydi icin gerekli.
     /// </summary>
     public UpdatePassengerContact Contact { get; set; } = null!;
 }

@@ -8,16 +8,25 @@ public static class XmlExtensions
 {
     public static string? GetValue(this XDocument doc, string elementName)
     {
-        return doc.Descendants()
-            .FirstOrDefault(x => x.Name.LocalName == elementName)?
-            .Value;
+        var el = doc.Descendants()
+            .FirstOrDefault(x => x.Name.LocalName == elementName);
+        if (el == null) return null;
+        var nilAttr = el.Attributes().FirstOrDefault(a => a.Name.LocalName == "nil");
+        if (nilAttr != null && string.Equals(nilAttr.Value, "true", StringComparison.OrdinalIgnoreCase))
+            return null;
+        return el.Value;
     }
 
     public static string? GetValue(this XElement element, string elementName)
     {
-        return element.Elements()
-            .FirstOrDefault(x => x.Name.LocalName == elementName)?
-            .Value;
+        var el = element.Elements()
+            .FirstOrDefault(x => x.Name.LocalName == elementName);
+        if (el == null) return null;
+        // WCF nil attribute: <c:Field i:nil="true"/> → treat as null
+        var nilAttr = el.Attributes().FirstOrDefault(a => a.Name.LocalName == "nil");
+        if (nilAttr != null && string.Equals(nilAttr.Value, "true", StringComparison.OrdinalIgnoreCase))
+            return null;
+        return el.Value;
     }
 
     public static IEnumerable<XElement> GetElements(this XElement element, string elementName)

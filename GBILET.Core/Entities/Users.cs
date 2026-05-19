@@ -14,6 +14,7 @@ namespace GBILET.Core.Entities
         public string PasswordHash { get; set; }
         public string FullName { get; set; }
         public string? Phone { get; set; }
+        public bool IsPhoneVerified { get; set; } = false;
         public string Role { get; set; } = "Agent";
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

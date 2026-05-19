@@ -26,6 +26,16 @@ public class ReadShoppingFileResponse
     public decimal GrandTotal { get; set; }
 
     /// <summary>
+    /// Temel ucret
+    /// </summary>
+    public decimal BaseFare { get; set; }
+
+    /// <summary>
+    /// Vergiler
+    /// </summary>
+    public decimal Taxes { get; set; }
+
+    /// <summary>
     /// Kalan tutar
     /// </summary>
     public decimal RemainingSum { get; set; }
