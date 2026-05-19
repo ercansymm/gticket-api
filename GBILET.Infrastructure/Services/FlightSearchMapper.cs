@@ -219,7 +219,7 @@ public static class FlightSearchMapper
             : rb.ProductId;
 
         // RecommendationBox BrandedFareItems → FarePackages + DefaultBrandedFareItemId
-        var farePackages = MapBrandedFarePackages(rb.BrandedFareItems, rb.Currency ?? "TRY");
+        var farePackages = MapBrandedFarePackages(rb.BrandedFareItems, rb.Currency ?? "TRY", rb.ServiceFee);
         var defaultBrandedFareItemId = farePackages.FirstOrDefault(p => p.IsDefault)?.BrandedFareItemId;
 
         if (!isReturnLeg)
@@ -668,19 +668,23 @@ public static class FlightSearchMapper
 
     private static List<BrandedFareOptionDto> MapBrandedFarePackages(FlightOption option)
     {
-        return MapBrandedFarePackages(option.BrandedFareItems, option.Currency ?? "TRY");
+        return MapBrandedFarePackages(option.BrandedFareItems, option.Currency ?? "TRY", option.ServiceFee);
     }
 
-    private static List<BrandedFareOptionDto> MapBrandedFarePackages(List<BrandedFareItem> brandedFareItems, string currency)
+    private static List<BrandedFareOptionDto> MapBrandedFarePackages(List<BrandedFareItem> brandedFareItems, string currency, decimal serviceFee)
     {
         var packages = new List<BrandedFareOptionDto>();
 
         if (brandedFareItems.Count == 0)
             return packages;
 
+        // BB BrandedFareItem.TotalFareInfo.TotalFare ServiceFee dahil DEĞİL — sadece BaseFare+Taxes.
+        // Listede gösterilecek müşteri fiyatı için parent option/rb'nin ServiceFee'sini eklemek gerek.
+        // Aksi halde search listesinde Allocate sonrası fiyattan eksik gösterilir.
+
         // En dusuk fiyatli paketin toplam fiyatini bul (fark hesabi icin)
         var minTotalFare = brandedFareItems
-            .Select(b => b.TotalFareInfo?.TotalFare ?? decimal.MaxValue)
+            .Select(b => (b.TotalFareInfo?.TotalFare ?? decimal.MaxValue) + serviceFee)
             .Min();
 
         // Tum paketleri fiyata gore sirala ve dondur
@@ -695,7 +699,7 @@ public static class FlightSearchMapper
             var firstPax = bfi.BrandedFarePassengers.FirstOrDefault();
             var firstComponent = firstPax?.FareComponents.FirstOrDefault();
             var itemCurrency = firstPax?.PassengerFareInfo?.Currency ?? currency;
-            var totalFare = bfi.TotalFareInfo?.TotalFare ?? 0;
+            var totalFare = (bfi.TotalFareInfo?.TotalFare ?? 0) + serviceFee;
             var priceDiff = totalFare - minTotalFare;
             var isDefault = !defaultMarked;
 
