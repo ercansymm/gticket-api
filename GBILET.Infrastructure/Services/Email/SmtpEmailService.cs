@@ -729,7 +729,7 @@ public class SmtpEmailService : IEmailService
               <td style="padding:0 32px 28px;">
                 <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;font-family:Arial,sans-serif;">
                   Sorularınız için müşteri hizmetlerimizle iletişime geçebilirsiniz.<br>
-                  <strong style="color:#0a1628;">Acil Durum Hattı: 0532 015 26 38</strong>
+                  <strong style="color:#0a1628;">Acil Durum Hattı: 0850 302 0282</strong>
                 </p>
               </td>
             </tr>
