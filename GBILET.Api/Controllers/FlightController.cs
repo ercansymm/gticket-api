@@ -258,6 +258,30 @@ public class FlightController : ControllerBase
             if (!hasSession && request.SearchRequest == null)
                 return BadRequest(new { error = "SessionId/SessionToken verilmediyse SearchRequest zorunludur." });
 
+            // Acente komisyonu (CustomerCommission.Value × paxCount) AirSearch'te BB'den geldi —
+            // session cache'den okuyup Allocate XML'inde SelectedServiceFee.Amount alanına yaz.
+            // Aksi halde BB acente payını sıfırlar (ServiceFee 11'e düşer, müşteri eksik fiyat görür).
+            {
+                var searchIdHeader = Request.Headers["x-search-id"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(searchIdHeader)
+                    && _cache.TryGetValue<FlightSessionData>($"flight_session_{searchIdHeader}", out var cachedSession)
+                    && cachedSession != null
+                    && cachedSession.CustomerCommissionByProductId.TryGetValue(request.ProductId, out var commission)
+                    && commission > 0)
+                {
+                    request.SelectedServiceFee = commission;
+                    _logger.LogInformation(
+                        "[Allocate] SelectedServiceFee set from session cache: ProductId={ProductId}, Amount={Amount}",
+                        request.ProductId, commission);
+                }
+                else if (request.SelectedServiceFee <= 0)
+                {
+                    _logger.LogWarning(
+                        "[Allocate] No commission found in session for ProductId={ProductId} (searchId={SearchId}). BB will charge BB-only ServiceFee.",
+                        request.ProductId, searchIdHeader ?? "(missing)");
+                }
+            }
+
             // FlightAllocateService:
             //   - Provider'a HER ZAMAN gider (allocate cache'lenmez)
             //   - Search cache snapshot ile karsilastirma yapip Change bilgisini doldurur

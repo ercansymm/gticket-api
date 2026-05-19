@@ -254,13 +254,13 @@ public static class FlightSearchMapper
             Equipment = firstSeg.Equipment,
 
             // Fiyat: RecommendationBox'taki combined fiyat (gidiş+dönüş toplamı)
-            // Note: BiletBank TotalFare excludes ServiceFee; add it to get the true customer price
+            // BiletBank TotalFare zaten ServiceFee dahil — tekrar ekleme, duplikat olur.
             BaseFare = rb.BaseFare,
             Taxes = rb.Taxes,
             ServiceFee = rb.ServiceFee,
-            TotalFare = rb.TotalFare + rb.ServiceFee,
+            TotalFare = rb.TotalFare,
             Currency = rb.Currency ?? "TRY",
-            TotalFareFormatted = FormatPrice(rb.TotalFare + rb.ServiceFee, rb.Currency ?? "TRY"),
+            TotalFareFormatted = FormatPrice(rb.TotalFare, rb.Currency ?? "TRY"),
 
             IsRefundable = false,
             IsReservable = true,
@@ -391,13 +391,13 @@ public static class FlightSearchMapper
             Equipment = firstSegment?.Equipment,
 
             // Fiyat
-            // Note: BiletBank TotalFare excludes ServiceFee; add it to get the true customer price
+            // BiletBank TotalFare zaten ServiceFee (SystemServiceFee + CustomerCommission) dahil — tekrar ekleme.
             BaseFare = option.BaseFare,
             Taxes = option.Taxes,
             ServiceFee = option.ServiceFee,
-            TotalFare = option.TotalFare + option.ServiceFee,
+            TotalFare = option.TotalFare,
             Currency = option.Currency ?? "TRY",
-            TotalFareFormatted = FormatPrice(option.TotalFare + option.ServiceFee, option.Currency ?? "TRY"),
+            TotalFareFormatted = FormatPrice(option.TotalFare, option.Currency ?? "TRY"),
 
             // Durum
             IsRefundable = option.IsRefundable,
@@ -584,26 +584,13 @@ public static class FlightSearchMapper
     {
         if (logger == null) return;
 
-        // baseFare + taxes ? netFare
-        if (option.NetFare > 0)
-        {
-            var expectedNet = option.BaseFare + option.Taxes;
-            if (Math.Abs(expectedNet - option.NetFare) > 1m)
-            {
-                logger.LogWarning(
-                    "[PriceValidation] ProductId={ProductId}: BaseFare({BaseFare}) + Taxes({Taxes}) = {Expected}, NetFare = {NetFare}",
-                    option.ProductId, option.BaseFare, option.Taxes, expectedNet, option.NetFare);
-            }
-        }
-
-        // netFare + serviceFee ? totalFare
-        var baseForTotal = option.NetFare > 0 ? option.NetFare : (option.BaseFare + option.Taxes);
-        var expectedTotal = baseForTotal + option.ServiceFee;
+        // BB invariant: BaseFare + Taxes + ServiceFee == TotalFare (ServiceFee toplam içinde dahil).
+        var expectedTotal = option.BaseFare + option.Taxes + option.ServiceFee;
         if (Math.Abs(expectedTotal - option.TotalFare) > 1m)
         {
             logger.LogWarning(
-                "[PriceValidation] ProductId={ProductId}: Net/Base+Tax({Base}) + ServiceFee({ServiceFee}) = {Expected}, TotalFare = {TotalFare}",
-                option.ProductId, baseForTotal, option.ServiceFee, expectedTotal, option.TotalFare);
+                "[PriceValidation] ProductId={ProductId}: BaseFare({BaseFare}) + Taxes({Taxes}) + ServiceFee({ServiceFee}) = {Expected}, TotalFare = {TotalFare}",
+                option.ProductId, option.BaseFare, option.Taxes, option.ServiceFee, expectedTotal, option.TotalFare);
         }
     }
 
