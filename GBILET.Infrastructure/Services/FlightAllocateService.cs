@@ -110,9 +110,11 @@ public class FlightAllocateService
     }
 
     /// <summary>
-    /// Session expire durumunda cagrilir: cache invalidate, session bilgilerini sifirla, yeni search yap.
-    /// AllocateOnceAsync sonraki cagrida session bos oldugu icin BiletBankFlightService kendi icinde
-    /// login + search + allocate akisini calistirir.
+    /// Recoverable allocate hatasinda cagrilir: cache invalidate, yeni search yap, eski productId'yi
+    /// yeni search'teki ayni ucusun yeni productId'si ile degistir, session bilgilerini sifirla.
+    /// BiletBank her search'te yeni UUID urettigi icin eski productId stale kalir — identity match
+    /// (airline + flight number + departure date/time + origin/destination) ile yeni productId bulunur.
+    /// Bu olmadan retry "Product not found" ile yine patlar.
     /// </summary>
     private async Task RecoverSessionAsync(
         AllocateRequest request,
@@ -120,28 +122,97 @@ public class FlightAllocateService
         string currency,
         CancellationToken ct)
     {
-        _logger.LogWarning("[FlightAllocate] Session expire detected, invalidating cache and resetting session for retry.");
+        _logger.LogWarning(
+            "[FlightAllocate] Recoverable fault detected. Invalidating cache, fresh search and remapping productId. OldProductId={OldProductId}",
+            request.ProductId);
 
-        if (originalSearchCriteria != null)
+        if (originalSearchCriteria == null)
         {
-            var cacheKey = FlightSearchKeyGenerator.Build(originalSearchCriteria, _cacheOptions.KeyVersion, currency);
-            _cache.Remove(cacheKey);
+            request.SessionId = null;
+            request.SessionToken = null;
+            return;
+        }
 
-            // Cache'i taze veriyle yeniden doldur (frontend bir sonraki turda eski snapshot'i gormez)
-            try
+        var cacheKey = FlightSearchKeyGenerator.Build(originalSearchCriteria, _cacheOptions.KeyVersion, currency);
+
+        // 1) Eski snapshot'tan secilen ucusu identity icin oku (yeni search'teyse fiyat veya UUID degisebilir)
+        FlightResultDto? oldOutbound = null;
+        FlightResultDto? oldReturn = null;
+        if (_cache.TryGetSnapshot<FlightSearchResponseDto>(cacheKey, out var oldSnapshot) && oldSnapshot != null)
+        {
+            oldOutbound = oldSnapshot.Flights.FirstOrDefault(f => f.ProductId == request.ProductId);
+            if (!string.IsNullOrEmpty(request.ReturnProductId))
+                oldReturn = oldSnapshot.Flights.FirstOrDefault(f => f.ProductId == request.ReturnProductId);
+        }
+
+        _cache.Remove(cacheKey);
+
+        // 2) Fresh search — yeni productId'ler ve sessionId burada uretilir
+        FlightSearchResponseDto? fresh = null;
+        try
+        {
+            fresh = await _flightService.SearchFlightDtoAsync(originalSearchCriteria).ConfigureAwait(false);
+            _logger.LogInformation("[FlightAllocate] Recovery search completed. NewSessionId={SessionId}, FlightCount={Count}",
+                fresh?.SessionId, fresh?.Flights.Count ?? 0);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[FlightAllocate] Recovery search failed; allocate retry will perform its own login.");
+        }
+
+        // 3) Identity match: yeni search'te ayni ucusu bul ve productId/brandedFareItemId'leri swap et
+        if (fresh != null && oldOutbound != null)
+        {
+            var newOutbound = FindMatchingFlight(fresh.Flights, oldOutbound);
+            if (newOutbound != null && !string.IsNullOrEmpty(newOutbound.ProductId))
             {
-                var fresh = await _flightService.SearchFlightDtoAsync(originalSearchCriteria).ConfigureAwait(false);
-                _logger.LogInformation("[FlightAllocate] Recovery search completed. NewSessionId={SessionId}", fresh?.SessionId);
+                _logger.LogInformation(
+                    "[FlightAllocate] Outbound productId remapped: {Old} -> {New} (flight {Airline}{FlightNo} {Date} {Time})",
+                    request.ProductId, newOutbound.ProductId,
+                    newOutbound.AirlineCode, newOutbound.FlightNumber, newOutbound.DepartureDate, newOutbound.DepartureTime);
+                request.ProductId = newOutbound.ProductId;
+                // BrandedFareItemId yeni search'te farkli UUID'ler aliyor; default'a (null) birak,
+                // BB Allocate'i kendi default brand'ini secer. Kullanici checkout'ta yeniden secebilir.
+                request.BrandedFareItemId = null;
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "[FlightAllocate] Recovery search failed; allocate retry will perform its own login.");
+                _logger.LogWarning(
+                    "[FlightAllocate] Outbound no longer available after recovery search. AirlineCode={Airline} FlightNumber={FlightNo}",
+                    oldOutbound.AirlineCode, oldOutbound.FlightNumber);
             }
         }
 
-        // Session bilgilerini temizle: AllocateFlightAsync kendi icinde login+search+allocate yapacak
+        if (fresh != null && oldReturn != null)
+        {
+            var newReturn = FindMatchingFlight(fresh.Flights, oldReturn);
+            if (newReturn != null && !string.IsNullOrEmpty(newReturn.ProductId))
+            {
+                _logger.LogInformation("[FlightAllocate] Return productId remapped: {Old} -> {New}",
+                    request.ReturnProductId, newReturn.ProductId);
+                request.ReturnProductId = newReturn.ProductId;
+                request.ReturnBrandedFareItemId = null;
+            }
+        }
+
+        // 4) Session bilgilerini temizle: AllocateFlightAsync kendi icinde login+search+allocate yapacak
+        //    (yukarida zaten fresh search yaptik ama BB kendi context'inde yeni session uretsin diye temizliyoruz)
         request.SessionId = null;
         request.SessionToken = null;
+    }
+
+    /// <summary>
+    /// Iki FlightResultDto'nun ayni "ucus" oldugunu identity ile dogrular: havayolu, ucus no,
+    /// kalkis tarihi ve saati, origin/destination. Fiyat ve UUID disinda kalan alanlar her search'te ayni.
+    /// </summary>
+    private static FlightResultDto? FindMatchingFlight(IEnumerable<FlightResultDto> flights, FlightResultDto target)
+    {
+        return flights.FirstOrDefault(f =>
+            !string.IsNullOrEmpty(f.ProductId) &&
+            string.Equals(f.AirlineCode, target.AirlineCode, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(f.FlightNumber, target.FlightNumber, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(f.DepartureDate, target.DepartureDate, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(f.DepartureTime, target.DepartureTime, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
