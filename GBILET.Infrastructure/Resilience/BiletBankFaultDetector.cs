@@ -41,6 +41,7 @@ public static class BiletBankFaultDetector
         "soldout",
         "sold out",
         "selected allocated",
+        "already allocated",          // BB exact: "Already allocated product"
         "already selected"
     };
 
