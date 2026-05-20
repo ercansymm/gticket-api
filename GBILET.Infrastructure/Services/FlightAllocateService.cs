@@ -195,10 +195,27 @@ public class FlightAllocateService
             }
         }
 
-        // 4) Session bilgilerini temizle: AllocateFlightAsync kendi icinde login+search+allocate yapacak
-        //    (yukarida zaten fresh search yaptik ama BB kendi context'inde yeni session uretsin diye temizliyoruz)
-        request.SessionId = null;
-        request.SessionToken = null;
+        // 4) Recovery search'in session'ini request'e ata — BU KRITIK!
+        //    Aksi halde AllocateFlightAsync "session yoksa login+search+allocate" dalina girip
+        //    UCUNCU bir search yapar ve productId'lere yine yeni UUID atanir. Recovery'de
+        //    bulunan productId stale olur, retry "Already allocated" ile yine patlar.
+        //    Recovery'nin yarattigi session ile direkt allocate calistirilmali.
+        if (fresh != null && !string.IsNullOrEmpty(fresh.SessionId) && !string.IsNullOrEmpty(fresh.SessionToken))
+        {
+            request.SessionId = fresh.SessionId;
+            request.SessionToken = fresh.SessionToken;
+            _logger.LogInformation(
+                "[FlightAllocate] Retry will use recovery session: SessionId={SessionId}",
+                fresh.SessionId);
+        }
+        else
+        {
+            // Recovery search basarisizsa fallback: AllocateFlightAsync kendi login+search'unu yapsin.
+            // Bu durumda productId yine stale olabilir ama tek seferlik denenip biter.
+            request.SessionId = null;
+            request.SessionToken = null;
+            _logger.LogWarning("[FlightAllocate] Recovery search yielded no session; retry will start its own login.");
+        }
     }
 
     /// <summary>
