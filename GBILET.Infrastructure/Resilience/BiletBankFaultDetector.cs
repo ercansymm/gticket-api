@@ -21,6 +21,31 @@ public static class BiletBankFaultDetector
     };
 
     /// <summary>
+    /// BiletBank allocate akışında "transient stale state" niteliğinde olan hata pattern'ları.
+    /// Bunlar genellikle aynı session/shoppingFile üzerinden art arda farklı uçuş seçildiğinde
+    /// veya BiletBank tarafında ürün durumu güncellendiğinde dönüyor. Yeni Login+AirSearch+Allocate
+    /// ile çoğunlukla başarıyla recover olurlar.
+    /// </summary>
+    private static readonly string[] RecoverableAllocateKeywords =
+    {
+        "product not found",
+        "product not available",
+        "no longer available",
+        "no availability",
+        "shopping file",
+        "shoppingfile",
+        "shopping_file",
+        "allocate failed",
+        "allocation failed",
+        "no seats",
+        "soldout",
+        "sold out",
+        "selected allocated",
+        "already allocated",          // BB exact: "Already allocated product"
+        "already selected"
+    };
+
+    /// <summary>
     /// SOAP Fault veya error message string'inde session-expire keyword'lerini arar.
     /// Case-insensitive arama yapar.
     /// </summary>
@@ -78,6 +103,36 @@ public static class BiletBankFaultDetector
 
         throw new BiletBankSessionExpiredException(
             $"BiletBank session expired during {operationName}: {errorMessage}",
+            sessionId,
+            operationName);
+    }
+
+    /// <summary>
+    /// Allocate akışında recoverable kabul edilen hata pattern'ı tespit edilir.
+    /// </summary>
+    public static bool IsRecoverableAllocateFault(string? faultString)
+    {
+        if (string.IsNullOrWhiteSpace(faultString)) return false;
+
+        foreach (var kw in RecoverableAllocateKeywords)
+        {
+            if (faultString.Contains(kw, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// HasError=true ve message recoverable allocate keyword'lerini iceriyorsa BiletBankSessionExpiredException
+    /// firlatir. SessionRecoveryExecutor bu exception'i yakalayip yeni Login+AirSearch+Allocate ile recovery yapar.
+    /// Exception adi semantik olarak "session expired" olsa da retry mekanizmasi generic davraniyor.
+    /// </summary>
+    public static void ThrowIfRecoverableAllocateFault(bool hasError, string? errorMessage, string operationName, string? sessionId = null)
+    {
+        if (!hasError) return;
+        if (!IsRecoverableAllocateFault(errorMessage)) return;
+
+        throw new BiletBankSessionExpiredException(
+            $"BiletBank recoverable allocate fault during {operationName}: {errorMessage}",
             sessionId,
             operationName);
     }
