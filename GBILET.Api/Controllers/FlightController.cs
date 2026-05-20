@@ -261,24 +261,40 @@ public class FlightController : ControllerBase
             // Acente komisyonu (CustomerCommission.Value × paxCount) AirSearch'te BB'den geldi —
             // session cache'den okuyup Allocate XML'inde SelectedServiceFee.Amount alanına yaz.
             // Aksi halde BB acente payını sıfırlar (ServiceFee 11'e düşer, müşteri eksik fiyat görür).
+            // Aynı zamanda BFF searchRequest null gönderdiği için recovery fallback'i de buradan beslenir.
             {
                 var searchIdHeader = Request.Headers["x-search-id"].FirstOrDefault();
                 if (!string.IsNullOrEmpty(searchIdHeader)
                     && _cache.TryGetValue<FlightSessionData>($"flight_session_{searchIdHeader}", out var cachedSession)
-                    && cachedSession != null
-                    && cachedSession.CustomerCommissionByProductId.TryGetValue(request.ProductId, out var commission)
-                    && commission > 0)
+                    && cachedSession != null)
                 {
-                    request.SelectedServiceFee = commission;
-                    _logger.LogInformation(
-                        "[Allocate] SelectedServiceFee set from session cache: ProductId={ProductId}, Amount={Amount}",
-                        request.ProductId, commission);
+                    if (cachedSession.CustomerCommissionByProductId.TryGetValue(request.ProductId, out var commission)
+                        && commission > 0)
+                    {
+                        request.SelectedServiceFee = commission;
+                        _logger.LogInformation(
+                            "[Allocate] SelectedServiceFee set from session cache: ProductId={ProductId}, Amount={Amount}",
+                            request.ProductId, commission);
+                    }
+                    else if (request.SelectedServiceFee <= 0)
+                    {
+                        _logger.LogWarning(
+                            "[Allocate] No commission found in session for ProductId={ProductId} (searchId={SearchId}). BB will charge BB-only ServiceFee.",
+                            request.ProductId, searchIdHeader);
+                    }
+
+                    // Recovery fallback: BFF searchRequest:null gönderiyor; recovery executor
+                    // yeni Login+AirSearch+Allocate çalıştırırken bu kriterlere ihtiyaç duyar.
+                    if (request.SearchRequest == null && cachedSession.SearchRequest != null)
+                    {
+                        request.SearchRequest = cachedSession.SearchRequest;
+                    }
                 }
                 else if (request.SelectedServiceFee <= 0)
                 {
                     _logger.LogWarning(
-                        "[Allocate] No commission found in session for ProductId={ProductId} (searchId={SearchId}). BB will charge BB-only ServiceFee.",
-                        request.ProductId, searchIdHeader ?? "(missing)");
+                        "[Allocate] Session cache miss for searchId={SearchId}. Recovery will not be possible without SearchRequest.",
+                        searchIdHeader ?? "(missing)");
                 }
             }
 

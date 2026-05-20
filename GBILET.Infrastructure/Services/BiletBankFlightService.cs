@@ -298,6 +298,7 @@ public class BiletBankFlightService : IFlightService
                 ShoppingFileId = rawResponse.ShoppingFileId,
                 SessionId = rawResponse.SessionId,
                 SessionToken = rawResponse.SessionToken,
+                SearchRequest = request,
                 CustomerCommissionByProductId = BuildCommissionMap(rawResponse, request)
             };
 
@@ -403,6 +404,11 @@ public class BiletBankFlightService : IFlightService
 
         // Session expire pattern tespit edilirse SessionRecoveryExecutor'in handle etmesi icin firlat
         BiletBankFaultDetector.ThrowIfSessionExpired(response.HasError, response.ErrorMessage, "AllocateFlight", sessionId);
+
+        // Stale shopping file / product unavailable gibi recoverable hatalarda da retry tetikle —
+        // kullanici "Ucus tahsis edilemedi" modalini gormeden once transparent olarak fresh
+        // Login+AirSearch+Allocate denenir.
+        BiletBankFaultDetector.ThrowIfRecoverableAllocateFault(response.HasError, response.ErrorMessage, "AllocateFlight", sessionId);
 
         return response;
     }
