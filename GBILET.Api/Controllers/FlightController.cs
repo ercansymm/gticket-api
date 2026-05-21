@@ -323,6 +323,15 @@ public class FlightController : ControllerBase
                             if (!string.IsNullOrEmpty(result.ShoppingFileId))
                                 sessionData.ShoppingFileId = result.ShoppingFileId;
 
+                            // Recovery yapildiysa request.SessionId/Token guncellenmis olur
+                            // (FlightAllocateService.RecoverSessionAsync fresh search yeni session uretir).
+                            // Cache'e bu YENI session bilgisini yaz, aksi halde UpdatePassengers eski session'a
+                            // gider ve "Product is not found" hatasi alir.
+                            if (!string.IsNullOrEmpty(request.SessionId))
+                                sessionData.SessionId = request.SessionId;
+                            if (!string.IsNullOrEmpty(request.SessionToken))
+                                sessionData.SessionToken = request.SessionToken;
+
                             // Allocate response'tan gelen ProductId'yi sakla
                             var firstProduct = result.AirBookings.FirstOrDefault()?.ProductId;
                             if (!string.IsNullOrEmpty(firstProduct))
