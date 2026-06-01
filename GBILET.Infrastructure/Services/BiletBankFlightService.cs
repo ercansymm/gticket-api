@@ -299,7 +299,7 @@ public class BiletBankFlightService : IFlightService
                 SessionId = rawResponse.SessionId,
                 SessionToken = rawResponse.SessionToken,
                 SearchRequest = request,
-                CustomerCommissionByProductId = BuildCommissionMap(rawResponse, request)
+                CustomerCommissionByProductId = BuildCommissionMap(rawResponse)
             };
 
             var cacheOptions = new MemoryCacheEntryOptions()
@@ -328,46 +328,43 @@ public class BiletBankFlightService : IFlightService
         };
 
     /// <summary>
-    /// Bir uçuş seçeneğinin (FlightOption veya RecommendationBox) pax fare öğelerinden toplam acente
-    /// SC'sini hesaplar: Σ (CustomerCommission.Value × yolcu sayısı). Allocate'te SelectedServiceFee'ye
-    /// yazılır. BiletBank search'te SC'yi fiyata gömse de allocate'te otomatik uygulamaz — bu yüzden
-    /// allocate'e gönderilmesi gerekir (BB ServiceFee = SystemServiceFee + bu değer olarak hesaplar).
+    /// Bir uçuş seçeneğinin KİŞİ BAŞI acente SC'sini döndürür (CustomerCommission.Value).
+    /// ÖNEMLİ: SelectedServiceFee BiletBank'te KİŞİ BAŞI uygulanır ve [Minimum, Maximum] (kişi başı)
+    /// ile sınırlıdır. Yolcu sayısıyla ÇARPILMAZ — çarpılırsa Maximum aşılır ve BB allocate'i reddeder
+    /// ("Uçuş Tahsis Edilemedi"). Search yanıtı da SC'yi her pax fare öğesine kişi başı gömer; bu yüzden
+    /// kişi başı Value göndermek hem listeyle tutarlıdır hem de allocate'i bozmaz.
+    /// ADT (yoksa ilk) pax fare öğesinin Value'su kullanılır.
     /// </summary>
-    private static decimal CalcAgencyCommissionTotal(IEnumerable<PassengerFareItem> paxItems, SearchRequest request)
+    private static decimal GetPerPaxAgencyCommission(IEnumerable<PassengerFareItem> paxItems)
     {
-        decimal total = 0;
-        foreach (var pfi in paxItems)
-        {
-            var perPax = pfi.CustomerCommission?.Value ?? 0;
-            if (perPax <= 0) continue;
-            total += perPax * PaxCountFor(pfi.PaxCode, request);
-        }
-        return total;
+        var items = paxItems as ICollection<PassengerFareItem> ?? paxItems.ToList();
+        var adt = items.FirstOrDefault(p => string.Equals(p.PaxCode, "ADT", StringComparison.OrdinalIgnoreCase));
+        return (adt ?? items.FirstOrDefault())?.CustomerCommission?.Value ?? 0;
     }
 
     /// <summary>
-    /// BB AirSearch response'undaki her ProductId için toplam acente SC'sini hesaplar.
+    /// BB AirSearch response'undaki her ProductId için KİŞİ BAŞI acente SC'sini hesaplar.
     /// Hem FlightOptions hem RecommendationBoxes (RT bundle) dolaşılır. Allocate'te
-    /// SelectedServiceFee.Amount alanına bu değer yazılır.
+    /// SelectedServiceFee.Amount alanına bu kişi başı değer yazılır (BB kişi başı uygular).
     /// </summary>
-    private static Dictionary<string, decimal> BuildCommissionMap(AirSearchResponse rawResponse, SearchRequest request)
+    private static Dictionary<string, decimal> BuildCommissionMap(AirSearchResponse rawResponse)
     {
         var map = new Dictionary<string, decimal>();
 
         foreach (var option in rawResponse.FlightOptions)
         {
             if (string.IsNullOrEmpty(option.ProductId)) continue;
-            var total = CalcAgencyCommissionTotal(option.PassengerFareItems, request);
-            if (total > 0)
-                map[option.ProductId] = total;
+            var perPax = GetPerPaxAgencyCommission(option.PassengerFareItems);
+            if (perPax > 0)
+                map[option.ProductId] = perPax;
         }
 
         foreach (var rb in rawResponse.RecommendationBoxes)
         {
             if (string.IsNullOrEmpty(rb.ProductId)) continue;
-            var total = CalcAgencyCommissionTotal(rb.PassengerFareItems, request);
-            if (total > 0)
-                map[rb.ProductId] = total;
+            var perPax = GetPerPaxAgencyCommission(rb.PassengerFareItems);
+            if (perPax > 0)
+                map[rb.ProductId] = perPax;
         }
 
         return map;
