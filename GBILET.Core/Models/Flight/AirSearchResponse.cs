@@ -228,6 +228,11 @@ public class RecommendationBox
     public List<RecommendationFlight> OtherFlights { get; set; } = [];
     public List<BrandedFareItem> BrandedFareItems { get; set; } = [];
     /// <summary>
+    /// Bundle'ın yolcu bazlı fiyat öğeleri (CustomerCommission/markup buradan okunur).
+    /// RT bundle'da acente komisyonunu hesaplamak için kullanılır.
+    /// </summary>
+    public List<PassengerFareItem> PassengerFareItems { get; set; } = [];
+    /// <summary>
     /// DepartureFlights + ReturnFlights altındaki tüm FlightId'ler (önce departure, sonra return).
     /// Allocate SubOptions için kullanılır.
     /// </summary>
