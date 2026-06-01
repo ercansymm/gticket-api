@@ -27,4 +27,11 @@ public class FlightSessionData
     public string? Currency { get; set; }
     public string? Status { get; set; }
     public Guid? BookingId { get; set; }
+
+    /// <summary>
+    /// Her ProductId için acente SC'si (CustomerCommission.Value × yolcu sayısı, tüm pax tipleri toplamı).
+    /// Allocate request'inde SelectedServiceFee.Amount alanına yazılır; aksi halde BB allocate'te
+    /// yalnızca system fee uygular ve acente kârı checkout'a yansımaz.
+    /// </summary>
+    public Dictionary<string, decimal> CustomerCommissionByProductId { get; set; } = new();
 }

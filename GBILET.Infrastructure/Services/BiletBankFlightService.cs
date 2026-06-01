@@ -298,7 +298,8 @@ public class BiletBankFlightService : IFlightService
                 ShoppingFileId = rawResponse.ShoppingFileId,
                 SessionId = rawResponse.SessionId,
                 SessionToken = rawResponse.SessionToken,
-                SearchRequest = request
+                SearchRequest = request,
+                CustomerCommissionByProductId = BuildCommissionMap(rawResponse, request)
             };
 
             var cacheOptions = new MemoryCacheEntryOptions()
@@ -307,8 +308,8 @@ public class BiletBankFlightService : IFlightService
             _cache.Set(cacheKey, sessionData, cacheOptions);
 
             _logger.LogInformation(
-                "[SearchFlightDto] Session cached: SearchId={SearchId}, SessionId={SessionId}",
-                rawResponse.SearchId, rawResponse.SessionId);
+                "[SearchFlightDto] Session cached: SearchId={SearchId}, SessionId={SessionId}, CommissionProductCount={CommCount}",
+                rawResponse.SearchId, rawResponse.SessionId, sessionData.CustomerCommissionByProductId.Count);
         }
 
         return dto;
@@ -325,6 +326,52 @@ public class BiletBankFlightService : IFlightService
             "INF" => request.InfantCount,
             _ => 0
         };
+
+    /// <summary>
+    /// Bir uçuş seçeneğinin (FlightOption veya RecommendationBox) pax fare öğelerinden toplam acente
+    /// SC'sini hesaplar: Σ (CustomerCommission.Value × yolcu sayısı). Allocate'te SelectedServiceFee'ye
+    /// yazılır. BiletBank search'te SC'yi fiyata gömse de allocate'te otomatik uygulamaz — bu yüzden
+    /// allocate'e gönderilmesi gerekir (BB ServiceFee = SystemServiceFee + bu değer olarak hesaplar).
+    /// </summary>
+    private static decimal CalcAgencyCommissionTotal(IEnumerable<PassengerFareItem> paxItems, SearchRequest request)
+    {
+        decimal total = 0;
+        foreach (var pfi in paxItems)
+        {
+            var perPax = pfi.CustomerCommission?.Value ?? 0;
+            if (perPax <= 0) continue;
+            total += perPax * PaxCountFor(pfi.PaxCode, request);
+        }
+        return total;
+    }
+
+    /// <summary>
+    /// BB AirSearch response'undaki her ProductId için toplam acente SC'sini hesaplar.
+    /// Hem FlightOptions hem RecommendationBoxes (RT bundle) dolaşılır. Allocate'te
+    /// SelectedServiceFee.Amount alanına bu değer yazılır.
+    /// </summary>
+    private static Dictionary<string, decimal> BuildCommissionMap(AirSearchResponse rawResponse, SearchRequest request)
+    {
+        var map = new Dictionary<string, decimal>();
+
+        foreach (var option in rawResponse.FlightOptions)
+        {
+            if (string.IsNullOrEmpty(option.ProductId)) continue;
+            var total = CalcAgencyCommissionTotal(option.PassengerFareItems, request);
+            if (total > 0)
+                map[option.ProductId] = total;
+        }
+
+        foreach (var rb in rawResponse.RecommendationBoxes)
+        {
+            if (string.IsNullOrEmpty(rb.ProductId)) continue;
+            var total = CalcAgencyCommissionTotal(rb.PassengerFareItems, request);
+            if (total > 0)
+                map[rb.ProductId] = total;
+        }
+
+        return map;
+    }
 
     public async Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request)
     {

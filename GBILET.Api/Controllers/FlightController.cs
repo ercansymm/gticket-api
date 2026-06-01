@@ -258,21 +258,33 @@ public class FlightController : ControllerBase
             if (!hasSession && request.SearchRequest == null)
                 return BadRequest(new { error = "SessionId/SessionToken verilmediyse SearchRequest zorunludur." });
 
-            // ÖNEMLİ: Acente komisyonunu (CustomerCommission) Allocate'e GÖNDERMİYORUZ.
-            // BiletBank komisyonu ServiceFee'ye OTOMATİK dahil ediyor (ServiceFee = SystemServiceFee + Komisyon),
-            // allocate yanıtında acenteye LastSellerCommission olarak yazıyor. SelectedServiceFee göndermek
-            // komisyonu İKİYE KATLAR (checkout fiyatı şişer). Bu blok yalnızca recovery için SearchRequest'i besler.
+            // Acente SC'si (CustomerCommission.Value × yolcu) AirSearch'te BB'den geldi ve session cache'e
+            // yazıldı. Allocate'te SelectedServiceFee.Amount alanına gönderilir. BiletBank SC'yi search'te
+            // fiyata gömse de allocate'te OTOMATİK uygulamıyor — gönderilmezse ServiceFee yalnızca system
+            // fee'ye (11) düşer, acente yurtiçi/yurtdışı kârı checkout'a yansımaz. BB allocate'te
+            // ServiceFee = SystemServiceFee + SelectedServiceFee olarak hesaplar (çift saymaz).
+            // Bu blok aynı zamanda recovery için cache'teki SearchRequest'i de besler.
             {
                 var searchIdHeader = Request.Headers["x-search-id"].FirstOrDefault();
                 if (!string.IsNullOrEmpty(searchIdHeader)
                     && _cache.TryGetValue<FlightSessionData>($"flight_session_{searchIdHeader}", out var cachedSession)
-                    && cachedSession != null
-                    && request.SearchRequest == null
-                    && cachedSession.SearchRequest != null)
+                    && cachedSession != null)
                 {
+                    if (cachedSession.CustomerCommissionByProductId.TryGetValue(request.ProductId, out var commission)
+                        && commission > 0)
+                    {
+                        request.SelectedServiceFee = commission;
+                        _logger.LogInformation(
+                            "[Allocate] SelectedServiceFee set from session cache: ProductId={ProductId}, Amount={Amount}",
+                            request.ProductId, commission);
+                    }
+
                     // Recovery fallback: BFF searchRequest:null gönderiyor; recovery executor
                     // yeni Login+AirSearch+Allocate çalıştırırken cache'teki SearchRequest'e ihtiyaç duyar.
-                    request.SearchRequest = cachedSession.SearchRequest;
+                    if (request.SearchRequest == null && cachedSession.SearchRequest != null)
+                    {
+                        request.SearchRequest = cachedSession.SearchRequest;
+                    }
                 }
             }
 
