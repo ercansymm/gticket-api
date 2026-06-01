@@ -298,8 +298,7 @@ public class BiletBankFlightService : IFlightService
                 ShoppingFileId = rawResponse.ShoppingFileId,
                 SessionId = rawResponse.SessionId,
                 SessionToken = rawResponse.SessionToken,
-                SearchRequest = request,
-                CustomerCommissionByProductId = BuildCommissionMap(rawResponse, request, _logger)
+                SearchRequest = request
             };
 
             var cacheOptions = new MemoryCacheEntryOptions()
@@ -308,8 +307,8 @@ public class BiletBankFlightService : IFlightService
             _cache.Set(cacheKey, sessionData, cacheOptions);
 
             _logger.LogInformation(
-                "[SearchFlightDto] Session cached: SearchId={SearchId}, SessionId={SessionId}, CommissionProductCount={CommCount}",
-                rawResponse.SearchId, rawResponse.SessionId, sessionData.CustomerCommissionByProductId.Count);
+                "[SearchFlightDto] Session cached: SearchId={SearchId}, SessionId={SessionId}",
+                rawResponse.SearchId, rawResponse.SessionId);
         }
 
         return dto;
@@ -326,64 +325,6 @@ public class BiletBankFlightService : IFlightService
             "INF" => request.InfantCount,
             _ => 0
         };
-
-    /// <summary>
-    /// Tek bir uçuş seçeneğinin (FlightOption veya RecommendationBox) pax fare öğelerinden
-    /// toplam acente komisyonunu (markup) hesaplar: Σ (CustomerCommission.Value × yolcu sayısı).
-    /// Bu tutar hem Allocate'in SelectedServiceFee.Amount alanına yazılır hem de gösterilen
-    /// fiyata eklenir — böylece arama listesi ile checkout birebir tutarlı olur (tek doğruluk kaynağı).
-    /// </summary>
-    internal static decimal CalcAgencyCommissionTotal(
-        IEnumerable<PassengerFareItem> paxItems, SearchRequest request, ILogger? logger = null)
-    {
-        decimal total = 0;
-        foreach (var pfi in paxItems)
-        {
-            var perPax = pfi.CustomerCommission?.Value ?? 0;
-            if (perPax <= 0)
-            {
-                // Üretim verisi denetimi: panelde komisyon tanımlıyken Value=0 gelirse uyar
-                // (Maximum > 0 ama Value == 0). Maximum'a OTOMATİK fallback YAPILMAZ — aşırı ücret riski.
-                if ((pfi.CustomerCommission?.Maximum ?? 0) > 0)
-                    logger?.LogWarning(
-                        "[Commission] Zero Value but Maximum={Max} for PaxCode={Pax}. Acente komisyonu uygulanmayacak.",
-                        pfi.CustomerCommission?.Maximum, pfi.PaxCode);
-                continue;
-            }
-            total += perPax * PaxCountFor(pfi.PaxCode, request);
-        }
-        return total;
-    }
-
-    /// <summary>
-    /// BB AirSearch response'undaki her ProductId için toplam acente komisyonunu hesaplar.
-    /// Hem FlightOptions hem RecommendationBoxes (RT bundle) dolaşılır — aksi halde RT'de
-    /// acente payı hiç tahsil edilmez. Allocate request'inde SelectedServiceFee.Amount'a yazılır.
-    /// </summary>
-    private static Dictionary<string, decimal> BuildCommissionMap(
-        AirSearchResponse rawResponse, SearchRequest request, ILogger? logger = null)
-    {
-        var map = new Dictionary<string, decimal>();
-
-        foreach (var option in rawResponse.FlightOptions)
-        {
-            if (string.IsNullOrEmpty(option.ProductId)) continue;
-            var total = CalcAgencyCommissionTotal(option.PassengerFareItems, request, logger);
-            if (total > 0)
-                map[option.ProductId] = total;
-        }
-
-        // RT bundle: RecommendationBox ProductId bazlı komisyon. Frontend allocate'te rb.ProductId gönderir.
-        foreach (var rb in rawResponse.RecommendationBoxes)
-        {
-            if (string.IsNullOrEmpty(rb.ProductId)) continue;
-            var total = CalcAgencyCommissionTotal(rb.PassengerFareItems, request, logger);
-            if (total > 0)
-                map[rb.ProductId] = total;
-        }
-
-        return map;
-    }
 
     public async Task<AllocateResponse> AllocateFlightAsync(AllocateRequest request)
     {

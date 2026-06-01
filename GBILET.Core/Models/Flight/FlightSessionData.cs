@@ -27,11 +27,4 @@ public class FlightSessionData
     public string? Currency { get; set; }
     public string? Status { get; set; }
     public Guid? BookingId { get; set; }
-
-    /// <summary>
-    /// Her FlightOption.ProductId için BB'nin döndürdüğü acente komisyonu (CustomerCommission.Value).
-    /// Yolcu sayısı ile çarpılıp tüm yolcular için toplanmış değerdir. Allocate request'inde
-    /// SelectedServiceFee.Amount alanına yazılır; aksi halde BB acente payını sıfırlar.
-    /// </summary>
-    public Dictionary<string, decimal> CustomerCommissionByProductId { get; set; } = new();
 }
