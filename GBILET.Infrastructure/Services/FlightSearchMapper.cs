@@ -9,6 +9,7 @@ public static class FlightSearchMapper
 {
     public static FlightSearchResponseDto MapToDto(
         AirSearchResponse response,
+        SearchRequest request,
         ILogger? logger = null,
         string? requestedFlightClass = null)
     {
@@ -46,7 +47,7 @@ public static class FlightSearchMapper
                 option.BrandedFareItems = rbBrandedFares;
             }
 
-            var flight = MapFlightOption(option, logger);
+            var flight = MapFlightOption(option, request, logger);
             dto.Flights.Add(flight);
         }
 
@@ -56,7 +57,7 @@ public static class FlightSearchMapper
         {
             foreach (var rb in response.RecommendationBoxes)
             {
-                var rbFlights = MapRecommendationBox(rb, logger);
+                var rbFlights = MapRecommendationBox(rb, request, logger);
                 dto.Flights.AddRange(rbFlights);
             }
         }
@@ -114,13 +115,38 @@ public static class FlightSearchMapper
     }
 
     /// <summary>
+    /// Tüm yolcuların TOPLAM fiyatını hesaplar: Σ (paxItem.TotalFare × yolcu sayısı).
+    /// ÖNEMLİ: BiletBank acente komisyonunu (CustomerCommission.Value) ServiceFee'ye ZATEN dahil ediyor
+    /// (ServiceFee = SystemServiceFee + CustomerCommission.Value, TotalFare = BaseFare + Taxes + ServiceFee).
+    /// Bu yüzden komisyon TEKRAR EKLENMEZ — paxItem.TotalFare olduğu gibi kullanılır.
+    /// Pax fare öğeleri yoksa kişi başı fiyat × toplam yolcu sayısı fallback'i kullanılır.
+    /// </summary>
+    private static decimal CalcGrandTotal(
+        decimal perPaxTotal, IEnumerable<PassengerFareItem> paxItems, SearchRequest req)
+    {
+        decimal total = 0;
+        bool any = false;
+        foreach (var pfi in paxItems)
+        {
+            var count = BiletBankFlightService.PaxCountFor(pfi.PaxCode, req);
+            if (count <= 0) continue;
+            total += pfi.TotalFare * count;
+            any = true;
+        }
+        if (any) return total;
+
+        var totalPax = req.AdultCount + req.ChildCount + req.InfantCount;
+        return perPaxTotal * Math.Max(totalPax, 1);
+    }
+
+    /// <summary>
     /// Bir RecommendationBox'ı FlightResultDto listesine dönüştürür:
     ///   1. Gidiş bacağı (OutboundFlights) — IsRoundTripBundle=true, IsReturnLeg=false
     ///   2. Dönüş bacağı (InboundFlights)  — IsRoundTripBundle=true, IsReturnLeg=true
     ///   3+ Diğer bacaklar (OtherFlights) — MP aramalarda 3. ve sonraki bacaklar
     /// Her DTO aynı ProductId'yi paylaşır (bundle tek bir allocate ile rezerve edilir).
     /// </summary>
-    private static List<FlightResultDto> MapRecommendationBox(RecommendationBox rb, ILogger? logger)
+    private static List<FlightResultDto> MapRecommendationBox(RecommendationBox rb, SearchRequest request, ILogger? logger)
     {
         var result = new List<FlightResultDto>();
 
@@ -131,7 +157,7 @@ public static class FlightSearchMapper
         // Gidiş bacakları
         foreach (var outbound in rb.OutboundFlights)
         {
-            var dto = MapRecommendationFlight(outbound, rb, isReturnLeg: false, logger);
+            var dto = MapRecommendationFlight(outbound, rb, isReturnLeg: false, request, logger);
             if (dto != null) result.Add(dto);
         }
 
@@ -142,7 +168,7 @@ public static class FlightSearchMapper
             foreach (var seg in inbound.Segments)
                 seg.SequenceNo = 2;
 
-            var dto = MapRecommendationFlight(inbound, rb, isReturnLeg: true, logger);
+            var dto = MapRecommendationFlight(inbound, rb, isReturnLeg: true, request, logger);
             if (dto != null) result.Add(dto);
         }
 
@@ -155,7 +181,7 @@ public static class FlightSearchMapper
             foreach (var seg in other.Segments)
                 seg.SequenceNo = legNo;
 
-            var dto = MapRecommendationFlight(other, rb, isReturnLeg: false, logger);
+            var dto = MapRecommendationFlight(other, rb, isReturnLeg: false, request, logger);
             if (dto != null)
             {
                 // Unique ProductId — outbound ile çakışmasın (React key + frontend tanımlama)
@@ -172,6 +198,7 @@ public static class FlightSearchMapper
         RecommendationFlight flight,
         RecommendationBox rb,
         bool isReturnLeg,
+        SearchRequest request,
         ILogger? logger)
     {
         if (flight.Segments.Count == 0) return null;
@@ -218,8 +245,12 @@ public static class FlightSearchMapper
             ? $"{rb.ProductId}_ret_{flight.FlightId ?? originCode}"
             : rb.ProductId;
 
+        // Fiyat: BiletBank komisyonu ServiceFee/TotalFare'a zaten dahil. GrandTotal = tüm yolcuların toplamı.
+        var rbCurrency = rb.Currency ?? "TRY";
+        var rbGrandTotal = CalcGrandTotal(rb.TotalFare, rb.PassengerFareItems, request);
+
         // RecommendationBox BrandedFareItems → FarePackages + DefaultBrandedFareItemId
-        var farePackages = MapBrandedFarePackages(rb.BrandedFareItems, rb.Currency ?? "TRY", rb.ServiceFee);
+        var farePackages = MapBrandedFarePackages(rb.BrandedFareItems, rbCurrency, rb.ServiceFee, request);
         var defaultBrandedFareItemId = farePackages.FirstOrDefault(p => p.IsDefault)?.BrandedFareItemId;
 
         if (!isReturnLeg)
@@ -253,14 +284,17 @@ public static class FlightSearchMapper
 
             Equipment = firstSeg.Equipment,
 
-            // Fiyat: RecommendationBox'taki combined fiyat (gidiş+dönüş toplamı)
-            // BiletBank TotalFare zaten ServiceFee dahil — tekrar ekleme, duplikat olur.
+            // Fiyat: RecommendationBox'taki combined fiyat (gidiş+dönüş toplamı), KİŞİ BAŞI.
+            // BiletBank komisyonu ServiceFee/TotalFare'a zaten dahil — olduğu gibi kullan.
+            // GrandTotalFare tüm yolcuların toplamıdır.
             BaseFare = rb.BaseFare,
             Taxes = rb.Taxes,
             ServiceFee = rb.ServiceFee,
             TotalFare = rb.TotalFare,
-            Currency = rb.Currency ?? "TRY",
-            TotalFareFormatted = FormatPrice(rb.TotalFare, rb.Currency ?? "TRY"),
+            GrandTotalFare = rbGrandTotal,
+            Currency = rbCurrency,
+            TotalFareFormatted = FormatPrice(rb.TotalFare, rbCurrency),
+            GrandTotalFareFormatted = FormatPrice(rbGrandTotal, rbCurrency),
 
             IsRefundable = false,
             IsReservable = true,
@@ -297,7 +331,7 @@ public static class FlightSearchMapper
         };
     }
 
-    private static FlightResultDto MapFlightOption(FlightOption option, ILogger? logger)
+    private static FlightResultDto MapFlightOption(FlightOption option, SearchRequest request, ILogger? logger)
     {
         var segments = option.Segments;
         var firstSegment = segments.FirstOrDefault();
@@ -353,7 +387,13 @@ public static class FlightSearchMapper
         decimal commMax = firstPaxFare?.CustomerCommission?.Maximum ?? 0;
         decimal commVal = firstPaxFare?.CustomerCommission?.Value ?? 0;
 
-        // Fiyat doğrulama (loglama)
+        // Fiyat: BiletBank ServiceFee/TotalFare acente komisyonunu (CustomerCommission.Value) ZATEN içerir
+        // (ServiceFee = SystemServiceFee + Komisyon). Komisyon TEKRAR EKLENMEZ. GrandTotalFare yalnızca
+        // tüm yolcuların toplamıdır (kişi başı × yolcu sayısı), checkout grandTotal ile birebir aynı.
+        var optionCurrency = option.Currency ?? "TRY";
+        var grandTotal = CalcGrandTotal(option.TotalFare, option.PassengerFareItems, request);
+
+        // Fiyat doğrulama (loglama) — BB değişmez kuralını kontrol eder.
         ValidatePricing(option, logger);
 
         // Kabin sınıfı belirleme
@@ -390,14 +430,15 @@ public static class FlightSearchMapper
             // Uçak
             Equipment = firstSegment?.Equipment,
 
-            // Fiyat
-            // BiletBank TotalFare zaten ServiceFee (SystemServiceFee + CustomerCommission) dahil — tekrar ekleme.
+            // Fiyat (KİŞİ BAŞI) — BiletBank komisyonu ServiceFee/TotalFare'a zaten dahil etmiş, olduğu gibi kullan.
             BaseFare = option.BaseFare,
             Taxes = option.Taxes,
             ServiceFee = option.ServiceFee,
             TotalFare = option.TotalFare,
-            Currency = option.Currency ?? "TRY",
-            TotalFareFormatted = FormatPrice(option.TotalFare, option.Currency ?? "TRY"),
+            GrandTotalFare = grandTotal,
+            Currency = optionCurrency,
+            TotalFareFormatted = FormatPrice(option.TotalFare, optionCurrency),
+            GrandTotalFareFormatted = FormatPrice(grandTotal, optionCurrency),
 
             // Durum
             IsRefundable = option.IsRefundable,
@@ -432,7 +473,7 @@ public static class FlightSearchMapper
             FreeBaggageAllowances = option.FreeBaggageAllowances,
 
             // Paketler (tum branded fare secenekleri)
-            FarePackages = MapBrandedFarePackages(option),
+            FarePackages = MapBrandedFarePackages(option, request),
 
             // Bagaj özeti
             BaggageInfo = MapBaggageInfo(option.FreeBaggageAllowances)
@@ -666,12 +707,13 @@ public static class FlightSearchMapper
         };
     }
 
-    private static List<BrandedFareOptionDto> MapBrandedFarePackages(FlightOption option)
+    private static List<BrandedFareOptionDto> MapBrandedFarePackages(FlightOption option, SearchRequest request)
     {
-        return MapBrandedFarePackages(option.BrandedFareItems, option.Currency ?? "TRY", option.ServiceFee);
+        return MapBrandedFarePackages(option.BrandedFareItems, option.Currency ?? "TRY", option.ServiceFee, request);
     }
 
-    private static List<BrandedFareOptionDto> MapBrandedFarePackages(List<BrandedFareItem> brandedFareItems, string currency, decimal serviceFee)
+    private static List<BrandedFareOptionDto> MapBrandedFarePackages(
+        List<BrandedFareItem> brandedFareItems, string currency, decimal serviceFee, SearchRequest request)
     {
         var packages = new List<BrandedFareOptionDto>();
 
@@ -679,8 +721,10 @@ public static class FlightSearchMapper
             return packages;
 
         // BB BrandedFareItem.TotalFareInfo.TotalFare ServiceFee dahil DEĞİL — sadece BaseFare+Taxes.
-        // Listede gösterilecek müşteri fiyatı için parent option/rb'nin ServiceFee'sini eklemek gerek.
-        // Aksi halde search listesinde Allocate sonrası fiyattan eksik gösterilir.
+        // Listede gösterilecek müşteri fiyatı için parent option/rb'nin ServiceFee'sini eklemek gerek
+        // (ServiceFee BB tarafından acente komisyonunu ZATEN içerir — ayrıca markup EKLENMEZ).
+        // Fiyatlar KİŞİ BAŞI; "kişi için toplam" için kişi başı × toplam yolcu sayısı kullanılır.
+        var totalPax = Math.Max(request.AdultCount + request.ChildCount + request.InfantCount, 1);
 
         // En dusuk fiyatli paketin toplam fiyatini bul (fark hesabi icin)
         var minTotalFare = brandedFareItems
@@ -701,6 +745,8 @@ public static class FlightSearchMapper
             var itemCurrency = firstPax?.PassengerFareInfo?.Currency ?? currency;
             var totalFare = (bfi.TotalFareInfo?.TotalFare ?? 0) + serviceFee;
             var priceDiff = totalFare - minTotalFare;
+            var grandTotalFare = totalFare * totalPax;
+            var grandPriceDiff = priceDiff * totalPax;
             var isDefault = !defaultMarked;
 
             if (isDefault)
@@ -710,13 +756,17 @@ public static class FlightSearchMapper
             {
                 BrandedFareItemId = bfi.BrandedFareItemId,
                 TotalFare = totalFare,
+                GrandTotalFare = grandTotalFare,
                 TotalTaxes = bfi.TotalFareInfo?.TotalTaxes ?? 0,
                 CabinClass = firstComponent?.CabinClass,
                 BookingClass = firstComponent?.BookingClass,
                 Currency = itemCurrency,
                 TotalFareFormatted = FormatPrice(totalFare, itemCurrency),
+                GrandTotalFareFormatted = FormatPrice(grandTotalFare, itemCurrency),
                 PriceDifference = priceDiff,
                 PriceDifferenceFormatted = priceDiff == 0 ? null : $"+{FormatPrice(priceDiff, itemCurrency)}",
+                GrandPriceDifference = grandPriceDiff,
+                GrandPriceDifferenceFormatted = grandPriceDiff == 0 ? null : $"+{FormatPrice(grandPriceDiff, itemCurrency)}",
                 IsDefault = isDefault
             };
 

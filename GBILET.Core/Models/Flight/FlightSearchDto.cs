@@ -48,12 +48,17 @@ public class FlightResultDto
     public string? Equipment { get; set; }
 
     // Fiyat
+    // Not: BaseFare/Taxes/ServiceFee/TotalFare KİŞİ BAŞI birim fiyattır ve acente komisyonu (markup)
+    // ServiceFee+TotalFare'a dahildir. GrandTotalFare ise tüm yolcuların markup dahil TOPLAMIDIR
+    // (checkout grandTotal ile birebir aynı) — listede "Toplam" satırı için.
     public decimal BaseFare { get; set; }
     public decimal Taxes { get; set; }
     public decimal ServiceFee { get; set; }
     public decimal TotalFare { get; set; }
+    public decimal GrandTotalFare { get; set; }
     public string? Currency { get; set; }
     public string? TotalFareFormatted { get; set; }
+    public string? GrandTotalFareFormatted { get; set; }
 
     // Durum
     public bool IsRefundable { get; set; }
@@ -183,19 +188,29 @@ public class BrandedFareOptionDto
     public string? BrandedFareItemId { get; set; }
     public string? BrandCode { get; set; }
     public string? BrandName { get; set; }
+    // TotalFare/PriceDifference: KİŞİ BAŞI (markup dahil). GrandTotalFare/GrandPriceDifference:
+    // tüm yolcuların TOPLAMI (markup dahil) — paket kartında "{N} kişi için toplam" satırı için.
     public decimal TotalFare { get; set; }
+    public decimal GrandTotalFare { get; set; }
     public decimal TotalTaxes { get; set; }
     public string? Currency { get; set; }
     public string? TotalFareFormatted { get; set; }
+    public string? GrandTotalFareFormatted { get; set; }
     public string? CabinClass { get; set; }
     public string? BookingClass { get; set; }
 
     /// <summary>
-    /// Bu paketin baz fiyata gore fark tutari.
+    /// Bu paketin baz fiyata gore fark tutari (KİŞİ BAŞI).
     /// Negatif ise baz fiyattan ucuz, pozitif ise pahali.
     /// </summary>
     public decimal PriceDifference { get; set; }
     public string? PriceDifferenceFormatted { get; set; }
+
+    /// <summary>
+    /// Bu paketin baz fiyata gore fark tutari (TÜM YOLCULAR TOPLAMI).
+    /// </summary>
+    public decimal GrandPriceDifference { get; set; }
+    public string? GrandPriceDifferenceFormatted { get; set; }
 
     /// <summary>
     /// Yolcu bazli fiyat dagilimi (ADT, CHD, INF)

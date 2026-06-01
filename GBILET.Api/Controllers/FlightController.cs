@@ -258,10 +258,12 @@ public class FlightController : ControllerBase
             if (!hasSession && request.SearchRequest == null)
                 return BadRequest(new { error = "SessionId/SessionToken verilmediyse SearchRequest zorunludur." });
 
-            // Acente komisyonu (CustomerCommission.Value × paxCount) AirSearch'te BB'den geldi —
-            // session cache'den okuyup Allocate XML'inde SelectedServiceFee.Amount alanına yaz.
-            // Aksi halde BB acente payını sıfırlar (ServiceFee 11'e düşer, müşteri eksik fiyat görür).
-            // Aynı zamanda BFF searchRequest null gönderdiği için recovery fallback'i de buradan beslenir.
+            // Acente SC'si (CustomerCommission.Value × yolcu) AirSearch'te BB'den geldi ve session cache'e
+            // yazıldı. Allocate'te SelectedServiceFee.Amount alanına gönderilir. BiletBank SC'yi search'te
+            // fiyata gömse de allocate'te OTOMATİK uygulamıyor — gönderilmezse ServiceFee yalnızca system
+            // fee'ye (11) düşer, acente yurtiçi/yurtdışı kârı checkout'a yansımaz. BB allocate'te
+            // ServiceFee = SystemServiceFee + SelectedServiceFee olarak hesaplar (çift saymaz).
+            // Bu blok aynı zamanda recovery için cache'teki SearchRequest'i de besler.
             {
                 var searchIdHeader = Request.Headers["x-search-id"].FirstOrDefault();
                 if (!string.IsNullOrEmpty(searchIdHeader)
@@ -276,25 +278,13 @@ public class FlightController : ControllerBase
                             "[Allocate] SelectedServiceFee set from session cache: ProductId={ProductId}, Amount={Amount}",
                             request.ProductId, commission);
                     }
-                    else if (request.SelectedServiceFee <= 0)
-                    {
-                        _logger.LogWarning(
-                            "[Allocate] No commission found in session for ProductId={ProductId} (searchId={SearchId}). BB will charge BB-only ServiceFee.",
-                            request.ProductId, searchIdHeader);
-                    }
 
                     // Recovery fallback: BFF searchRequest:null gönderiyor; recovery executor
-                    // yeni Login+AirSearch+Allocate çalıştırırken bu kriterlere ihtiyaç duyar.
+                    // yeni Login+AirSearch+Allocate çalıştırırken cache'teki SearchRequest'e ihtiyaç duyar.
                     if (request.SearchRequest == null && cachedSession.SearchRequest != null)
                     {
                         request.SearchRequest = cachedSession.SearchRequest;
                     }
-                }
-                else if (request.SelectedServiceFee <= 0)
-                {
-                    _logger.LogWarning(
-                        "[Allocate] Session cache miss for searchId={SearchId}. Recovery will not be possible without SearchRequest.",
-                        searchIdHeader ?? "(missing)");
                 }
             }
 

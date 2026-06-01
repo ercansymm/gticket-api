@@ -286,7 +286,7 @@ public class BiletBankFlightService : IFlightService
     private async Task<FlightSearchResponseDto> ExecuteSearchAndMapAsync(SearchRequest request)
     {
         var rawResponse = await SearchFlightAsync(request);
-        var dto = FlightSearchMapper.MapToDto(rawResponse, _logger, request.FlightClass);
+        var dto = FlightSearchMapper.MapToDto(rawResponse, request, _logger, request.FlightClass);
 
         // Session bilgilerini cache'le (sonraki ad�mlarda allocate/booking i�in)
         if (!rawResponse.HasError && !string.IsNullOrEmpty(rawResponse.SearchId))
@@ -299,7 +299,7 @@ public class BiletBankFlightService : IFlightService
                 SessionId = rawResponse.SessionId,
                 SessionToken = rawResponse.SessionToken,
                 SearchRequest = request,
-                CustomerCommissionByProductId = BuildCommissionMap(rawResponse, request)
+                CustomerCommissionByProductId = BuildCommissionMap(rawResponse)
             };
 
             var cacheOptions = new MemoryCacheEntryOptions()
@@ -316,36 +316,55 @@ public class BiletBankFlightService : IFlightService
     }
 
     /// <summary>
-    /// BB AirSearch response'undaki her FlightOption.ProductId için toplam acente komisyonunu
-    /// hesaplar (CustomerCommission.Value × yolcu sayısı, tüm pax tipleri için).
-    /// Allocate request'inde SelectedServiceFee.Amount alanına bu değer yazılır.
+    /// Bir pax tipinin (ADT/CHD/INF) arama isteğindeki yolcu sayısını döndürür.
     /// </summary>
-    private static Dictionary<string, decimal> BuildCommissionMap(AirSearchResponse rawResponse, SearchRequest request)
+    internal static int PaxCountFor(string? paxCode, SearchRequest request) =>
+        paxCode?.ToUpperInvariant() switch
+        {
+            "ADT" => request.AdultCount,
+            "CHD" => request.ChildCount,
+            "INF" => request.InfantCount,
+            _ => 0
+        };
+
+    /// <summary>
+    /// Bir uçuş seçeneğinin KİŞİ BAŞI acente SC'sini döndürür (CustomerCommission.Value).
+    /// ÖNEMLİ: SelectedServiceFee BiletBank'te KİŞİ BAŞI uygulanır ve [Minimum, Maximum] (kişi başı)
+    /// ile sınırlıdır. Yolcu sayısıyla ÇARPILMAZ — çarpılırsa Maximum aşılır ve BB allocate'i reddeder
+    /// ("Uçuş Tahsis Edilemedi"). Search yanıtı da SC'yi her pax fare öğesine kişi başı gömer; bu yüzden
+    /// kişi başı Value göndermek hem listeyle tutarlıdır hem de allocate'i bozmaz.
+    /// ADT (yoksa ilk) pax fare öğesinin Value'su kullanılır.
+    /// </summary>
+    private static decimal GetPerPaxAgencyCommission(IEnumerable<PassengerFareItem> paxItems)
+    {
+        var items = paxItems as ICollection<PassengerFareItem> ?? paxItems.ToList();
+        var adt = items.FirstOrDefault(p => string.Equals(p.PaxCode, "ADT", StringComparison.OrdinalIgnoreCase));
+        return (adt ?? items.FirstOrDefault())?.CustomerCommission?.Value ?? 0;
+    }
+
+    /// <summary>
+    /// BB AirSearch response'undaki her ProductId için KİŞİ BAŞI acente SC'sini hesaplar.
+    /// Hem FlightOptions hem RecommendationBoxes (RT bundle) dolaşılır. Allocate'te
+    /// SelectedServiceFee.Amount alanına bu kişi başı değer yazılır (BB kişi başı uygular).
+    /// </summary>
+    private static Dictionary<string, decimal> BuildCommissionMap(AirSearchResponse rawResponse)
     {
         var map = new Dictionary<string, decimal>();
 
         foreach (var option in rawResponse.FlightOptions)
         {
             if (string.IsNullOrEmpty(option.ProductId)) continue;
+            var perPax = GetPerPaxAgencyCommission(option.PassengerFareItems);
+            if (perPax > 0)
+                map[option.ProductId] = perPax;
+        }
 
-            decimal total = 0;
-            foreach (var pfi in option.PassengerFareItems)
-            {
-                var perPax = pfi.CustomerCommission?.Value ?? 0;
-                if (perPax <= 0) continue;
-
-                var count = pfi.PaxCode?.ToUpperInvariant() switch
-                {
-                    "ADT" => request.AdultCount,
-                    "CHD" => request.ChildCount,
-                    "INF" => request.InfantCount,
-                    _ => 0
-                };
-                total += perPax * count;
-            }
-
-            if (total > 0)
-                map[option.ProductId] = total;
+        foreach (var rb in rawResponse.RecommendationBoxes)
+        {
+            if (string.IsNullOrEmpty(rb.ProductId)) continue;
+            var perPax = GetPerPaxAgencyCommission(rb.PassengerFareItems);
+            if (perPax > 0)
+                map[rb.ProductId] = perPax;
         }
 
         return map;
@@ -1261,17 +1280,6 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
 
     private static RecommendationBox ParseRecommendationBox(XElement rb)
     {
-        // DEBUG: RB'nin tüm direct child element isimlerini logla — OtherFlights element adını keşfetmek için
-        var childElementNames = rb.Elements().Select(e => e.Name.LocalName).ToList();
-        try
-        {
-            var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
-            Directory.CreateDirectory(logDir);
-            File.AppendAllText(Path.Combine(logDir, "rb-children-debug.log"),
-                $"[{DateTime.UtcNow:HH:mm:ss}] RB children: {string.Join(", ", childElementNames)}\n");
-        }
-        catch { /* debug log yazma hatası kritik değil */ }
-
         var box = new RecommendationBox
         {
             ProductId = rb.GetValue("ProductId"),
@@ -1282,6 +1290,13 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
             ServiceFee = rb.GetDecimalValue("ServiceFee"),
             TotalFare = rb.GetDecimalValue("TotalFare")
         };
+
+        // Yolcu bazlı fiyat öğeleri (acente komisyonu/markup buradan okunur).
+        // GetDescendants ile T_PaxFareItem'lar (FlightOption ile aynı yapı) toplanır.
+        foreach (var pfi in rb.GetDescendants("T_PaxFareItem"))
+        {
+            box.PassengerFareItems.Add(ParsePassengerFareItem(pfi));
+        }
 
         var departureFlights = rb.GetElement("DepartureFlights");
         if (departureFlights != null)
@@ -1511,6 +1526,11 @@ xmlns:trev2=""http://schemas.datacontract.org/2004/07/Trevoo.WS.Entities.Air"">
         }
 
         // Return IO_AllocationItem (only for independent round-trip, NOT bundles)
+        // NOT (bilinen risk): Bağımsız 2-ürün RT'de aynı `serviceFee` (gidiş ProductId'sinin acente
+        // komisyonu) hem gidiş hem dönüş item'ına yazılıyor → markup iki kez tahsil edilebilir.
+        // Doğru çözüm her bacağın kendi ProductId komisyonunu uygulamak (request'e ReturnSelectedServiceFee
+        // eklemek); ancak BB'nin per-item SelectedServiceFee toplama semantiği üretim 2-ürün RT ile
+        // doğrulanmadan değiştirilmemeli. RT bundle (yaygın akış) bu sorundan etkilenmez.
         var returnItem = !string.IsNullOrEmpty(returnProductId)
             ? $@"
                 <trev1:IO_AllocationItem>{(!string.IsNullOrEmpty(returnBrandedFareItemId) ? $@"
