@@ -10,6 +10,7 @@ namespace GBILET.Api.Controllers.Admin;
 [Route("api/admin/blog")]
 public class AdminBlogController(
     IBlogService blogService,
+    IImageProcessor imageProcessor,
     ILogger<AdminBlogController> logger,
     IWebHostEnvironment env) : ControllerBase
 {
@@ -137,11 +138,15 @@ public class AdminBlogController(
             var uploadPath = Path.Combine(webRoot, "uploads", "blog");
             Directory.CreateDirectory(uploadPath);
 
-            var fileName = $"{Guid.NewGuid()}{ext}";
+            // Downscale to max 1600px wide and re-encode as compressed WebP so the
+            // stored file is a few hundred KB instead of the raw multi-MB upload.
+            await using var source = file.OpenReadStream();
+            var (data, outExt) = await imageProcessor.ProcessAsync(source, maxWidth: 1600, quality: 80, ct);
+
+            var fileName = $"{Guid.NewGuid()}{outExt}";
             var fullPath = Path.Combine(uploadPath, fileName);
 
-            await using var stream = System.IO.File.Create(fullPath);
-            await file.CopyToAsync(stream, ct);
+            await System.IO.File.WriteAllBytesAsync(fullPath, data, ct);
 
             return Ok(new { url = $"/uploads/blog/{fileName}" });
         }
