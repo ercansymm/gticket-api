@@ -256,6 +256,8 @@ builder.Services.AddSingleton<ITotpService, TotpService>();   // Stateless
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
 builder.Services.AddScoped<IBlogService, BlogService>();
+builder.Services.AddSingleton<IImageProcessor, ImageProcessor>(); // Stateless
+
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
